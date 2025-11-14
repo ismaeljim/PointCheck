@@ -2,20 +2,6 @@
 <incidents format="6" by="lint 8.13.0" type="incidents">
 
     <incident
-        id="SuspiciousImport"
-        severity="warning"
-        message="Don&apos;t include `android.R` here; use a fully qualified name for each usage instead">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/pointcheck/notifications/ReminderReceiver.kt"
-            line="4"
-            column="1"
-            startOffset="62"
-            endLine="4"
-            endColumn="17"
-            endOffset="78"/>
-    </incident>
-
-    <incident
         id="OldTargetApi"
         severity="warning"
         message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details.">

@@ -11,6 +11,9 @@
     <!-- Permiso opcional para notificaciones -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Permiso para programar alarmas exactas -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <permission
         android:name="com.pointcheck.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
         android:protectionLevel="signature" />

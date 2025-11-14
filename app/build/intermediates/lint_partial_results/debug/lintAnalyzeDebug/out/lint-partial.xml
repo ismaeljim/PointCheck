@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <incidents format="6" by="lint 8.13.0" type="partial_results">
+    <map id="NotificationPermission">
+        <entry
+            name="source"
+            boolean="true"/>
+    </map>
     <map id="ScheduleExactAlarm">
-        <location id="0"
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/pointcheck/notifications/ReminderScheduler.kt"
-            line="16"
-            column="9"
-            startOffset="714"
-            endLine="16"
-            endColumn="79"
-            endOffset="784"/>
+        <entry
+            name="ChecksExactAlarmPermission"
+            boolean="true"/>
     </map>
     <map id="UnsafeIntentLaunch">
             <map id="unprotected">

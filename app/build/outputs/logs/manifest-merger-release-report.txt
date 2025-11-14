@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-29:12
-INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-29:12
-INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-29:12
-INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-29:12
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-32:12
+INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-32:12
+INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-32:12
+INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:1:1-32:12
 MERGED from [androidx.navigation:navigation-common:2.8.0] C:\Users\Usuario\.gradle\caches\8.13\transforms\7ce5240a764f761edc3a5e187ffd6614\transformed\navigation-common-2.8.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.navigation:navigation-runtime:2.8.0] C:\Users\Usuario\.gradle\caches\8.13\transforms\6dc80f083b05b35aaf5e0bc12d48928a\transformed\navigation-runtime-2.8.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.navigation:navigation-common-ktx:2.8.0] C:\Users\Usuario\.gradle\caches\8.13\transforms\db98b08a0772004b5d9b32cb70e017e1\transformed\navigation-common-ktx-2.8.0\AndroidManifest.xml:2:1-7:12
@@ -80,9 +80,13 @@ uses-permission#android.permission.POST_NOTIFICATIONS
 ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:4:5-77
 	android:name
 		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:4:22-74
+uses-permission#android.permission.SCHEDULE_EXACT_ALARM
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:7:5-79
+	android:name
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:7:22-76
 application
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:6:5-27:19
-INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:6:5-27:19
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:9:5-30:19
+INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:9:5-30:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Usuario\.gradle\caches\8.13\transforms\f2e30fd4fb1256abc84d1556c4ce194b\transformed\emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Usuario\.gradle\caches\8.13\transforms\f2e30fd4fb1256abc84d1556c4ce194b\transformed\emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.core:core:1.13.1] C:\Users\Usuario\.gradle\caches\8.13\transforms\71d4315f9e39fc43a3e499c95acdbe57\transformed\core-1.13.1\AndroidManifest.xml:28:5-89
@@ -102,35 +106,35 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Usuario\.gradle\ca
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] C:\Users\Usuario\.gradle\caches\8.13\transforms\71d4315f9e39fc43a3e499c95acdbe57\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:9:9-35
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:12:9-35
 	android:label
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:8:9-35
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:11:9-35
 	android:allowBackup
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:7:9-35
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:10:9-35
 	android:theme
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:10:9-48
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:13:9-48
 activity#com.pointcheck.MainActivity
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:12:9-21:20
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:15:9-24:20
 	android:exported
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:14:13-36
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:17:13-36
 	android:name
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:13:13-41
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:16:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:16:13-19:29
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:19:13-22:29
 action#android.intent.action.MAIN
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:17:17-69
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:20:17-69
 	android:name
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:17:25-66
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:20:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:18:17-77
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:21:17-77
 	android:name
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:18:27-74
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:21:27-74
 receiver#com.pointcheck.notifications.ReminderReceiver
-ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:23:9-25:40
+ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:26:9-28:40
 	android:exported
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:25:13-37
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:28:13-37
 	android:name
-		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:24:13-59
+		ADDED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:27:13-59
 uses-sdk
 INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml
