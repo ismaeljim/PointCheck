@@ -35,20 +35,25 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     }
     private fun validate(s: BookingUiState) =
         s.name.isNotBlank() && (s.epochMillis ?: 0L) > System.currentTimeMillis()
-    
+
     fun confirmAndSchedule(onDone: () -> Unit) {
-        val s = _state.value; if (!s.isValid) return
+        val s = _state.value
+        // Usamos una variable local para evitar el !! y el acceso a un posible nulo
+        val epoch = s.epochMillis
+
+        if (!s.isValid || epoch == null) return
+
         viewModelScope.launch {
             val userEmail = prefs.email.first() ?: ""
-            
-            if (userEmail.isNotEmpty() && s.epochMillis != null) {
+
+            if (userEmail.isNotEmpty()) {
                 val reservation = Reservation(
                     userEmail = userEmail,
                     name = s.name,
-                    epochMillis = s.epochMillis!!
+                    epochMillis = epoch // Usamos la variable local segura
                 )
                 repository.insertReservation(reservation)
-                scheduler.scheduleAt(s.epochMillis, "Recordatorio de reserva", "Hola ${s.name}, no olvides tu cita.")
+                scheduler.scheduleAt(epoch, "Recordatorio de reserva", "Hola ${s.name}, no olvides tu cita.")
                 onDone()
             }
         }
