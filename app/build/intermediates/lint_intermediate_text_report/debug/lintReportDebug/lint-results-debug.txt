@@ -1,0 +1,129 @@
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\java\com\pointcheck\notifications\ReminderScheduler.kt:16: Warning: Setting Exact alarms with setExactAndAllowWhileIdle requires the SCHEDULE_EXACT_ALARM permission or power exemption from user; it is intended for applications where the user knowingly schedules actions to happen at a precise time such as alarms, clocks, calendars, etc. Check out the javadoc on this permission to make sure your use case is valid. [MissingPermission]
+        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, epochMillis, pi)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "MissingPermission":
+   This check scans through your code and libraries and looks at the APIs
+   being used, and checks this against the set of permissions required to
+   access those APIs. If the code using those APIs is called at runtime, then
+   the program will crash.
+
+   Furthermore, for permissions that are revocable (with targetSdkVersion 23),
+   client code must also be prepared to handle the calls throwing an exception
+   if the user rejects the request for permission at runtime.
+
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\java\com\pointcheck\notifications\ReminderReceiver.kt:4: Warning: Don't include android.R here; use a fully qualified name for each usage instead [SuspiciousImport]
+import android.R
+~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SuspiciousImport":
+   Importing android.R is usually not intentional; it sometimes happens when
+   you use an IDE and ask it to automatically add imports at a time when your
+   project's R class it not present.
+
+   Once the import is there you might get a lot of "confusing" error messages
+   because of course the fields available on android.R are not the ones you'd
+   expect from just looking at your own R class.
+
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:14: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk = 34
+        ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application or sdk runs on a version of Android that is more
+   recent than your targetSdkVersion specifies that it has been tested with,
+   various compatibility modes kick in. This ensures that your application
+   continues to work, but it may look out of place. For example, if the
+   targetSdkVersion is less than 14, your app may get an option button in the
+   UI.
+
+   To fix this issue, set the targetSdkVersion to the highest available value.
+   Then test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\gradle\wrapper\gradle-wrapper.properties:3: Warning: A newer version of Gradle than 8.13 is available: 8.14.3 [AndroidGradlePluginVersion]
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AndroidGradlePluginVersion":
+   This detector looks for usage of the Android Gradle Plugin where the
+   version you are using is not the current stable release. Using older
+   versions is fine, and there are cases where you deliberately want to stick
+   with an older version. However, you may simply not be aware that a more
+   recent version is available, and that is what this lint check helps find.
+
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:9: Warning: A newer version of compileSdkVersion than 34 is available: 36 [GradleDependency]
+    compileSdk = 34
+    ~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:39: Warning: A newer version of androidx.compose:compose-bom than 2024.09.00 is available: 2025.11.00 [GradleDependency]
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:42: Warning: A newer version of androidx.core:core-ktx than 1.12.0 is available: 1.17.0 [GradleDependency]
+    implementation("androidx.core:core-ktx:1.12.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:43: Warning: A newer version of androidx.activity:activity-compose than 1.9.0 is available: 1.11.0 [GradleDependency]
+    implementation("androidx.activity:activity-compose:1.9.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:53: Warning: A newer version of androidx.navigation:navigation-compose than 2.8.0 is available: 2.9.6 [GradleDependency]
+    implementation("androidx.navigation:navigation-compose:2.8.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:54: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.4 is available: 2.9.4 [GradleDependency]
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:55: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.7.0 is available: 2.9.4 [GradleDependency]
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:58: Warning: A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.3 [GradleDependency]
+    implementation("androidx.room:room-runtime:2.6.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:59: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.3 [GradleDependency]
+    implementation("androidx.room:room-ktx:2.6.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:60: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.3 [GradleDependency]
+    ksp("androidx.room:room-compiler:2.6.1") // 🔥 reemplaza a kapt
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:66: Warning: A newer version of androidx.datastore:datastore-preferences than 1.0.0 is available: 1.1.7 [GradleDependency]
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:63: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.8.1 is available: 1.10.2 [NewerVersionAvailable]
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\build.gradle.kts:69: Warning: A newer version of io.coil-kt:coil-compose than 2.6.0 is available: 2.7.0 [NewerVersionAvailable]
+    implementation("io.coil-kt:coil-compose:2.6.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+C:\Users\Usuario\Desktop\proyectocursor\PointCheck\app\src\main\AndroidManifest.xml:6: Warning: Should explicitly set android:icon, there is no default [MissingApplicationIcon]
+    <application
+     ~~~~~~~~~~~
+
+   Explanation for issues of type "MissingApplicationIcon":
+   You should set an icon for the application as whole because there is no
+   default. This attribute must be set as a reference to a drawable resource
+   containing the image (for example @drawable/icon).
+
+   https://developer.android.com/studio/publish/preparing#publishing-configure
+
+0 errors, 18 warnings

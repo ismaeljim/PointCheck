@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="conditional_incidents">
+
+    <incident
+        id="MissingPermission"
+        severity="warning"
+        message="">
+        <fix-data missing="android.permission.SCHEDULE_EXACT_ALARM" message="Missing permissions required by AlarmManager.setExactAndAllowWhileIdle: %1$s" lastApi="2147483647" operator="&amp;"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/pointcheck/notifications/ReminderScheduler.kt"
+            line="16"
+            column="9"
+            startOffset="714"
+            endLine="16"
+            endColumn="79"
+            endOffset="784"/>
+        <map>
+            <condition targetGE="31"/>
+            <entry
+                name="message"
+                string="Setting Exact alarms with `setExactAndAllowWhileIdle` requires the `SCHEDULE_EXACT_ALARM` permission or power exemption from user; it is intended for applications where the user knowingly schedules actions to happen at a precise time such as alarms, clocks, calendars, etc. Check out the javadoc on this permission to make sure your use case is valid."/>
+            <entry
+                name="requirement"
+                string="?android.permission.SCHEDULE_EXACT_ALARM"/>
+        </map>
+    </incident>
+
+</incidents>
