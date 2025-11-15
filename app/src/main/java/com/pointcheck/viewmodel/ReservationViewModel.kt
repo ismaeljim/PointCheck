@@ -58,4 +58,10 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
+
+    fun deleteReservation(id: Int) {
+        viewModelScope.launch {
+            repository.deleteReservation(id.toLong())
+        }
+    }
 }
