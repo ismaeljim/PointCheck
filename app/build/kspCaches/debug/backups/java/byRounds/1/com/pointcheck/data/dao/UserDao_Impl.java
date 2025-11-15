@@ -5,6 +5,7 @@ import android.os.CancellationSignal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.room.CoroutinesRoom;
+import androidx.room.EntityDeletionOrUpdateAdapter;
 import androidx.room.EntityInsertionAdapter;
 import androidx.room.RoomDatabase;
 import androidx.room.RoomSQLiteQuery;
@@ -35,6 +36,8 @@ public final class UserDao_Impl implements UserDao {
 
   private final EntityInsertionAdapter<User> __insertionAdapterOfUser;
 
+  private final EntityDeletionOrUpdateAdapter<User> __updateAdapterOfUser;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteUser;
 
   public UserDao_Impl(@NonNull final RoomDatabase __db) {
@@ -52,6 +55,22 @@ public final class UserDao_Impl implements UserDao {
         statement.bindString(1, entity.getEmail());
         statement.bindString(2, entity.getName());
         statement.bindString(3, entity.getPassword());
+      }
+    };
+    this.__updateAdapterOfUser = new EntityDeletionOrUpdateAdapter<User>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "UPDATE OR ABORT `users` SET `email` = ?,`name` = ?,`password` = ? WHERE `email` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final User entity) {
+        statement.bindString(1, entity.getEmail());
+        statement.bindString(2, entity.getName());
+        statement.bindString(3, entity.getPassword());
+        statement.bindString(4, entity.getEmail());
       }
     };
     this.__preparedStmtOfDeleteUser = new SharedSQLiteStatement(__db) {
@@ -73,6 +92,24 @@ public final class UserDao_Impl implements UserDao {
         __db.beginTransaction();
         try {
           __insertionAdapterOfUser.insert(user);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object updateUser(final User user, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __updateAdapterOfUser.handle(user);
           __db.setTransactionSuccessful();
           return Unit.INSTANCE;
         } finally {

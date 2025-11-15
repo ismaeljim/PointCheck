@@ -2,6 +2,7 @@ package com.pointcheck.data.dao;
 
 import android.database.Cursor;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.CoroutinesRoom;
 import androidx.room.EntityInsertionAdapter;
 import androidx.room.RoomDatabase;
@@ -128,8 +129,8 @@ public final class ReservationDao_Impl implements ReservationDao {
           final List<Reservation> _result = new ArrayList<Reservation>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Reservation _item;
-            final long _tmpId;
-            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
             final String _tmpUserEmail;
             _tmpUserEmail = _cursor.getString(_cursorIndexOfUserEmail);
             final String _tmpName;
@@ -177,8 +178,8 @@ public final class ReservationDao_Impl implements ReservationDao {
           final List<Reservation> _result = new ArrayList<Reservation>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Reservation _item;
-            final long _tmpId;
-            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
             final String _tmpUserEmail;
             _tmpUserEmail = _cursor.getString(_cursorIndexOfUserEmail);
             final String _tmpName;
@@ -189,6 +190,52 @@ public final class ReservationDao_Impl implements ReservationDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             _item = new Reservation(_tmpId,_tmpUserEmail,_tmpName,_tmpEpochMillis,_tmpCreatedAt);
             _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<Reservation> getReservationById(final int id) {
+    final String _sql = "SELECT * FROM reservations WHERE id = ?";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, id);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"reservations"}, new Callable<Reservation>() {
+      @Override
+      @Nullable
+      public Reservation call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfUserEmail = CursorUtil.getColumnIndexOrThrow(_cursor, "userEmail");
+          final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
+          final int _cursorIndexOfEpochMillis = CursorUtil.getColumnIndexOrThrow(_cursor, "epochMillis");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final Reservation _result;
+          if (_cursor.moveToFirst()) {
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final String _tmpUserEmail;
+            _tmpUserEmail = _cursor.getString(_cursorIndexOfUserEmail);
+            final String _tmpName;
+            _tmpName = _cursor.getString(_cursorIndexOfName);
+            final long _tmpEpochMillis;
+            _tmpEpochMillis = _cursor.getLong(_cursorIndexOfEpochMillis);
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            _result = new Reservation(_tmpId,_tmpUserEmail,_tmpName,_tmpEpochMillis,_tmpCreatedAt);
+          } else {
+            _result = null;
           }
           return _result;
         } finally {

@@ -1,9 +1,12 @@
 package com.pointcheck.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,14 +22,16 @@ import com.pointcheck.data.prefs.UserPreferences
 import com.pointcheck.model.Reservation
 import com.pointcheck.navigation.Screen
 import com.pointcheck.repository.RoomRepository
+import com.pointcheck.viewmodel.ReservationViewModel
 import com.pointcheck.viewmodel.UserViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(nav: NavController, snackbar: SnackbarHostState, vm: UserViewModel = viewModel()) {
+fun ProfileScreen(nav: NavController, vm: UserViewModel = viewModel(), reservationVm: ReservationViewModel = viewModel()) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as android.app.Application
     val prefs = remember { UserPreferences(ctx) }
@@ -114,7 +119,7 @@ fun ProfileScreen(nav: NavController, snackbar: SnackbarHostState, vm: UserViewM
             }
 
             item {
-                Divider()
+                HorizontalDivider()
             }
 
             item {
@@ -136,7 +141,15 @@ fun ProfileScreen(nav: NavController, snackbar: SnackbarHostState, vm: UserViewM
                 }
             } else {
                 items(reservations) { reservation ->
-                    ReservationCard(reservation)
+                    ReservationCard(
+                        reservation = reservation,
+                        onClick = {
+                            nav.navigate(Screen.Scheduled.createRoute(reservation.id.toLong()))
+                        },
+                        onDelete = {
+                            reservationVm.deleteReservation(reservation.id)
+                        }
+                    )
                 }
             }
 
@@ -153,28 +166,35 @@ fun ProfileScreen(nav: NavController, snackbar: SnackbarHostState, vm: UserViewM
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReservationCard(reservation: Reservation) {
+fun ReservationCard(reservation: Reservation, onClick: () -> Unit, onDelete: () -> Unit) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     val dateString = dateFormat.format(Date(reservation.epochMillis))
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = reservation.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Fecha: $dateString",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(modifier = Modifier.weight(1f).clickable(onClick = onClick)) {
+                Text(
+                    text = reservation.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Fecha: $dateString",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Eliminar reserva")
+            }
         }
     }
 }

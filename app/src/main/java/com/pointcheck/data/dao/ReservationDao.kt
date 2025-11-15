@@ -11,14 +11,16 @@ import kotlinx.coroutines.flow.Flow
 interface ReservationDao {
     @Query("SELECT * FROM reservations WHERE userEmail = :userEmail ORDER BY epochMillis ASC")
     fun getReservationsByUser(userEmail: String): Flow<List<Reservation>>
-    
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReservation(reservation: Reservation)
-    
+
     @Query("DELETE FROM reservations WHERE id = :id")
     suspend fun deleteReservation(id: Long)
-    
+
     @Query("SELECT * FROM reservations WHERE userEmail = :userEmail AND epochMillis >= :currentTime ORDER BY epochMillis ASC")
     fun getUpcomingReservations(userEmail: String, currentTime: Long): Flow<List<Reservation>>
-}
 
+    @Query("SELECT * FROM reservations WHERE id = :id")
+    fun getReservationById(id: Int): Flow<Reservation?>
+}
