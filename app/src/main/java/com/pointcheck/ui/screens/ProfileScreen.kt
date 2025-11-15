@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +26,6 @@ import com.pointcheck.repository.RoomRepository
 import com.pointcheck.viewmodel.ReservationViewModel
 import com.pointcheck.viewmodel.UserViewModel
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,11 +36,12 @@ fun ProfileScreen(nav: NavController, vm: UserViewModel = viewModel(), reservati
     val app = ctx.applicationContext as android.app.Application
     val prefs = remember { UserPreferences(ctx) }
     val repository = remember { RoomRepository(app) }
+    var showMenu by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf<String?>(null) }
     var email by remember { mutableStateOf<String?>(null) }
     var avatar by remember { mutableStateOf<String?>(null) }
-    var reservations by remember { mutableStateOf<List<Reservation>>(emptyList()) }
+    val reservations by reservationVm.reservations.collectAsState(initial = emptyList())
 
     // Obtener datos del usuario
     LaunchedEffect(Unit) {
@@ -55,36 +56,25 @@ fun ProfileScreen(nav: NavController, vm: UserViewModel = viewModel(), reservati
         prefs.avatar.collectLatest { avatar = it }
     }
 
-    // Obtener reservas cuando hay email
-    LaunchedEffect(email) {
-        email?.let { userEmail ->
-            repository.getUpcomingReservations(userEmail).collectLatest { res ->
-                reservations = res
-            }
-        } ?: run {
-            reservations = emptyList()
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Perfil") },
                 actions = {
-                    TextButton(onClick = { nav.navigate(Screen.Dashboard.route) }) {
-                        Text("Dashboard")
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
                     }
-                    TextButton(onClick = { nav.navigate(Screen.Booking.route) }) {
-                        Text("Nueva Reserva")
-                    }
-                    TextButton(onClick = {
-                        vm.logout {
-                            nav.navigate(Screen.Dashboard.route) {
-                                popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(text = { Text("Dashboard") }, onClick = { nav.navigate(Screen.Dashboard.route); showMenu = false })
+                        DropdownMenuItem(text = { Text("Nueva Reserva") }, onClick = { nav.navigate(Screen.Booking.route); showMenu = false })
+                        DropdownMenuItem(text = { Text("Cerrar sesión") }, onClick = {
+                            vm.logout {
+                                nav.navigate(Screen.Dashboard.route) {
+                                    popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                }
                             }
-                        }
-                    }) {
-                        Text("Cerrar sesión")
+                            showMenu = false
+                        })
                     }
                 }
             )

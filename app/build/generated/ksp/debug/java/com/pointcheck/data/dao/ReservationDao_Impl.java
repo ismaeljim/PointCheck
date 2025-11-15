@@ -4,6 +4,7 @@ import android.database.Cursor;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.room.CoroutinesRoom;
+import androidx.room.EntityDeletionOrUpdateAdapter;
 import androidx.room.EntityInsertionAdapter;
 import androidx.room.RoomDatabase;
 import androidx.room.RoomSQLiteQuery;
@@ -34,6 +35,8 @@ public final class ReservationDao_Impl implements ReservationDao {
 
   private final EntityInsertionAdapter<Reservation> __insertionAdapterOfReservation;
 
+  private final EntityDeletionOrUpdateAdapter<Reservation> __updateAdapterOfReservation;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteReservation;
 
   public ReservationDao_Impl(@NonNull final RoomDatabase __db) {
@@ -53,6 +56,24 @@ public final class ReservationDao_Impl implements ReservationDao {
         statement.bindString(3, entity.getName());
         statement.bindLong(4, entity.getEpochMillis());
         statement.bindLong(5, entity.getCreatedAt());
+      }
+    };
+    this.__updateAdapterOfReservation = new EntityDeletionOrUpdateAdapter<Reservation>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "UPDATE OR ABORT `reservations` SET `id` = ?,`userEmail` = ?,`name` = ?,`epochMillis` = ?,`createdAt` = ? WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final Reservation entity) {
+        statement.bindLong(1, entity.getId());
+        statement.bindString(2, entity.getUserEmail());
+        statement.bindString(3, entity.getName());
+        statement.bindLong(4, entity.getEpochMillis());
+        statement.bindLong(5, entity.getCreatedAt());
+        statement.bindLong(6, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteReservation = new SharedSQLiteStatement(__db) {
@@ -85,7 +106,26 @@ public final class ReservationDao_Impl implements ReservationDao {
   }
 
   @Override
-  public Object deleteReservation(final long id, final Continuation<? super Unit> $completion) {
+  public Object updateReservation(final Reservation reservation,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __updateAdapterOfReservation.handle(reservation);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteReservation(final int id, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull

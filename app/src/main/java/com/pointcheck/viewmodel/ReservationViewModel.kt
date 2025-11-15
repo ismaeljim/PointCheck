@@ -7,9 +7,12 @@ import com.pointcheck.data.prefs.UserPreferences
 import com.pointcheck.model.Reservation
 import com.pointcheck.notifications.ReminderScheduler
 import com.pointcheck.repository.RoomRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 data class BookingUiState(
@@ -24,6 +27,10 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     private val scheduler = ReminderScheduler(application.applicationContext)
     private val repository = RoomRepository(application)
     private val prefs = UserPreferences(application)
+
+    val reservations: Flow<List<Reservation>> = prefs.email.flatMapLatest { email ->
+        email?.let { repository.getUpcomingReservations(it) } ?: flowOf(emptyList())
+    }
 
     fun setName(value: String) {
         val s = _state.value
@@ -61,7 +68,7 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
 
     fun deleteReservation(id: Int) {
         viewModelScope.launch {
-            repository.deleteReservation(id.toLong())
+            repository.deleteReservation(id)
         }
     }
 }

@@ -46,10 +46,9 @@ class UserPreferences(private val context: Context) {
     val isLogged: Flow<Boolean> = context.dataStore.data.map { it[UserPrefsKeys.LOGGED] ?: false }
     suspend fun clear() {
         context.dataStore.edit {
-            it.remove(UserPrefsKeys.NAME)
-            it.remove(UserPrefsKeys.EMAIL)
-            it.remove(UserPrefsKeys.LOGGED)
-            it.remove(UserPrefsKeys.AVATAR_URI)
+            it.clear()
+        }.also {
+            // Puedes añadir más lógica aquí si lo necesitas en el futuro
         }
     }
 }
