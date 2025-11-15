@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.pointcheck.model.Reservation
 import kotlinx.coroutines.flow.Flow
 
@@ -15,8 +16,11 @@ interface ReservationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReservation(reservation: Reservation)
 
+    @Update
+    suspend fun updateReservation(reservation: Reservation)
+
     @Query("DELETE FROM reservations WHERE id = :id")
-    suspend fun deleteReservation(id: Long)
+    suspend fun deleteReservation(id: Int)
 
     @Query("SELECT * FROM reservations WHERE userEmail = :userEmail AND epochMillis >= :currentTime ORDER BY epochMillis ASC")
     fun getUpcomingReservations(userEmail: String, currentTime: Long): Flow<List<Reservation>>

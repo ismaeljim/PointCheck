@@ -124,7 +124,9 @@ fun RegisterScreen(
                 onClick = {
                     vm.save {
                         scope.launch { snackbar.showSnackbar("Registro exitoso") }
-                        nav.navigate(Screen.Login.route)
+                        nav.navigate(Screen.Profile.route) {
+                            popUpTo(Screen.Dashboard.route)
+                        }
                     }
                 },
                 enabled = s.isValid,

@@ -19,9 +19,9 @@ class RoomRepository(app: Application) {
         return userDao.findUserByEmail(email)
     }
 
-    // suspend fun updateUser(user: User) {
-    //     userDao.updateUser(user)
-    // }
+    suspend fun updateUser(user: User) {
+        userDao.updateUser(user)
+    }
 
     suspend fun deleteUser(email: String) {
         userDao.deleteUser(email)
@@ -35,7 +35,11 @@ class RoomRepository(app: Application) {
         reservationDao.insertReservation(reservation)
     }
 
-    suspend fun deleteReservation(id: Long) {
+    suspend fun updateReservation(reservation: Reservation) {
+        reservationDao.updateReservation(reservation)
+    }
+
+    suspend fun deleteReservation(id: Int) {
         reservationDao.deleteReservation(id)
     }
 
@@ -43,7 +47,6 @@ class RoomRepository(app: Application) {
         return reservationDao.getUpcomingReservations(email, System.currentTimeMillis())
     }
 
-    // Función para obtener una reserva por su ID
     fun getReservationById(id: Int): Flow<Reservation?> {
         return reservationDao.getReservationById(id)
     }

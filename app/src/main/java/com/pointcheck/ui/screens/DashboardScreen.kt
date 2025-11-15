@@ -4,6 +4,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,7 @@ fun DashboardScreen(nav: NavController) {
     val context = LocalContext.current
     val prefs = UserPreferences(context)
     var isLogged by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     // Comprobamos el estado de la sesión una sola vez
     LaunchedEffect(Unit) {
@@ -40,16 +43,15 @@ fun DashboardScreen(nav: NavController) {
             TopAppBar(
                 title = { Text("PointCheck") },
                 actions = {
-                    if (isLogged) {
-                        TextButton(onClick = { nav.navigate(Screen.Profile.route) }) {
-                            Text("Perfil")
-                        }
-                    } else {
-                        TextButton(onClick = { nav.navigate(Screen.Login.route) }) {
-                            Text("Iniciar sesión")
-                        }
-                        TextButton(onClick = { nav.navigate(Screen.Register.route) }) {
-                            Text("Crear cuenta")
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        if (isLogged) {
+                            DropdownMenuItem(text = { Text("Perfil") }, onClick = { nav.navigate(Screen.Profile.route); showMenu = false })
+                        } else {
+                            DropdownMenuItem(text = { Text("Iniciar sesión") }, onClick = { nav.navigate(Screen.Login.route); showMenu = false })
+                            DropdownMenuItem(text = { Text("Crear cuenta") }, onClick = { nav.navigate(Screen.Register.route); showMenu = false })
                         }
                     }
                 }
@@ -61,6 +63,14 @@ fun DashboardScreen(nav: NavController) {
                 .padding(pad)
                 .fillMaxSize()
         ) {
+            // Texto explicativo
+            Text(
+                text = "PointCheck te ayuda a organizar y recordar tus citas importantes. Regístrate para empezar a gestionar tu agenda.",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(16.dp)
+            )
+
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier

@@ -17,10 +17,18 @@ class ScheduledViewModel(application: Application, private val reservationId: In
     val reservation: Flow<Reservation?> = repository.getReservationById(reservationId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    fun deleteReservation() {
+    fun updateReservationName(newName: String) {
         viewModelScope.launch {
             val res = reservation.first()
-            res?.let { repository.deleteReservation(it.id.toLong()) }
+            res?.let {
+                repository.updateReservation(it.copy(name = newName))
+            }
+        }
+    }
+
+    fun deleteReservation() {
+        viewModelScope.launch {
+            repository.deleteReservation(reservationId)
         }
     }
 }
