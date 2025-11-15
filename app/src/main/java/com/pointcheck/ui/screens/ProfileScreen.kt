@@ -71,6 +71,9 @@ fun ProfileScreen(nav: NavController, vm: UserViewModel = viewModel(), reservati
             TopAppBar(
                 title = { Text("Perfil") },
                 actions = {
+                    TextButton(onClick = { nav.navigate(Screen.Dashboard.route) }) {
+                        Text("Dashboard")
+                    }
                     TextButton(onClick = { nav.navigate(Screen.Booking.route) }) {
                         Text("Nueva Reserva")
                     }

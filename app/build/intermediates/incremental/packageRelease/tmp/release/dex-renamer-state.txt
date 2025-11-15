@@ -1,4 +1,4 @@
-#Sat Nov 15 11:14:26 CLST 2025
+#Sat Nov 15 11:23:32 CLST 2025
 base.0=C\:\\Users\\Usuario\\Desktop\\proyectocursor\\PointCheck\\app\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes.dex
 base.1=C\:\\Users\\Usuario\\Desktop\\proyectocursor\\PointCheck\\app\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes2.dex
 base.2=C\:\\Users\\Usuario\\Desktop\\proyectocursor\\PointCheck\\app\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes3.dex

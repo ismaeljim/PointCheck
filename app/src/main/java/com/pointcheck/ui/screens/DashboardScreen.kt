@@ -5,29 +5,52 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.pointcheck.data.prefs.UserPreferences
 import com.pointcheck.navigation.Screen
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(nav: NavController) {
     val pagerState = rememberPagerState(pageCount = { 3 })
+    val context = LocalContext.current
+    val prefs = UserPreferences(context)
+    var isLogged by remember { mutableStateOf(false) }
+
+    // Comprobamos el estado de la sesión una sola vez
+    LaunchedEffect(Unit) {
+        isLogged = prefs.isLogged.first()
+    }
+
+    val carouselContent = listOf(
+        "¡Bienvenido a PointCheck!",
+        "Gestiona tus citas de forma fácil y rápida.",
+        "Recibe recordatorios para no olvidar ninguna cita."
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("PointCheck") },
                 actions = {
-                    TextButton(onClick = { nav.navigate(Screen.Login.route) }) {
-                        Text("Iniciar sesión")
-                    }
-                    TextButton(onClick = { nav.navigate(Screen.Register.route) }) {
-                        Text("Crear cuenta")
+                    if (isLogged) {
+                        TextButton(onClick = { nav.navigate(Screen.Profile.route) }) {
+                            Text("Perfil")
+                        }
+                    } else {
+                        TextButton(onClick = { nav.navigate(Screen.Login.route) }) {
+                            Text("Iniciar sesión")
+                        }
+                        TextButton(onClick = { nav.navigate(Screen.Register.route) }) {
+                            Text("Crear cuenta")
+                        }
                     }
                 }
             )
@@ -52,9 +75,10 @@ fun DashboardScreen(nav: NavController) {
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "Información de la página ${page + 1}",
+                            text = carouselContent[page],
                             style = MaterialTheme.typography.headlineMedium,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
                 }
