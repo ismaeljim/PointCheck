@@ -22,6 +22,9 @@ interface ReservationDao {
     @Query("DELETE FROM reservations WHERE id = :id")
     suspend fun deleteReservation(id: Int)
 
+    @Query("DELETE FROM reservations WHERE userEmail = :userEmail")
+    suspend fun deleteAllFromUser(userEmail: String)
+
     @Query("SELECT * FROM reservations WHERE userEmail = :userEmail AND epochMillis >= :currentTime ORDER BY epochMillis ASC")
     fun getUpcomingReservations(userEmail: String, currentTime: Long): Flow<List<Reservation>>
 

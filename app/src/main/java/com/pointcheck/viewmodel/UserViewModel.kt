@@ -5,9 +5,9 @@ import android.net.Uri
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.pointcheck.data.network.NetworkRepository
 import com.pointcheck.data.prefs.UserPreferences
 import com.pointcheck.model.User
-import com.pointcheck.repository.RoomRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,7 +23,7 @@ data class RegisterUiState(
 )
 
 class UserViewModel(app: Application) : AndroidViewModel(app) {
-    private val repo = RoomRepository(app)
+    private val networkRepo = NetworkRepository()
     private val prefs = UserPreferences(app)
     private val _state = MutableStateFlow(RegisterUiState())
     val state: StateFlow<RegisterUiState> = _state
@@ -52,28 +52,45 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
     fun save(onDone: () -> Unit) {
         val s = _state.value; if (!s.isValid) return
         viewModelScope.launch {
-            repo.registerUser(User(email = s.email, name = s.name, password = s.password))
-            // Guardar datos del usuario en preferencias
-            prefs.saveUser(s.name, s.email)
-            // Guardar avatar si existe
-            s.avatarUri?.let { prefs.setAvatar(it) }
-            onDone()
+            val user = User(email = s.email, name = s.name, password = s.password)
+            try {
+                val response = networkRepo.registerUser(user)
+                if (response.isSuccessful) {
+                    prefs.saveUser(s.name, s.email)
+                    s.avatarUri?.let { prefs.setAvatar(it) }
+                    onDone()
+                } else {
+                    _state.value = _state.value.copy(error = "Error en el registro")
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = "Error de red")
+            }
         }
     }
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val u = repo.findUserByEmail(email)
-            val ok = u != null && u.password == password
-            if (ok && u != null) {
-                // Guardar datos del usuario en preferencias
-                prefs.saveName(u.name)
-                prefs.saveEmail(u.email)
-                u.email // El avatar se guarda si existe en el estado
-            } else {
-                _state.value = _state.value.copy(error = "Credenciales incorrectas")
+            try {
+                // Para el login, creamos un objeto User, pero el servidor solo usará email y password
+                val loginUser = User(email = email, name = "", password = password) 
+                val response = networkRepo.login(loginUser)
+                if (response.isSuccessful) {
+                    val user = response.body()
+                    if (user != null) {
+                        prefs.saveUser(user.name, user.email)
+                        onResult(true)
+                    } else {
+                        _state.value = _state.value.copy(error = "Respuesta inválida del servidor")
+                        onResult(false)
+                    }
+                } else {
+                    _state.value = _state.value.copy(error = "Credenciales incorrectas")
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = "Error de red")
+                onResult(false)
             }
-            onResult(ok)
         }
     }
 
