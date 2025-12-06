@@ -10,21 +10,22 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
-    @Query("SELECT * FROM users WHERE email = :email")
-    suspend fun findUserByEmail(email: String): User?
-
-    @Query("SELECT * FROM users WHERE email = :email")
-    fun findUserByEmailFlow(email: String): Flow<User?>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUser(user: User)
-
-    @Update
-    suspend fun updateUser(user: User)
-
-    @Query("SELECT * FROM users")
-    fun getAllUsers(): Flow<List<User>>
-
-    @Query("DELETE FROM users WHERE email = :email")
-    suspend fun deleteUser(email: String)
+    // --- FUNCIONES DE USUARIO DESACTIVADAS ---
+    // @Query("SELECT * FROM users WHERE email = :email")
+    // suspend fun findUserByEmail(email: String): User?
+    //
+    // @Query("SELECT * FROM users WHERE email = :email")
+    // fun findUserByEmailFlow(email: String): Flow<User?>
+    //
+    // @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // suspend fun insertUser(user: User)
+    //
+    // @Update
+    // suspend fun updateUser(user: User)
+    //
+    // @Query("SELECT * FROM users")
+    // fun getAllUsers(): Flow<List<User>>
+    //
+    // @Query("DELETE FROM users WHERE email = :email")
+    // suspend fun deleteUser(email: String)
 }

@@ -9,7 +9,7 @@ import com.pointcheck.data.dao.UserDao
 import com.pointcheck.model.Reservation
 import com.pointcheck.model.User
 
-@Database(
+@Database(//
     entities = [User::class, Reservation::class],
     version = 2,
     exportSchema = false
@@ -36,5 +36,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
     }
+
 }
 

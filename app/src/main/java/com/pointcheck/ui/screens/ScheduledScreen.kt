@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.viewmodel.ExternalApiViewModel
 import com.pointcheck.viewmodel.ScheduledViewModel
 import com.pointcheck.viewmodel.ScheduledViewModelFactory
 import kotlinx.coroutines.launch
@@ -40,14 +41,20 @@ fun ScheduledScreen(nav: NavController, reservationId: Int?) {
     val application = LocalContext.current.applicationContext as Application
     val factory = ScheduledViewModelFactory(application, reservationId ?: -1)
     val vm: ScheduledViewModel = viewModel(factory = factory)
+    val externalVm: ExternalApiViewModel = viewModel()
     val scope = rememberCoroutineScope()
 
     val reservation by vm.reservation.collectAsState(initial = null)
+    val weather by externalVm.weatherState
     var reservationName by remember { mutableStateOf("") }
 
     // Actualizar el nombre en el estado local cuando la reserva se carga
     LaunchedEffect(reservation) {
-        reservation?.let { reservationName = it.name }
+        reservation?.let { 
+            reservationName = it.name 
+            // Una vez que tenemos la reserva, pedimos el clima de una ciudad (ej. Santiago)
+            externalVm.fetchWeather("Santiago")
+        }
     }
 
     Scaffold(
@@ -70,6 +77,13 @@ fun ScheduledScreen(nav: NavController, reservationId: Int?) {
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(16.dp))
+
+                // Mostramos la información del clima si está disponible
+                weather?.let {
+                    Text("Clima actual en Santiago: $it")
+                    Spacer(Modifier.height(16.dp))
+                }
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     Button(onClick = {
                         scope.launch {

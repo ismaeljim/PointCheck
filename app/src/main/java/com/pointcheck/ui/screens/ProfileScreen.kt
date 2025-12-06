@@ -22,7 +22,6 @@ import coil.compose.rememberAsyncImagePainter
 import com.pointcheck.data.prefs.UserPreferences
 import com.pointcheck.model.Reservation
 import com.pointcheck.navigation.Screen
-import com.pointcheck.repository.RoomRepository
 import com.pointcheck.viewmodel.ReservationViewModel
 import com.pointcheck.viewmodel.UserViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -33,9 +32,7 @@ import java.util.*
 @Composable
 fun ProfileScreen(nav: NavController, vm: UserViewModel = viewModel(), reservationVm: ReservationViewModel = viewModel()) {
     val ctx = LocalContext.current
-    val app = ctx.applicationContext as android.app.Application
     val prefs = remember { UserPreferences(ctx) }
-    val repository = remember { RoomRepository(app) }
     var showMenu by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf<String?>(null) }
