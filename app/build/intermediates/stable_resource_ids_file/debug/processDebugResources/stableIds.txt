@@ -27,6 +27,7 @@ com.pointcheck:string/range_end = 0x7f08004a
 com.pointcheck:string/m3c_time_picker_minute_suffix = 0x7f080042
 com.pointcheck:string/m3c_time_picker_minute_selection = 0x7f080041
 com.pointcheck:string/m3c_time_picker_hour_text_field = 0x7f08003f
+com.pointcheck:xml/network_security_config = 0x7f0b0000
 com.pointcheck:string/m3c_time_picker_hour_selection = 0x7f08003d
 com.pointcheck:string/m3c_time_picker_hour_24h_suffix = 0x7f08003c
 com.pointcheck:string/m3c_time_picker_hour = 0x7f08003b

@@ -39,6 +39,8 @@ public final class ReservationDao_Impl implements ReservationDao {
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteReservation;
 
+  private final SharedSQLiteStatement __preparedStmtOfDeleteAllFromUser;
+
   public ReservationDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
     this.__insertionAdapterOfReservation = new EntityInsertionAdapter<Reservation>(__db) {
@@ -81,6 +83,14 @@ public final class ReservationDao_Impl implements ReservationDao {
       @NonNull
       public String createQuery() {
         final String _query = "DELETE FROM reservations WHERE id = ?";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfDeleteAllFromUser = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM reservations WHERE userEmail = ?";
         return _query;
       }
     };
@@ -144,6 +154,32 @@ public final class ReservationDao_Impl implements ReservationDao {
           }
         } finally {
           __preparedStmtOfDeleteReservation.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteAllFromUser(final String userEmail,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteAllFromUser.acquire();
+        int _argIndex = 1;
+        _stmt.bindString(_argIndex, userEmail);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteAllFromUser.release(_stmt);
         }
       }
     }, $completion);
