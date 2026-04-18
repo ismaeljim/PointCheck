@@ -1318,6 +1318,45 @@ library {
     value: 1
   }
 }
+library {
+  maven_library {
+    groupId: "com.squareup.retrofit2"
+    artifactId: "retrofit"
+    version: "2.9.0"
+  }
+  digests {
+    sha256: "\346\352\031)\304hR\365\276\306j\2635}\243\203Gl\357N\215\035\356\375\277\031[y\314Me\201"
+  }
+  repo_index {
+    value: 1
+  }
+}
+library {
+  maven_library {
+    groupId: "com.squareup.retrofit2"
+    artifactId: "converter-gson"
+    version: "2.9.0"
+  }
+  digests {
+    sha256: "2\252 k\232)\311\337^\332\223\240\222\317\263\260\271\023>#,\006+\252\210/\003\031\360\347\237\016"
+  }
+  repo_index {
+    value: 1
+  }
+}
+library {
+  maven_library {
+    groupId: "com.google.code.gson"
+    artifactId: "gson"
+    version: "2.8.5"
+  }
+  digests {
+    sha256: "#:\001I\3746\\\237n\333\326\203\317\342f\261\233\334w;\351\216\253\332\366\263\311$\264\216}\201"
+  }
+  repo_index {
+    value: 1
+  }
+}
 library_dependencies {
   library_dep_index: 1
   library_dep_index: 2
@@ -2304,6 +2343,15 @@ library_dependencies {
   library_dep_index: 107
   library_dep_index: 0
 }
+library_dependencies {
+  library_index: 116
+  library_dep_index: 112
+}
+library_dependencies {
+  library_index: 117
+  library_dep_index: 116
+  library_dep_index: 118
+}
 module_dependencies {
   module_name: "base"
   dependency_index: 0
@@ -2323,6 +2371,8 @@ module_dependencies {
   dependency_index: 20
   dependency_index: 100
   dependency_index: 104
+  dependency_index: 116
+  dependency_index: 117
 }
 repositories {
   maven_repo {
