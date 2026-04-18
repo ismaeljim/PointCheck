@@ -12,13 +12,15 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.pointcheck.navigation.AppNavigation
-import com.pointcheck.ui.theme.PointCheckTheme
+import com.pointcheck.core.navigation.AppNavigation
+import com.pointcheck.core.ui.theme.PointCheckTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { PointCheckApp() }
+        setContent {
+            PointCheckApp()
+        }
     }
 }
 
@@ -27,7 +29,9 @@ class MainActivity : ComponentActivity() {
 fun PointCheckApp() {
     val snackbar = remember { SnackbarHostState() }
     PointCheckTheme {
-        Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { innerPadding ->
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbar) }
+        ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 AppNavigation(snackbar)
             }
