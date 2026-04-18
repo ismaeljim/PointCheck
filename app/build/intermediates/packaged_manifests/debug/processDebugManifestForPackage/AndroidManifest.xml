@@ -27,7 +27,6 @@
         android:extractNativeLibs="false"
         android:label="PointCheck"
         android:supportsRtl="true"
-        android:testOnly="true"
         android:theme="@style/Theme.PointCheck" >
         <activity
             android:name="com.pointcheck.MainActivity"
