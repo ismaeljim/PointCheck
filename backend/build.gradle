@@ -1,0 +1,63 @@
+plugins {
+	id 'org.jetbrains.kotlin.jvm' version '1.9.24'
+	id 'org.jetbrains.kotlin.plugin.spring' version '1.9.24'
+	id 'org.springframework.boot' version '3.3.1'
+	id 'io.spring.dependency-management' version '1.1.5'
+	id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.24'
+}
+
+group = 'com.duoc'
+version = '0.0.1-SNAPSHOT'
+description = 'Proyecto PointCheck'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Dependencias principales de Spring
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+	implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+	implementation 'org.jetbrains.kotlin:kotlin-reflect'
+
+	// Herramientas de desarrollo
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// Base de datos - ¡Usando MySQL!
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// Pruebas
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+kotlin {
+	compilerOptions {
+		freeCompilerArgs.addAll('-Xjsr305=strict')
+	}
+}
+
+allOpen {
+	annotation('jakarta.persistence.Entity')
+	annotation('jakarta.persistence.MappedSuperclass')
+	annotation('jakarta.persistence.Embeddable')
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
+	kotlinOptions {
+		jvmTarget = "17"
+	}
+}
+
+tasks.withType(Test) {
+	useJUnitPlatform()
+}
