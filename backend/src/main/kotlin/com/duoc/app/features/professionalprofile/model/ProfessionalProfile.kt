@@ -1,5 +1,6 @@
 package com.duoc.app.features.professionalprofile.model
 
+import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
@@ -7,11 +8,11 @@ import java.time.LocalDateTime
 @Table(
     name = "professional_profiles",
     indexes = [
-        Index(name = "idx_professional_profiles_user", columnList = "userId"),
+        Index(name = "idx_professional_profiles_user", columnList = "user_id"),
         Index(name = "idx_professional_profiles_active", columnList = "active")
     ],
     uniqueConstraints = [
-        UniqueConstraint(name = "uk_professional_profiles_user", columnNames = ["userId"])
+        UniqueConstraint(name = "uk_professional_profiles_user", columnNames = ["user_id"])
     ]
 )
 data class ProfessionalProfile(
@@ -19,8 +20,9 @@ data class ProfessionalProfile(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false)
-    val userId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    val user: User,
 
     @Column(nullable = false, length = 150)
     val displayName: String,

@@ -7,15 +7,15 @@ import java.time.LocalDateTime
 
 @Repository
 interface AttentionRepository : JpaRepository<Attention, Long> {
-    fun findByReservationId(reservationId: Long): Attention?
-    fun existsByReservationId(reservationId: Long): Boolean
+    fun findByReservation_Id(reservationId: Long): Attention?
+    fun existsByReservation_Id(reservationId: Long): Boolean
     
-    fun findBySpecialistIdAndStartedAtBetween(
+    fun findBySpecialist_IdAndStartedAtBetween(
         specialistId: Long,
         start: LocalDateTime,
         end: LocalDateTime
     ): List<Attention>
 
-    fun findByClientId(clientId: Long): List<Attention>
-    fun findBySpecialistId(specialistId: Long): List<Attention>
+    fun findByClient_Id(clientId: Long): List<Attention>
+    fun findBySpecialist_Id(specialistId: Long): List<Attention>
 }

@@ -12,15 +12,6 @@ class UserController(
     private val userService: UserService
 ) {
 
-    @GetMapping("/{id}")
-    fun getById(@PathVariable id: Long): ResponseEntity<UserResponse> {
-        return try {
-            ResponseEntity.ok(userService.getById(id))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.notFound().build()
-        }
-    }
-
     @GetMapping("/email/{email}")
     fun getByEmail(@PathVariable email: String): ResponseEntity<UserResponse> {
         return try {
@@ -33,5 +24,14 @@ class UserController(
     @GetMapping("/specialists")
     fun getSpecialists(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(userService.getSpecialists())
+    }
+
+    @GetMapping("/{id}")
+    fun getById(@PathVariable id: Long): ResponseEntity<UserResponse> {
+        return try {
+            ResponseEntity.ok(userService.getById(id))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.notFound().build()
+        }
     }
 }

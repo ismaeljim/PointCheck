@@ -1,5 +1,8 @@
 package com.duoc.app.features.billing.model
 
+import com.duoc.app.features.attention.model.Attention
+import com.duoc.app.features.reservation.model.Reservation
+import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -8,9 +11,11 @@ import java.time.LocalDateTime
 @Table(
     name = "billing_records",
     indexes = [
-        Index(name = "idx_billing_reservation", columnList = "reservationId"),
-        Index(name = "idx_billing_attention", columnList = "attentionId"),
-        Index(name = "idx_billing_specialist_date", columnList = "specialistId,created_at"),
+        Index(name = "idx_billing_reservation", columnList = "reservation_id"),
+        Index(name = "idx_billing_attention", columnList = "attention_id"),
+        Index(name = "idx_billing_client", columnList = "client_id"),
+        Index(name = "idx_billing_specialist", columnList = "specialist_id"),
+        Index(name = "idx_billing_specialist_date", columnList = "specialist_id,created_at"),
         Index(name = "idx_billing_status", columnList = "status"),
         Index(name = "idx_billing_paid_at", columnList = "paid_at")
     ]
@@ -20,16 +25,21 @@ data class BillingRecord(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false)
-    val reservationId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id", nullable = false)
+    val reservation: Reservation,
 
-    val attentionId: Long? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "attention_id")
+    val attention: Attention? = null,
 
-    @Column(nullable = false)
-    val clientId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    val client: User,
 
-    @Column(nullable = false)
-    val specialistId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "specialist_id", nullable = false)
+    val specialist: User,
 
     @Column(nullable = false, precision = 12, scale = 2)
     val amount: BigDecimal,

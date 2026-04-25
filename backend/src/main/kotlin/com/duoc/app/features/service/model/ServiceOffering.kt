@@ -1,5 +1,6 @@
 package com.duoc.app.features.service.model
 
+import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -8,7 +9,7 @@ import java.time.LocalDateTime
 @Table(
     name = "services",
     indexes = [
-        Index(name = "idx_services_professional_profile", columnList = "professionalProfileId"),
+        Index(name = "idx_services_professional_profile", columnList = "professional_profile_id"),
         Index(name = "idx_services_active", columnList = "active")
     ]
 )
@@ -17,8 +18,9 @@ data class ServiceOffering(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false)
-    val professionalProfileId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "professional_profile_id", nullable = false)
+    val professionalProfile: ProfessionalProfile,
 
     @Column(nullable = false)
     val name: String,

@@ -28,7 +28,7 @@ class SubscriptionService(
         }
 
         val subscription = Subscription(
-            professionalProfileId = request.professionalProfileId,
+            professionalProfile = profile,
             planName = request.planName,
             startDate = request.startDate,
             endDate = request.endDate,
@@ -40,7 +40,7 @@ class SubscriptionService(
 
     @Transactional
     fun getCurrentByProfessionalProfile(professionalProfileId: Long): SubscriptionResponse? {
-        val subscriptions = subscriptionRepository.findByProfessionalProfileIdAndStatus(professionalProfileId, SubscriptionStatus.ACTIVE)
+        val subscriptions = subscriptionRepository.findByProfessionalProfile_IdAndStatus(professionalProfileId, SubscriptionStatus.ACTIVE)
         
         if (subscriptions.isEmpty()) return null
 
@@ -74,7 +74,7 @@ class SubscriptionService(
 
     private fun Subscription.toResponse(): SubscriptionResponse = SubscriptionResponse(
         id = this.id,
-        professionalProfileId = this.professionalProfileId,
+        professionalProfileId = this.professionalProfile.id,
         planName = this.planName,
         status = this.status,
         startDate = this.startDate,

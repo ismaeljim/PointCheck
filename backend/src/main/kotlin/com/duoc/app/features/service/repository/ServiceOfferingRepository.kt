@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface ServiceOfferingRepository : JpaRepository<ServiceOffering, Long> {
-    fun findByProfessionalProfileId(professionalProfileId: Long): List<ServiceOffering>
-    fun findByProfessionalProfileIdAndActiveTrue(professionalProfileId: Long): List<ServiceOffering>
+    fun findByProfessionalProfile_Id(professionalProfileId: Long): List<ServiceOffering>
+    fun findByProfessionalProfile_IdAndActiveTrue(professionalProfileId: Long): List<ServiceOffering>
     fun findByActiveTrue(): List<ServiceOffering>
 }

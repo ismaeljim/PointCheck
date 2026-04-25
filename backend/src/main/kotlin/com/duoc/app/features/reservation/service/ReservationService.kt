@@ -6,6 +6,7 @@ import com.duoc.app.features.reservation.dto.ReservationResponse
 import com.duoc.app.features.reservation.model.Reservation
 import com.duoc.app.features.reservation.model.ReservationStatus
 import com.duoc.app.features.reservation.repository.ReservationRepository
+import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.service.repository.ServiceOfferingRepository
 import com.duoc.app.features.user.model.UserRole
 import com.duoc.app.features.user.repository.UserRepository
@@ -36,27 +37,29 @@ class ReservationService(
             throw IllegalArgumentException("El usuario con ID ${request.specialistId} no es un especialista.")
         }
 
+        var service: ServiceOffering? = null
         if (request.serviceId != null) {
-            val service = serviceOfferingRepository.findById(request.serviceId).orElseThrow {
+            val serviceEntity = serviceOfferingRepository.findById(request.serviceId).orElseThrow {
                 IllegalArgumentException("El servicio con ID ${request.serviceId} no existe.")
             }
-            if (!service.active) {
+            if (!serviceEntity.active) {
                 throw IllegalArgumentException("El servicio con ID ${request.serviceId} no está activo.")
             }
 
             // Validar que el servicio pertenece al professional profile cuyo userId corresponde al specialistId de la reserva
-            val profile = professionalProfileRepository.findById(service.professionalProfileId).orElseThrow {
+            val profile = professionalProfileRepository.findById(serviceEntity.professionalProfile.id).orElseThrow {
                 IllegalArgumentException("Perfil profesional no encontrado para el servicio.")
             }
-            if (profile.userId != request.specialistId) {
+            if (profile.user.id != request.specialistId) {
                 throw IllegalArgumentException("El servicio seleccionado no pertenece al especialista de la reserva.")
             }
+            service = serviceEntity
         }
 
         val reservation = Reservation(
-            clientId = request.clientId,
-            specialistId = request.specialistId,
-            serviceId = request.serviceId,
+            client = client,
+            specialist = specialist,
+            service = service,
             reservationStart = request.reservationStart,
             reservationEnd = request.reservationEnd,
             notes = request.notes,
@@ -67,22 +70,22 @@ class ReservationService(
     }
 
     fun getByClient(clientId: Long): List<ReservationResponse> {
-        return reservationRepository.findByClientId(clientId).map { it.toResponse() }
+        return reservationRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 
     fun getBySpecialist(specialistId: Long): List<ReservationResponse> {
-        return reservationRepository.findBySpecialistId(specialistId).map { it.toResponse() }
+        return reservationRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
     }
 
     fun getTodayBySpecialist(specialistId: Long): List<ReservationResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
-        return reservationRepository.findBySpecialistIdAndReservationStartBetween(specialistId, startOfDay, endOfDay)
+        return reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
     fun getUpcomingByClient(clientId: Long): List<ReservationResponse> {
-        return reservationRepository.findByClientIdAndReservationStartAfter(clientId, LocalDateTime.now())
+        return reservationRepository.findByClient_IdAndReservationStartAfter(clientId, LocalDateTime.now())
             .map { it.toResponse() }
     }
 
@@ -106,9 +109,9 @@ class ReservationService(
 
     private fun Reservation.toResponse(): ReservationResponse = ReservationResponse(
         id = this.id,
-        clientId = this.clientId,
-        specialistId = this.specialistId,
-        serviceId = this.serviceId,
+        clientId = this.client.id,
+        specialistId = this.specialist.id,
+        serviceId = this.service?.id,
         reservationStart = this.reservationStart,
         reservationEnd = this.reservationEnd,
         status = this.status,

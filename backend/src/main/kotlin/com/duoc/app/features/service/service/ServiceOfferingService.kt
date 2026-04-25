@@ -24,7 +24,7 @@ class ServiceOfferingService(
         }
 
         val serviceOffering = ServiceOffering(
-            professionalProfileId = request.professionalProfileId,
+            professionalProfile = profile,
             name = request.name,
             description = request.description,
             price = request.price,
@@ -35,7 +35,7 @@ class ServiceOfferingService(
     }
 
     fun getByProfessionalProfile(professionalProfileId: Long): List<ServiceOfferingResponse> {
-        return serviceOfferingRepository.findByProfessionalProfileId(professionalProfileId).map { it.toResponse() }
+        return serviceOfferingRepository.findByProfessionalProfile_Id(professionalProfileId).map { it.toResponse() }
     }
 
     fun getActive(): List<ServiceOfferingResponse> {
@@ -57,7 +57,7 @@ class ServiceOfferingService(
 
     private fun ServiceOffering.toResponse(): ServiceOfferingResponse = ServiceOfferingResponse(
         id = this.id,
-        professionalProfileId = this.professionalProfileId,
+        professionalProfileId = this.professionalProfile.id,
         name = this.name,
         description = this.description,
         price = this.price,

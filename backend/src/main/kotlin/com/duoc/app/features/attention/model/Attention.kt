@@ -1,5 +1,7 @@
 package com.duoc.app.features.attention.model
 
+import com.duoc.app.features.reservation.model.Reservation
+import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
@@ -7,12 +9,12 @@ import java.time.LocalDateTime
 @Table(
     name = "attentions",
     indexes = [
-        Index(name = "idx_attentions_specialist_date", columnList = "specialistId,startedAt"),
-        Index(name = "idx_attentions_client", columnList = "clientId"),
+        Index(name = "idx_attentions_specialist_date", columnList = "specialist_id,startedAt"),
+        Index(name = "idx_attentions_client", columnList = "client_id"),
         Index(name = "idx_attentions_status", columnList = "status")
     ],
     uniqueConstraints = [
-        UniqueConstraint(name = "uk_attentions_reservation", columnNames = ["reservationId"])
+        UniqueConstraint(name = "uk_attentions_reservation", columnNames = ["reservation_id"])
     ]
 )
 data class Attention(
@@ -20,14 +22,17 @@ data class Attention(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false)
-    val reservationId: Long,
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id", nullable = false, unique = true)
+    val reservation: Reservation,
 
-    @Column(nullable = false)
-    val clientId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    val client: User,
 
-    @Column(nullable = false)
-    val specialistId: Long,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "specialist_id", nullable = false)
+    val specialist: User,
 
     @Column(nullable = false)
     val startedAt: LocalDateTime = LocalDateTime.now(),

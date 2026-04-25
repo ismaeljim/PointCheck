@@ -19,12 +19,12 @@ class ReportService(
 
     fun getSummaryBySpecialist(specialistId: Long): ReportSummaryResponse {
         // Reservas
-        val allReservations = reservationRepository.findBySpecialistId(specialistId)
+        val allReservations = reservationRepository.findBySpecialist_Id(specialistId)
         val today = LocalDate.now()
         val todayReservations = allReservations.filter { it.reservationStart.toLocalDate() == today }
 
         // Atenciones
-        val allAttentions = attentionRepository.findBySpecialistId(specialistId)
+        val allAttentions = attentionRepository.findBySpecialist_Id(specialistId)
         val finishedAttentions = allAttentions.filter { it.status == AttentionStatus.FINISHED }
         val avgMinutes = if (finishedAttentions.isNotEmpty()) {
             finishedAttentions.mapNotNull { it.durationMinutes }.average()
@@ -33,7 +33,7 @@ class ReportService(
         }
 
         // Facturación
-        val allBilling = billingRecordRepository.findBySpecialistId(specialistId)
+        val allBilling = billingRecordRepository.findBySpecialist_Id(specialistId)
         val paidBilling = allBilling.filter { it.status == PaymentStatus.PAID }
         val pendingBilling = allBilling.filter { it.status == PaymentStatus.PENDING }
 

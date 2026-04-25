@@ -26,14 +26,14 @@ class AttentionService(
             IllegalArgumentException("Reserva no encontrada con ID: ${request.reservationId}")
         }
 
-        if (attentionRepository.existsByReservationId(request.reservationId)) {
+        if (attentionRepository.existsByReservation_Id(request.reservationId)) {
             throw IllegalArgumentException("Ya existe una atención iniciada para esta reserva.")
         }
 
         val attention = Attention(
-            reservationId = reservation.id,
-            clientId = reservation.clientId,
-            specialistId = reservation.specialistId,
+            reservation = reservation,
+            client = reservation.client,
+            specialist = reservation.specialist,
             startedAt = LocalDateTime.now(),
             status = AttentionStatus.IN_PROGRESS,
             observations = request.observations
@@ -71,7 +71,7 @@ class AttentionService(
             updatedAt = LocalDateTime.now()
         )
 
-        val reservation = reservationRepository.findById(attention.reservationId).orElseThrow {
+        val reservation = reservationRepository.findById(attention.reservation.id).orElseThrow {
             IllegalStateException("Reserva no encontrada para la atención: ${attention.id}")
         }
         
@@ -87,19 +87,19 @@ class AttentionService(
     fun getTodayBySpecialist(specialistId: Long): List<AttentionResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
-        return attentionRepository.findBySpecialistIdAndStartedAtBetween(specialistId, startOfDay, endOfDay)
+        return attentionRepository.findBySpecialist_IdAndStartedAtBetween(specialistId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
     fun getHistoryByClient(clientId: Long): List<AttentionResponse> {
-        return attentionRepository.findByClientId(clientId).map { it.toResponse() }
+        return attentionRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 
     private fun Attention.toResponse(): AttentionResponse = AttentionResponse(
         id = this.id,
-        reservationId = this.reservationId,
-        clientId = this.clientId,
-        specialistId = this.specialistId,
+        reservationId = this.reservation.id,
+        clientId = this.client.id,
+        specialistId = this.specialist.id,
         startedAt = this.startedAt,
         finishedAt = this.finishedAt,
         durationMinutes = this.durationMinutes,
