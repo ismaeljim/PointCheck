@@ -8,44 +8,27 @@ El proyecto utiliza una **arquitectura basada en características (Feature-based
 
 ### Core vs. Features
 - **`core/`**: Contiene configuraciones globales, manejo de excepciones transversales (`GlobalExceptionHandler`), y configuraciones de seguridad/red (CORS, WebClient).
-- **`features/`**: Cada subpaquete representa un módulo de negocio independiente que contiene sus propios modelos, repositorios, servicios, DTOs y controladores.
-  - `user`: Gestión de perfiles y roles.
-  - `auth`: Registro y autenticación.
-  - `service`: Catálogo de servicios ofrecidos.
-  - `reservation`: Gestión de citas y estados.
-  - `attention`: Control de sesiones de atención en tiempo real.
-  - `billing`: Registro financiero y estados de pago.
-  - `subscription`: Planes para especialistas.
-  - `report`: Analytics y dashboards dinámicos.
+- **`features/`**: Cada subpaquete representa un módulo de negocio independiente.
 
-## 📊 Modelo de Datos
-El sistema se apoya en **6 tablas principales** administradas por JPA/Hibernate:
-1. `users`: Almacena clientes y especialistas con roles diferenciados.
-2. `services`: Catálogo de ofertas con precios y duraciones.
-3. `reservations`: Nexo entre cliente, especialista y servicio.
-4. `attentions`: Registra el inicio, fin y observaciones de cada sesión.
-5. `billing_records`: Trazabilidad financiera de cada atención.
-6. `subscriptions`: Estado de acceso para especialistas.
+## 📊 Modelo de Datos (7 Tablas Principales)
+El sistema se apoya en una arquitectura de **7 tablas principales** para mantener la integridad y escalabilidad:
 
-### Reportes y Analytics
-A diferencia de arquitecturas tradicionales, los módulos de **Reports**, **Accounting** y **Analytics** no poseen tablas propias. Los datos se calculan dinámicamente mediante el `ReportService` agregando información de reservas, atenciones y facturación. Esto garantiza "una única fuente de verdad" y evita redundancia de datos.
+1. **`users`**: Almacena los datos básicos de autenticación y mantiene el rol (`UserRole.CLIENT` o `UserRole.SPECIALIST`).
+2. **`professional_profiles`**: Almacena los datos extendidos del especialista (nombre comercial, especialidad, dirección, etc.). Es obligatorio para ofrecer servicios.
+3. **`services`**: Catálogo de ofertas vinculado directamente a un `professionalProfileId`.
+4. **`reservations`**: Nexo entre el cliente y el especialista. Mantiene `clientId` y `specialistId` para la gestión de la agenda.
+5. **`attentions`**: Registra la ejecución real de la sesión de atención (inicio, fin, observaciones).
+6. **`billing_records`**: Registra el cobro externo asociado a una atención.
+7. **`subscriptions`**: Controla el estado de acceso y plan activo de un perfil profesional.
+
+### 📈 Reportes y Analytics
+Los módulos de **Reports**, **Accounting** y **Analytics** no poseen tablas propias. Todos los valores se calculan dinámicamente mediante el `ReportService` agregando información de reservas, atenciones y facturación en tiempo real.
 
 ## 🚀 Instalación y Ejecución
 
 ### Requisitos previos
 - JDK 17 o superior.
-- Instancia de MySQL activa.
-- Gradle (incluido vía `gradlew`).
-
-### Variables de Entorno
-Para ejecutar el proyecto, se deben configurar las siguientes variables de entorno (o definirlas en un archivo `.env` / `application.properties` local):
-
-```properties
-DB_USERNAME=tu_usuario
-DB_PASSWORD=tu_contraseña
-OPENWEATHER_API_KEY=tu_api_key_de_clima
-GOOGLE_MAPS_API_KEY=tu_api_key_de_maps
-```
+- MySQL 8.0+.
 
 ### Ejecutar
 Desde la carpeta `backend`:
@@ -58,24 +41,26 @@ Desde la carpeta `backend`:
 | Módulo | Endpoint | Método | Descripción |
 | :--- | :--- | :--- | :--- |
 | **Auth** | `/api/auth/register` | `POST` | Registro de nuevos usuarios. |
-| **User** | `/api/users/{id}` | `GET` | Obtener perfil de usuario. |
-| **Service** | `/api/services` | `GET` | Listar catálogo de servicios. |
+| **Prof. Profile** | `/api/professional-profiles` | `POST` | Crear perfil para especialista. |
+| **Service** | `/api/services/professional-profile/{id}` | `GET` | Listar servicios de un perfil. |
 | **Reservation** | `/api/reservations` | `POST` | Crear una nueva reserva. |
-| **Attention** | `/api/attentions/start` | `POST` | Iniciar una atención presencial. |
+| **Attention** | `/api/attentions/start` | `POST` | Iniciar una atención. |
 | **Billing** | `/api/billing/{id}/paid` | `PUT` | Marcar registro como pagado. |
-| **Report** | `/api/reports/summary/specialist/{id}` | `GET` | Resumen ejecutivo para dashboard. |
+| **Subscription** | `/api/subscriptions` | `POST` | Contratar plan para el perfil. |
 
-## 🧪 Pruebas con Postman
-1. Importa los JSON de ejemplo proporcionados en la documentación técnica.
-2. Asegúrate de obtener el `userId` tras el registro/login para usarlo en los endpoints de reservas y reportes.
-3. El sistema incluye un **Manejador Global de Excepciones** que devuelve errores estandarizados (`ApiErrorResponse`) en caso de argumentos inválidos o recursos no encontrados.
+## 🧪 Flujo de Prueba Postman (Happy Path)
+Para validar el sistema completo, siga este orden de peticiones:
 
-## 📱 Guía de Migración para Android (Próximos Pasos)
-Para alinearse con la nueva arquitectura del backend, la aplicación Android deberá actualizar su capa de datos (`ApiService`) siguiendo estos lineamientos:
-- **Endpoints de Autenticación**: Migrar de `/api/users/login|register` a `/api/auth/login|register`.
-- **Identificadores**: Dejar de usar el `email` como clave primaria en las solicitudes. El `UserResponse` ahora incluye un `id` numérico que debe persistirse localmente (Room) y usarse en `ReservationRequest` (`clientId`, `specialistId`).
-- **Fechas**: Las reservas ahora usan `LocalDateTime` en formato ISO-8601. Asegurar el mapeo correcto desde `epochMillis` si es necesario.
-- **Nuevas Funcionalidades**: Implementar clientes de API para los módulos de `Attention` (Atención en tiempo real), `Billing` (Pagos) y `Reports` (Dashboard dinámico).
+1.  **Registrar Especialista**: `POST /api/auth/register` (con `role: SPECIALIST`).
+2.  **Crear Professional Profile**: `POST /api/professional-profiles` usando el `userId` obtenido.
+3.  **Registrar Cliente**: `POST /api/auth/register` (con `role: CLIENT`).
+4.  **Crear Servicio**: `POST /api/services` vinculándolo al `professionalProfileId`.
+5.  **Crear Reserva**: `POST /api/reservations` asociando cliente, especialista y servicio.
+6.  **Iniciar Atención**: `POST /api/attentions/start` enviando el `reservationId`.
+7.  **Finalizar Atención**: `POST /api/attentions/{id}/finish`.
+8.  **Registrar Cobro**: `POST /api/billing` (se genera automáticamente al finalizar o manualmente).
+9.  **Marcar como Pagado**: `PUT /api/billing/{id}/paid`.
+10. **Consultar Reporte**: `GET /api/reports/specialist/{specialistId}` para ver métricas actualizadas.
 
 ---
-**Desarrollado para el portafolio de PointCheck.**
+**Desarrollado para el ecosistema PointCheck.**

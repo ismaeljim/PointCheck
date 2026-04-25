@@ -15,11 +15,7 @@ class ServiceOfferingController(
 
     @PostMapping
     fun create(@RequestBody request: ServiceOfferingRequest): ResponseEntity<ServiceOfferingResponse> {
-        return try {
-            ResponseEntity.ok(serviceOfferingService.create(request))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().build()
-        }
+        return ResponseEntity.ok(serviceOfferingService.create(request))
     }
 
     @GetMapping
@@ -27,17 +23,13 @@ class ServiceOfferingController(
         return ResponseEntity.ok(serviceOfferingService.getActive())
     }
 
-    @GetMapping("/specialist/{specialistId}")
-    fun getBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<ServiceOfferingResponse>> {
-        return ResponseEntity.ok(serviceOfferingService.getBySpecialist(specialistId))
+    @GetMapping("/professional-profile/{professionalProfileId}")
+    fun getByProfessionalProfile(@PathVariable professionalProfileId: Long): ResponseEntity<List<ServiceOfferingResponse>> {
+        return ResponseEntity.ok(serviceOfferingService.getByProfessionalProfile(professionalProfileId))
     }
 
     @PutMapping("/{id}/deactivate")
     fun deactivate(@PathVariable id: Long): ResponseEntity<ServiceOfferingResponse> {
-        return try {
-            ResponseEntity.ok(serviceOfferingService.deactivate(id))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.notFound().build()
-        }
+        return ResponseEntity.ok(serviceOfferingService.deactivate(id))
     }
 }

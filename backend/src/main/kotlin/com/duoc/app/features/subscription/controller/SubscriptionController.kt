@@ -18,10 +18,10 @@ class SubscriptionController(
         return ResponseEntity.ok(subscriptionService.create(request))
     }
 
-    @GetMapping("/specialist/{specialistId}/current")
-    fun getCurrentBySpecialist(@PathVariable specialistId: Long): ResponseEntity<SubscriptionResponse> {
-        val subscription = subscriptionService.getCurrentBySpecialist(specialistId)
-            ?: throw NoSuchElementException("No se encontró suscripción activa para el especialista")
+    @GetMapping("/professional-profile/{professionalProfileId}/current")
+    fun getCurrentByProfessionalProfile(@PathVariable professionalProfileId: Long): ResponseEntity<SubscriptionResponse> {
+        val subscription = subscriptionService.getCurrentByProfessionalProfile(professionalProfileId)
+            ?: throw NoSuchElementException("No se encontró suscripción activa para el perfil profesional")
         return ResponseEntity.ok(subscription)
     }
 

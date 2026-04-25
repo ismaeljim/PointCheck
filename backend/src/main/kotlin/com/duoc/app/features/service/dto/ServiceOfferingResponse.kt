@@ -4,7 +4,7 @@ import java.math.BigDecimal
 
 data class ServiceOfferingResponse(
     val id: Long,
-    val specialistId: Long,
+    val professionalProfileId: Long,
     val name: String,
     val description: String?,
     val price: BigDecimal?,

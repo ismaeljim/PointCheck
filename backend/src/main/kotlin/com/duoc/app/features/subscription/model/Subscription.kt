@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 @Table(
     name = "subscriptions",
     indexes = [
-        Index(name = "idx_subscriptions_specialist", columnList = "specialistId"),
+        Index(name = "idx_subscriptions_professional_profile", columnList = "professionalProfileId"),
         Index(name = "idx_subscriptions_status", columnList = "status"),
         Index(name = "idx_subscriptions_end_date", columnList = "endDate")
     ]
@@ -19,7 +19,7 @@ data class Subscription(
     val id: Long = 0,
 
     @Column(nullable = false)
-    val specialistId: Long,
+    val professionalProfileId: Long,
 
     @Column(nullable = false)
     val planName: String,

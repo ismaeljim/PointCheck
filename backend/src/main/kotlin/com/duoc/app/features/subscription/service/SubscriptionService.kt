@@ -1,12 +1,11 @@
 package com.duoc.app.features.subscription.service
 
+import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
 import com.duoc.app.features.subscription.dto.SubscriptionRequest
 import com.duoc.app.features.subscription.dto.SubscriptionResponse
 import com.duoc.app.features.subscription.model.Subscription
 import com.duoc.app.features.subscription.model.SubscriptionStatus
 import com.duoc.app.features.subscription.repository.SubscriptionRepository
-import com.duoc.app.features.user.model.UserRole
-import com.duoc.app.features.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -15,21 +14,21 @@ import java.time.LocalDateTime
 @Service
 class SubscriptionService(
     private val subscriptionRepository: SubscriptionRepository,
-    private val userRepository: UserRepository
+    private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
     @Transactional
     fun create(request: SubscriptionRequest): SubscriptionResponse {
-        val user = userRepository.findById(request.specialistId).orElseThrow {
-            IllegalArgumentException("Usuario no encontrado con ID: ${request.specialistId}")
+        val profile = professionalProfileRepository.findById(request.professionalProfileId).orElseThrow {
+            IllegalArgumentException("Perfil profesional no encontrado con ID: ${request.professionalProfileId}")
         }
 
-        if (user.role != UserRole.SPECIALIST) {
-            throw IllegalArgumentException("El usuario con ID ${request.specialistId} no es un especialista.")
+        if (!profile.active) {
+            throw IllegalArgumentException("El perfil profesional con ID ${request.professionalProfileId} no está activo.")
         }
 
         val subscription = Subscription(
-            specialistId = request.specialistId,
+            professionalProfileId = request.professionalProfileId,
             planName = request.planName,
             startDate = request.startDate,
             endDate = request.endDate,
@@ -40,8 +39,8 @@ class SubscriptionService(
     }
 
     @Transactional
-    fun getCurrentBySpecialist(specialistId: Long): SubscriptionResponse? {
-        val subscriptions = subscriptionRepository.findBySpecialistIdAndStatus(specialistId, SubscriptionStatus.ACTIVE)
+    fun getCurrentByProfessionalProfile(professionalProfileId: Long): SubscriptionResponse? {
+        val subscriptions = subscriptionRepository.findByProfessionalProfileIdAndStatus(professionalProfileId, SubscriptionStatus.ACTIVE)
         
         if (subscriptions.isEmpty()) return null
 
@@ -75,11 +74,12 @@ class SubscriptionService(
 
     private fun Subscription.toResponse(): SubscriptionResponse = SubscriptionResponse(
         id = this.id,
-        specialistId = this.specialistId,
+        professionalProfileId = this.professionalProfileId,
         planName = this.planName,
         status = this.status,
         startDate = this.startDate,
         endDate = this.endDate,
-        createdAt = this.createdAt
+        createdAt = this.createdAt,
+        updatedAt = this.updatedAt
     )
 }

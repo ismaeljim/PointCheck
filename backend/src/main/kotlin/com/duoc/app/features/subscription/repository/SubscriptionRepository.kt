@@ -7,10 +7,10 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface SubscriptionRepository : JpaRepository<Subscription, Long> {
-    fun findBySpecialistId(specialistId: Long): List<Subscription>
+    fun findByProfessionalProfileId(professionalProfileId: Long): List<Subscription>
 
-    fun findBySpecialistIdAndStatus(
-        specialistId: Long,
+    fun findByProfessionalProfileIdAndStatus(
+        professionalProfileId: Long,
         status: SubscriptionStatus
     ): List<Subscription>
 }

@@ -1,31 +1,30 @@
 package com.duoc.app.features.service.service
 
+import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
 import com.duoc.app.features.service.dto.ServiceOfferingRequest
 import com.duoc.app.features.service.dto.ServiceOfferingResponse
 import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.service.repository.ServiceOfferingRepository
-import com.duoc.app.features.user.model.UserRole
-import com.duoc.app.features.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 
 @Service
 class ServiceOfferingService(
     private val serviceOfferingRepository: ServiceOfferingRepository,
-    private val userRepository: UserRepository
+    private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
     fun create(request: ServiceOfferingRequest): ServiceOfferingResponse {
-        val specialist = userRepository.findById(request.specialistId).orElseThrow {
-            IllegalArgumentException("El especialista con ID ${request.specialistId} no existe.")
+        val profile = professionalProfileRepository.findById(request.professionalProfileId).orElseThrow {
+            IllegalArgumentException("El perfil profesional con ID ${request.professionalProfileId} no existe.")
         }
 
-        if (specialist.role != UserRole.SPECIALIST) {
-            throw IllegalArgumentException("El usuario con ID ${request.specialistId} no es un especialista.")
+        if (!profile.active) {
+            throw IllegalArgumentException("El perfil profesional con ID ${request.professionalProfileId} no está activo.")
         }
 
         val serviceOffering = ServiceOffering(
-            specialistId = request.specialistId,
+            professionalProfileId = request.professionalProfileId,
             name = request.name,
             description = request.description,
             price = request.price,
@@ -35,8 +34,8 @@ class ServiceOfferingService(
         return serviceOfferingRepository.save(serviceOffering).toResponse()
     }
 
-    fun getBySpecialist(specialistId: Long): List<ServiceOfferingResponse> {
-        return serviceOfferingRepository.findBySpecialistId(specialistId).map { it.toResponse() }
+    fun getByProfessionalProfile(professionalProfileId: Long): List<ServiceOfferingResponse> {
+        return serviceOfferingRepository.findByProfessionalProfileId(professionalProfileId).map { it.toResponse() }
     }
 
     fun getActive(): List<ServiceOfferingResponse> {
@@ -58,7 +57,7 @@ class ServiceOfferingService(
 
     private fun ServiceOffering.toResponse(): ServiceOfferingResponse = ServiceOfferingResponse(
         id = this.id,
-        specialistId = this.specialistId,
+        professionalProfileId = this.professionalProfileId,
         name = this.name,
         description = this.description,
         price = this.price,

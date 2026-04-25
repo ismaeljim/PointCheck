@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 @Table(
     name = "services",
     indexes = [
-        Index(name = "idx_services_specialist", columnList = "specialistId"),
+        Index(name = "idx_services_professional_profile", columnList = "professionalProfileId"),
         Index(name = "idx_services_active", columnList = "active")
     ]
 )
@@ -18,7 +18,7 @@ data class ServiceOffering(
     val id: Long = 0,
 
     @Column(nullable = false)
-    val specialistId: Long,
+    val professionalProfileId: Long,
 
     @Column(nullable = false)
     val name: String,
