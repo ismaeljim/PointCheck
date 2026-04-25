@@ -26,12 +26,12 @@ class ProfessionalProfileService(
             throw IllegalArgumentException("Solo un especialista puede tener perfil profesional")
         }
 
-        if (professionalProfileRepository.existsByUserId(request.userId)) {
+        if (professionalProfileRepository.existsByUser_Id(request.userId)) {
             throw IllegalArgumentException("El especialista ya tiene un perfil profesional")
         }
 
         val profile = ProfessionalProfile(
-            userId = request.userId,
+            user = user,
             displayName = request.displayName,
             businessName = request.businessName,
             specialty = request.specialty,
@@ -51,7 +51,7 @@ class ProfessionalProfileService(
     }
 
     fun getByUserId(userId: Long): ProfessionalProfileResponse {
-        val profile = professionalProfileRepository.findByUserId(userId)
+        val profile = professionalProfileRepository.findByUser_Id(userId)
             ?: throw NoSuchElementException("Perfil profesional no encontrado para el usuario $userId")
         return profile.toResponse()
     }
@@ -94,7 +94,7 @@ class ProfessionalProfileService(
     private fun ProfessionalProfile.toResponse(): ProfessionalProfileResponse {
         return ProfessionalProfileResponse(
             id = this.id,
-            userId = this.userId,
+            userId = this.user.id,
             displayName = this.displayName,
             businessName = this.businessName,
             specialty = this.specialty,

@@ -1,5 +1,6 @@
 package com.duoc.app.features.billing.service
 
+import com.duoc.app.features.attention.model.Attention
 import com.duoc.app.features.attention.repository.AttentionRepository
 import com.duoc.app.features.billing.dto.BillingRecordRequest
 import com.duoc.app.features.billing.dto.BillingRecordResponse
@@ -26,17 +27,18 @@ class BillingService(
             IllegalArgumentException("Reserva no encontrada con ID: ${request.reservationId}")
         }
 
+        var attention: Attention? = null
         if (request.attentionId != null) {
-            if (!attentionRepository.existsById(request.attentionId)) {
-                throw IllegalArgumentException("Atención no encontrada con ID: ${request.attentionId}")
+            attention = attentionRepository.findById(request.attentionId).orElseThrow {
+                IllegalArgumentException("Atención no encontrada con ID: ${request.attentionId}")
             }
         }
 
         val billingRecord = BillingRecord(
-            reservationId = reservation.id,
-            attentionId = request.attentionId,
-            clientId = reservation.clientId,
-            specialistId = reservation.specialistId,
+            reservation = reservation,
+            attention = attention,
+            client = reservation.client,
+            specialist = reservation.specialist,
             amount = request.amount,
             currency = request.currency,
             paymentMethod = request.paymentMethod,
@@ -80,27 +82,27 @@ class BillingService(
     }
 
     fun getBySpecialist(specialistId: Long): List<BillingRecordResponse> {
-        return billingRecordRepository.findBySpecialistId(specialistId).map { it.toResponse() }
+        return billingRecordRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
     }
 
     fun getPendingBySpecialist(specialistId: Long): List<BillingRecordResponse> {
-        return billingRecordRepository.findBySpecialistIdAndStatus(specialistId, PaymentStatus.PENDING)
+        return billingRecordRepository.findBySpecialist_IdAndStatus(specialistId, PaymentStatus.PENDING)
             .map { it.toResponse() }
     }
 
     fun getTodayBySpecialist(specialistId: Long): List<BillingRecordResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
-        return billingRecordRepository.findBySpecialistIdAndCreatedAtBetween(specialistId, startOfDay, endOfDay)
+        return billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(specialistId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
     private fun BillingRecord.toResponse(): BillingRecordResponse = BillingRecordResponse(
         id = this.id,
-        reservationId = this.reservationId,
-        attentionId = this.attentionId,
-        clientId = this.clientId,
-        specialistId = this.specialistId,
+        reservationId = this.reservation.id,
+        attentionId = this.attention?.id,
+        clientId = this.client.id,
+        specialistId = this.specialist.id,
         amount = this.amount,
         currency = this.currency,
         paymentMethod = this.paymentMethod,

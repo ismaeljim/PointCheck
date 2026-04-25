@@ -7,9 +7,9 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface SubscriptionRepository : JpaRepository<Subscription, Long> {
-    fun findByProfessionalProfileId(professionalProfileId: Long): List<Subscription>
+    fun findByProfessionalProfile_Id(professionalProfileId: Long): List<Subscription>
 
-    fun findByProfessionalProfileIdAndStatus(
+    fun findByProfessionalProfile_IdAndStatus(
         professionalProfileId: Long,
         status: SubscriptionStatus
     ): List<Subscription>

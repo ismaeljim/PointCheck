@@ -7,21 +7,21 @@ import java.time.LocalDateTime
 
 @Repository
 interface ReservationRepository : JpaRepository<Reservation, Long> {
-    fun findByClientId(clientId: Long): List<Reservation>
-    fun findBySpecialistId(specialistId: Long): List<Reservation>
+    fun findByClient_Id(clientId: Long): List<Reservation>
+    fun findBySpecialist_Id(specialistId: Long): List<Reservation>
 
-    fun findBySpecialistIdAndReservationStartBetween(
+    fun findBySpecialist_IdAndReservationStartBetween(
         specialistId: Long,
         start: LocalDateTime,
         end: LocalDateTime
     ): List<Reservation>
 
-    fun findByClientIdAndReservationStartAfter(
+    fun findByClient_IdAndReservationStartAfter(
         clientId: Long,
         now: LocalDateTime
     ): List<Reservation>
 
-    fun findBySpecialistIdAndReservationStartAfter(
+    fun findBySpecialist_IdAndReservationStartAfter(
         specialistId: Long,
         now: LocalDateTime
     ): List<Reservation>
