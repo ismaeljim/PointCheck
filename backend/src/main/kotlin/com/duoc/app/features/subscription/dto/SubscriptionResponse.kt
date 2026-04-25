@@ -6,10 +6,11 @@ import java.time.LocalDateTime
 
 data class SubscriptionResponse(
     val id: Long,
-    val specialistId: Long,
+    val professionalProfileId: Long,
     val planName: String,
     val status: SubscriptionStatus,
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val createdAt: LocalDateTime
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime?
 )

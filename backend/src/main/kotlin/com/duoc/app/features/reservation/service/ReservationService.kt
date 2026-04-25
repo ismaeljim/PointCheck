@@ -1,5 +1,6 @@
 package com.duoc.app.features.reservation.service
 
+import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
 import com.duoc.app.features.reservation.dto.ReservationRequest
 import com.duoc.app.features.reservation.dto.ReservationResponse
 import com.duoc.app.features.reservation.model.Reservation
@@ -16,7 +17,8 @@ import java.time.LocalDateTime
 class ReservationService(
     private val reservationRepository: ReservationRepository,
     private val userRepository: UserRepository,
-    private val serviceOfferingRepository: ServiceOfferingRepository
+    private val serviceOfferingRepository: ServiceOfferingRepository,
+    private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
     fun create(request: ReservationRequest): ReservationResponse {
@@ -40,6 +42,14 @@ class ReservationService(
             }
             if (!service.active) {
                 throw IllegalArgumentException("El servicio con ID ${request.serviceId} no está activo.")
+            }
+
+            // Validar que el servicio pertenece al professional profile cuyo userId corresponde al specialistId de la reserva
+            val profile = professionalProfileRepository.findById(service.professionalProfileId).orElseThrow {
+                IllegalArgumentException("Perfil profesional no encontrado para el servicio.")
+            }
+            if (profile.userId != request.specialistId) {
+                throw IllegalArgumentException("El servicio seleccionado no pertenece al especialista de la reserva.")
             }
         }
 
