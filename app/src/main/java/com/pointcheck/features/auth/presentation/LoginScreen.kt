@@ -25,7 +25,7 @@ fun LoginScreen(
 ) {
     val s by vm.state.collectAsState()
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() } // Definimos el estado
+    val snackbarHostState = remember { SnackbarHostState() }
     
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -33,7 +33,7 @@ fun LoginScreen(
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Iniciar sesión") }) },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) } // Añadimos el Host al Scaffold
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
         Column(
             Modifier
@@ -73,7 +73,10 @@ fun LoginScreen(
                         scope.launch {
                             if (ok) {
                                 snackbarHostState.showSnackbar("Sesión iniciada")
-                                nav.navigate(Screen.Profile.route)
+                                // Navegación al Dashboard limpiando el backstack del login
+                                nav.navigate(Screen.Dashboard.route) {
+                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                }
                             } else {
                                 snackbarHostState.showSnackbar(s.error ?: "Error de credenciales")
                             }
