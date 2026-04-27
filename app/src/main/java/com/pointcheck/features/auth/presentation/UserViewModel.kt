@@ -7,10 +7,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
-import com.pointcheck.features.auth.data.User
+import com.pointcheck.features.auth.data.dto.LoginRequestDto
+import com.pointcheck.features.auth.data.dto.RegisterRequestDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.Response
 
 data class RegisterUiState(
     val name: String = "",
@@ -49,48 +51,94 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = s.copy(avatarUri = uri.toString(), isValid = validate(s))
     }
 
+    /**
+     * Proceso de registro de usuario usando el backend Spring Boot.
+     */
     fun save(onDone: () -> Unit) {
-        val s = _state.value; if (!s.isValid) return
+        val s = _state.value
+        if (!s.isValid) return
+
         viewModelScope.launch {
-            val user = User(email = s.email, name = s.name, password = s.password)
+            val registerRequest = RegisterRequestDto(
+                name = s.name,
+                email = s.email,
+                password = s.password,
+                phone = null,
+                role = "CLIENT"
+            )
             try {
-                val response = api.registerUser(user)
+                val response = api.registerUser(registerRequest)
                 if (response.isSuccessful) {
-                    prefs.saveUser(s.name, s.email)
-                    s.avatarUri?.let { prefs.setAvatar(it) }
-                    onDone()
+                    val userResponse = response.body()
+                    if (userResponse != null) {
+                        prefs.saveSession(
+                            userId = userResponse.id,
+                            name = userResponse.name,
+                            email = userResponse.email,
+                            role = userResponse.role,
+                            phone = userResponse.phone
+                        )
+                        s.avatarUri?.let { prefs.setAvatar(it) }
+                        onDone()
+                    } else {
+                        _state.value = _state.value.copy(error = "Respuesta inválida del servidor")
+                    }
                 } else {
-                    _state.value = _state.value.copy(error = "Error en el registro")
+                    handleApiError(response)
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = "Error de red: ${e.message}")
+                _state.value = _state.value.copy(error = "Error de red: Verifique su conexión")
             }
         }
     }
 
+    /**
+     * Proceso de login de usuario usando el backend Spring Boot.
+     */
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
-                val loginUser = User(email = email, name = "", password = password) 
-                val response = api.login(loginUser)
+                val loginRequest = LoginRequestDto(email = email, password = password)
+                val response = api.login(loginRequest)
+                
                 if (response.isSuccessful) {
-                    val user = response.body()
-                    if (user != null) {
-                        prefs.saveUser(user.name, user.email)
+                    val userResponse = response.body()
+                    if (userResponse != null) {
+                        prefs.saveSession(
+                            userId = userResponse.id,
+                            name = userResponse.name,
+                            email = userResponse.email,
+                            role = userResponse.role,
+                            phone = userResponse.phone
+                        )
                         onResult(true)
                     } else {
-                        _state.value = _state.value.copy(error = "Respuesta inválida")
+                        _state.value = _state.value.copy(error = "Respuesta inválida del servidor")
                         onResult(false)
                     }
                 } else {
-                    _state.value = _state.value.copy(error = "Credenciales incorrectas")
+                    handleApiError(response)
                     onResult(false)
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = "Error de red")
+                _state.value = _state.value.copy(error = "Error de red: Verifique su conexión")
                 onResult(false)
             }
         }
+    }
+
+    /**
+     * Mapea códigos de error HTTP a mensajes legibles.
+     */
+    private fun handleApiError(response: Response<*>) {
+        val message = when (response.code()) {
+            400 -> "Solicitud inválida"
+            401, 403 -> "Credenciales incorrectas"
+            409 -> "El correo ya está registrado"
+            500 -> "Error interno del servidor"
+            else -> "Error inesperado (${response.code()})"
+        }
+        _state.value = _state.value.copy(error = message)
     }
 
     fun logout(onDone: () -> Unit) {

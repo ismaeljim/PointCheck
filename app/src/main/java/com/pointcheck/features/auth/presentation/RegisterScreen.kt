@@ -122,14 +122,23 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            if (s.error != null) {
+                Text(
+                    text = s.error!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             Button(
                 onClick = {
                     vm.save {
                         scope.launch { 
                             snackbarHostState.showSnackbar("Registro exitoso") 
                         }
-                        nav.navigate(Screen.Profile.route) {
-                            popUpTo(Screen.Dashboard.route)
+                        nav.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Register.route) { inclusive = true }
                         }
                     }
                 },
