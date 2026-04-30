@@ -1,8 +1,6 @@
 package com.pointcheck.features.attentions.data.dto
 
-data class AttentionRequestDto(
+data class StartAttentionRequestDto(
     val reservationId: Long,
-    val clientId: Long,
-    val specialistId: Long,
     val observations: String? = null
 )
