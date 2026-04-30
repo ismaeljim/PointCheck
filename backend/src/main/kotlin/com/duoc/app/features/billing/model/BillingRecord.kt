@@ -44,7 +44,7 @@ data class BillingRecord(
     @Column(nullable = false, precision = 12, scale = 2)
     val amount: BigDecimal,
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     val currency: String = "CLP",
 
     @Enumerated(EnumType.STRING)

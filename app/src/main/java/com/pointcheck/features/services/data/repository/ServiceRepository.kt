@@ -6,9 +6,9 @@ import com.pointcheck.features.services.data.dto.ServiceResponseDto
 
 class ServiceRepository(private val api: ApiService) {
 
-    suspend fun getServices(profileId: Long): Result<List<ServiceResponseDto>> {
+    suspend fun getServices(professionalProfileId: Long): Result<List<ServiceResponseDto>> {
         return try {
-            val response = api.getServicesBySpecialistId(profileId)
+            val response = api.getServicesByProfessionalProfileId(professionalProfileId)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {

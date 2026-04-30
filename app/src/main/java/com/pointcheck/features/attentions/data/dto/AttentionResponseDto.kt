@@ -6,8 +6,9 @@ data class AttentionResponseDto(
     val clientId: Long,
     val specialistId: Long,
     val startedAt: String,
-    val finishedAt: String? = null,
-    val durationMinutes: Int? = null,
+    val finishedAt: String?,
+    val durationMinutes: Int?,
     val status: String,
-    val observations: String? = null
+    val observations: String?,
+    val createdAt: String
 )

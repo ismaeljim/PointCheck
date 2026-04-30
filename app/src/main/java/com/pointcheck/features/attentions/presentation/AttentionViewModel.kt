@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
-import com.pointcheck.features.attentions.data.dto.AttentionRequestDto
 import com.pointcheck.features.attentions.data.dto.AttentionResponseDto
 import com.pointcheck.features.attentions.data.repository.AttentionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,9 +13,10 @@ import kotlinx.coroutines.launch
 
 data class AttentionUiState(
     val currentAttention: AttentionResponseDto? = null,
+    val observations: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isFinished: Boolean = false
+    val successMessage: String? = null
 )
 
 class AttentionViewModel(application: Application) : AndroidViewModel(application) {
@@ -26,44 +26,41 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     private val _state = MutableStateFlow(AttentionUiState())
     val state: StateFlow<AttentionUiState> = _state
 
-    fun loadAttentionForReservation(reservationId: Long) {
+    fun setObservations(value: String) {
+        _state.update { it.copy(observations = value) }
+    }
+
+    fun startAttention(reservationId: Long) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.getAttentionByReservation(reservationId)
+            repository.startAttention(reservationId, _state.value.observations)
                 .onSuccess { attention ->
-                    _state.update { it.copy(currentAttention = attention, isLoading = false) }
+                    _state.update { it.copy(
+                        currentAttention = attention, 
+                        isLoading = false,
+                        successMessage = "Atención iniciada"
+                    ) }
                 }
                 .onFailure { e ->
-                    // Si no existe, simplemente dejamos currentAttention como null
-                    _state.update { it.copy(isLoading = false) }
+                    _state.update { it.copy(error = "Error al iniciar: ${e.message}", isLoading = false) }
                 }
         }
     }
 
-    fun startAttention(reservationId: Long, clientId: Long, specialistId: Long) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            val request = AttentionRequestDto(reservationId, clientId, specialistId)
-            repository.startAttention(request)
-                .onSuccess { attention ->
-                    _state.update { it.copy(currentAttention = attention, isLoading = false) }
-                }
-                .onFailure { e ->
-                    _state.update { it.copy(error = "Error al iniciar atención: ${e.message}", isLoading = false) }
-                }
-        }
-    }
-
-    fun finishAttention(observations: String) {
+    fun finishAttention() {
         val attentionId = _state.value.currentAttention?.id ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.finishAttention(attentionId, observations)
+            repository.finishAttention(attentionId, _state.value.observations)
                 .onSuccess { updated ->
-                    _state.update { it.copy(currentAttention = updated, isLoading = false, isFinished = true) }
+                    _state.update { it.copy(
+                        currentAttention = updated, 
+                        isLoading = false,
+                        successMessage = "Atención finalizada"
+                    ) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al finalizar atención: ${e.message}", isLoading = false) }
+                    _state.update { it.copy(error = "Error al finalizar: ${e.message}", isLoading = false) }
                 }
         }
     }

@@ -40,12 +40,12 @@ class ReservationRepository(private val api: ApiService) {
         return handleApiCall { api.cancelReservation(id) }
     }
 
-    suspend fun getActiveProfiles(): Result<List<ProfessionalProfileResponseDto>> {
-        return handleApiCall { api.getSpecialists() }
+    suspend fun getActiveProfiles(): Result<List<SpecialistResponseDto>> {
+        return handleApiCall { api.getActiveProfessionalProfiles() }
     }
 
-    suspend fun getServices(profileId: Long): Result<List<ServiceResponseDto>> {
-        return handleApiCall { api.getServicesBySpecialistId(profileId) }
+    suspend fun getServices(professionalProfileId: Long): Result<List<ServiceResponseDto>> {
+        return handleApiCall { api.getServicesByProfessionalProfileId(professionalProfileId) }
     }
 
     private suspend fun <T> handleApiCall(call: suspend () -> Response<T>): Result<T> {

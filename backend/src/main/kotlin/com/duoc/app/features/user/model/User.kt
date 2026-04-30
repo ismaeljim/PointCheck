@@ -19,18 +19,22 @@ data class User(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
     
+    @Column(nullable = false)
     val name: String,
     
     @Column(nullable = false)
     val email: String,
     
+    @Column(nullable = false)
     val password: String,
     
     val phone: String? = null,
     
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     val role: UserRole = UserRole.CLIENT,
     
+    @Column(nullable = false)
     val active: Boolean = true,
     
     @Column(name = "created_at", nullable = false, updatable = false)

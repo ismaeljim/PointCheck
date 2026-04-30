@@ -15,9 +15,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class BookingUiState(
-    val professionals: List<ProfessionalProfileResponseDto> = emptyList(),
+    val professionals: List<SpecialistResponseDto> = emptyList(),
     val services: List<ServiceResponseDto> = emptyList(),
-    val selectedProfessional: ProfessionalProfileResponseDto? = null,
+    val selectedProfessional: SpecialistResponseDto? = null,
     val selectedService: ServiceResponseDto? = null,
     val reservationStartMillis: Long? = null,
     val notes: String = "",
@@ -56,7 +56,7 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun selectProfessional(profile: ProfessionalProfileResponseDto) {
+    fun selectProfessional(profile: SpecialistResponseDto) {
         _state.update { it.copy(
             selectedProfessional = profile, 
             selectedService = null, 
