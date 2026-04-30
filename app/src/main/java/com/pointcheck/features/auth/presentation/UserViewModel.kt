@@ -7,25 +7,27 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
-import com.pointcheck.features.auth.data.dto.LoginRequestDto
 import com.pointcheck.features.auth.data.dto.RegisterRequestDto
+import com.pointcheck.features.auth.data.repository.AuthRepository
+import com.pointcheck.features.profile.data.repository.ProfessionalProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import retrofit2.Response
 
 data class RegisterUiState(
     val name: String = "",
     val email: String = "",
     val password: String = "",
     val confirm: String = "",
+    val role: String = "CLIENT",
     val avatarUri: String? = null,
     val isValid: Boolean = false,
     val error: String? = null
 )
 
 class UserViewModel(app: Application) : AndroidViewModel(app) {
-    private val api = ApiClient.instance
+    private val authRepository = AuthRepository()
+    private val profileRepository = ProfessionalProfileRepository(ApiClient.instance)
     private val prefs = UserPreferences(app)
     private val _state = MutableStateFlow(RegisterUiState())
     val state: StateFlow<RegisterUiState> = _state
@@ -37,6 +39,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
             "email" -> s.copy(email = value)
             "password" -> s.copy(password = value)
             "confirm" -> s.copy(confirm = value)
+            "role" -> s.copy(role = value)
             else -> s
         }
         _state.value = n.copy(isValid = validate(n), error = null)
@@ -51,9 +54,6 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = s.copy(avatarUri = uri.toString(), isValid = validate(s))
     }
 
-    /**
-     * Proceso de registro de usuario usando el backend Spring Boot.
-     */
     fun save(onDone: () -> Unit) {
         val s = _state.value
         if (!s.isValid) return
@@ -64,81 +64,61 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                 email = s.email,
                 password = s.password,
                 phone = null,
-                role = "CLIENT"
+                role = s.role
             )
-            try {
-                val response = api.registerUser(registerRequest)
-                if (response.isSuccessful) {
-                    val userResponse = response.body()
-                    if (userResponse != null) {
-                        prefs.saveSession(
-                            userId = userResponse.id,
-                            name = userResponse.name,
-                            email = userResponse.email,
-                            role = userResponse.role,
-                            phone = userResponse.phone
-                        )
-                        s.avatarUri?.let { prefs.setAvatar(it) }
-                        onDone()
-                    } else {
-                        _state.value = _state.value.copy(error = "Respuesta inválida del servidor")
+            
+            authRepository.register(registerRequest)
+                .onSuccess { userResponse ->
+                    prefs.saveSession(
+                        userId = userResponse.id,
+                        name = userResponse.name,
+                        email = userResponse.email,
+                        role = userResponse.role,
+                        phone = userResponse.phone
+                    )
+                    
+                    if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
+                        profileRepository.getProfileByUserId(userResponse.id)
+                            .onSuccess { profile ->
+                                prefs.saveProfessionalProfileId(profile.id)
+                            }
                     }
-                } else {
-                    handleApiError(response)
+
+                    s.avatarUri?.let { prefs.setAvatar(it) }
+                    onDone()
                 }
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(error = "Error de red: Verifique su conexión")
-            }
+                .onFailure { e ->
+                    _state.value = _state.value.copy(error = e.message ?: "Error en el registro")
+                }
         }
     }
 
-    /**
-     * Proceso de login de usuario usando el backend Spring Boot.
-     */
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            try {
-                val loginRequest = LoginRequestDto(email = email, password = password)
-                val response = api.login(loginRequest)
-                
-                if (response.isSuccessful) {
-                    val userResponse = response.body()
-                    if (userResponse != null) {
-                        prefs.saveSession(
-                            userId = userResponse.id,
-                            name = userResponse.name,
-                            email = userResponse.email,
-                            role = userResponse.role,
-                            phone = userResponse.phone
-                        )
-                        onResult(true)
-                    } else {
-                        _state.value = _state.value.copy(error = "Respuesta inválida del servidor")
-                        onResult(false)
+            authRepository.login(email, password)
+                .onSuccess { userResponse ->
+                    prefs.saveSession(
+                        userId = userResponse.id,
+                        name = userResponse.name,
+                        email = userResponse.email,
+                        role = userResponse.role,
+                        phone = userResponse.phone
+                    )
+                    
+                    if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
+                        profileRepository.getProfileByUserId(userResponse.id)
+                            .onSuccess { profile ->
+                                prefs.saveProfessionalProfileId(profile.id)
+                            }
                     }
-                } else {
-                    handleApiError(response)
+                    
+                    onResult(true)
+                }
+                .onFailure { e ->
+                    _state.value = _state.value.copy(error = e.message ?: "Error de credenciales")
                     onResult(false)
                 }
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(error = "Error de red: Verifique su conexión")
-                onResult(false)
-            }
         }
-    }
-
-    /**
-     * Mapea códigos de error HTTP a mensajes legibles.
-     */
-    private fun handleApiError(response: Response<*>) {
-        val message = when (response.code()) {
-            400 -> "Solicitud inválida"
-            401, 403 -> "Credenciales incorrectas"
-            409 -> "El correo ya está registrado"
-            500 -> "Error interno del servidor"
-            else -> "Error inesperado (${response.code()})"
-        }
-        _state.value = _state.value.copy(error = message)
     }
 
     fun logout(onDone: () -> Unit) {

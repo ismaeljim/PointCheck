@@ -5,18 +5,21 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.pointcheck.features.auth.data.User
-import com.pointcheck.features.auth.data.UserDao
-import com.pointcheck.features.booking.data.Reservation
-import com.pointcheck.features.booking.data.ReservationDao
 
+/**
+ * AppDatabase se mantiene estrictamente como CACHÉ LOCAL opcional (Offline Indicator).
+ * La fuente de verdad es el backend Spring Boot (MySQL).
+ * Se han eliminado los DAOs para forzar el uso de Repositorios con API.
+ */
 @Database(
-    entities = [User::class, Reservation::class],
-    version = 2,
+    entities = [User::class],
+    version = 4, // Incrementada versión por eliminación de Reservation entity
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun userDao(): UserDao
-    abstract fun reservationDao(): ReservationDao
+    
+    // DAOs eliminados para desacoplar la lógica de negocio de la persistencia local.
+    // Si se requiere caché en el futuro, implementar DAOs específicos para caché.
 
     companion object {
         @Volatile

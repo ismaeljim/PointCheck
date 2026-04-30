@@ -3,6 +3,8 @@ package com.pointcheck.features.profile.presentation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -40,7 +42,16 @@ fun ProfessionalProfileScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Perfil Profesional") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Perfil Profesional") },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                }
+            )
+        }
     ) { pad ->
         Column(
             modifier = Modifier
@@ -122,7 +133,7 @@ fun ProfessionalProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !s.isLoading
                     ) {
-                        if (s.isLoading) CircularProgressIndicator(size = 20.dp)
+                        if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         else Text("Guardar Cambios")
                     }
                     TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth()) {

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
+import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 
 data class DashboardUiState(
     val metrics: DashboardMetricsDto = DashboardMetricsDto(),
+    val reportSummary: ReportSummaryResponseDto? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val userName: String = "",
@@ -44,13 +46,23 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             _state.update { it.copy(userName = name, userRole = role) }
 
             if (userId != null) {
-                repository.getDashboardMetrics(userId, role)
-                    .onSuccess { metrics ->
-                        _state.update { it.copy(metrics = metrics, isLoading = false) }
-                    }
-                    .onFailure { e ->
-                        _state.update { it.copy(error = "Error al cargar métricas reales. Usando datos base.", isLoading = false) }
-                    }
+                if (role == "SPECIALIST" || role == "PROFESSIONAL") {
+                    repository.getReportSummaryBySpecialist(userId)
+                        .onSuccess { summary ->
+                            _state.update { it.copy(reportSummary = summary, isLoading = false) }
+                        }
+                        .onFailure { e ->
+                            _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
+                        }
+                } else {
+                    repository.getDashboardMetrics(userId, role)
+                        .onSuccess { metrics ->
+                            _state.update { it.copy(metrics = metrics, isLoading = false) }
+                        }
+                        .onFailure { e ->
+                            _state.update { it.copy(error = "Error al cargar métricas: ${e.message}", isLoading = false) }
+                        }
+                }
             } else {
                 _state.update { it.copy(isLoading = false) }
             }
