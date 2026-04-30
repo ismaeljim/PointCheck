@@ -48,11 +48,11 @@ fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) 
                     items(reservations) { res ->
                         ListItem(
                             headlineContent = { 
-                                Text(res.serviceName ?: "Servicio #${res.serviceId}") 
+                                Text("Servicio #${res.serviceId ?: "N/A"}") 
                             },
                             supportingContent = { 
                                 Column {
-                                    Text("Con: ${res.specialistName ?: "Especialista #${res.specialistId}"}")
+                                    Text("Especialista #${res.specialistId}")
                                     Text("Fecha: ${res.reservationStart}", style = MaterialTheme.typography.bodySmall)
                                     Text("Estado: ${res.status}", color = MaterialTheme.colorScheme.primary)
                                 }

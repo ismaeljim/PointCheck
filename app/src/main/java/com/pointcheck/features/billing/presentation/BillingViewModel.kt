@@ -13,10 +13,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class BillingUiState(
-    val record: BillingRecordResponseDto? = null,
+    val currentBilling: BillingRecordResponseDto? = null,
+    val billings: List<BillingRecordResponseDto> = emptyList(),
+    val amount: String = "",
+    val currency: String = "CLP",
+    val paymentMethod: String = "CASH",
+    val externalReference: String = "",
+    val notes: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isSuccess: Boolean = false
+    val successMessage: String? = null
 )
 
 class BillingViewModel(application: Application) : AndroidViewModel(application) {
@@ -26,42 +32,93 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
     private val _state = MutableStateFlow(BillingUiState())
     val state: StateFlow<BillingUiState> = _state
 
-    fun loadBillingByReservation(reservationId: Long) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            repository.getBillingByReservation(reservationId)
-                .onSuccess { record ->
-                    _state.update { it.copy(record = record, isLoading = false) }
-                }
-                .onFailure {
-                    _state.update { it.copy(isLoading = false) }
-                }
-        }
-    }
+    fun setAmount(value: String) { _state.update { it.copy(amount = value) } }
+    fun setPaymentMethod(value: String) { _state.update { it.copy(paymentMethod = value) } }
+    fun setExternalReference(value: String) { _state.update { it.copy(externalReference = value) } }
+    fun setNotes(value: String) { _state.update { it.copy(notes = value) } }
 
-    fun createBilling(request: BillingRecordRequestDto) {
+    fun createBillingRecord(reservationId: Long, attentionId: Long?) {
+        val amountDouble = _state.value.amount.toDoubleOrNull() ?: 0.0
+        if (amountDouble <= 0) {
+            _state.update { it.copy(error = "El monto debe ser mayor a 0") }
+            return
+        }
+
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = true, error = null, successMessage = null) }
+            val request = BillingRecordRequestDto(
+                reservationId = reservationId,
+                attentionId = attentionId,
+                amount = amountDouble,
+                currency = _state.value.currency,
+                paymentMethod = _state.value.paymentMethod,
+                notes = _state.value.notes
+            )
             repository.createBillingRecord(request)
                 .onSuccess { record ->
-                    _state.update { it.copy(record = record, isLoading = false, isSuccess = true) }
+                    _state.update { it.copy(currentBilling = record, isLoading = false, successMessage = "Cobro registrado exitosamente") }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al registrar cobro: ${e.message}", isLoading = false) }
+                    _state.update { it.copy(error = "Error al crear cobro: ${e.message}", isLoading = false) }
                 }
         }
     }
 
-    fun updateStatus(id: Long, status: String) {
+    fun markAsPaid(billingId: Long) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.updateBillingStatus(id, status)
+            repository.markAsPaid(
+                billingId,
+                _state.value.paymentMethod,
+                _state.value.externalReference.ifBlank { null },
+                _state.value.notes.ifBlank { null }
+            )
                 .onSuccess { updated ->
-                    _state.update { it.copy(record = updated, isLoading = false) }
+                    _state.update { it.copy(currentBilling = updated, isLoading = false, successMessage = "Cobro marcado como PAGADO") }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al actualizar estado: ${e.message}", isLoading = false) }
+                    _state.update { it.copy(error = "Error al pagar: ${e.message}", isLoading = false) }
                 }
+        }
+    }
+
+    fun cancelBillingRecord(billingId: Long) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            repository.cancelBillingRecord(billingId)
+                .onSuccess { updated ->
+                    _state.update { it.copy(currentBilling = updated, isLoading = false, successMessage = "Cobro CANCELADO") }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(error = "Error al cancelar: ${e.message}", isLoading = false) }
+                }
+        }
+    }
+
+    fun loadBillingBySpecialist(specialistId: Long) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            repository.getBillingBySpecialist(specialistId)
+                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
+                .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
+        }
+    }
+
+    fun loadPendingBillingBySpecialist(specialistId: Long) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            repository.getPendingBillingBySpecialist(specialistId)
+                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
+                .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
+        }
+    }
+
+    fun loadTodayBillingBySpecialist(specialistId: Long) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            repository.getTodayBillingBySpecialist(specialistId)
+                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
+                .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }
     }
 }

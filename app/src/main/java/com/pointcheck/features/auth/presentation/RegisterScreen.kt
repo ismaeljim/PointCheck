@@ -102,6 +102,23 @@ fun RegisterScreen(
                 }
             )
             Spacer(Modifier.height(8.dp))
+            
+            // Selector de Rol
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("¿Registrar como Especialista?", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = s.role == "SPECIALIST",
+                    onCheckedChange = { isSpecialist ->
+                        vm.onValueChange("role", if (isSpecialist) "SPECIALIST" else "CLIENT")
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween

@@ -9,11 +9,24 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pointcheck.features.auth.presentation.LoginScreen
 import com.pointcheck.features.auth.presentation.RegisterScreen
-import com.pointcheck.features.booking.presentation.BookingScreen
-import com.pointcheck.features.booking.presentation.ScheduledScreen
+import com.pointcheck.features.reservation.presentation.BookingScreen
+import com.pointcheck.features.reservation.presentation.ScheduledScreen
 import com.pointcheck.features.dashboard.presentation.DashboardScreen
 import com.pointcheck.features.external.presentation.ServiceDetailScreen
 import com.pointcheck.features.profile.presentation.ProfileScreen
+import com.pointcheck.features.profile.presentation.ProfessionalProfileScreen
+import com.pointcheck.features.services.presentation.ServiceListScreen
+import com.pointcheck.features.attentions.presentation.AttentionScreen
+import com.pointcheck.features.billing.presentation.BillingScreen
+import com.pointcheck.features.subscriptions.presentation.SubscriptionScreen
+import com.pointcheck.core.prefs.UserPreferences
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.flow.first
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -23,6 +36,16 @@ sealed class Screen(val route: String) {
     object Booking : Screen("booking")
     object Scheduled : Screen("scheduled")
     object Profile : Screen("profile")
+    object ProfessionalProfile : Screen("professional_profile")
+    object ServiceManagement : Screen("service_management")
+    object Subscription : Screen("subscription")
+    object Attention : Screen("attention/{reservationId}/{clientId}/{specialistId}") {
+        fun createRoute(reservationId: Long, clientId: Long, specialistId: Long) = "attention/$reservationId/$clientId/$specialistId"
+    }
+    object Billing : Screen("billing/{resId}/{cliId}/{specId}?attId={attId}") {
+        fun createRoute(resId: Long, cliId: Long, specId: Long, attId: Long?) = 
+            "billing/$resId/$cliId/$specId" + (attId?.let { "?attId=$it" } ?: "")
+    }
     object ServiceDetail : Screen("service_detail/{serviceName}") {
         fun createRoute(serviceName: String) = "service_detail/$serviceName"
     }
@@ -39,6 +62,41 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         composable(Screen.Booking.route) { BookingScreen(nav, snackbar) }
         composable(Screen.Scheduled.route) { ScheduledScreen(nav) }
         composable(Screen.Profile.route) { ProfileScreen(nav) }
+        composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
+        composable(Screen.ServiceManagement.route) { ServiceListScreen(nav) }
+        composable(Screen.Subscription.route) { SubscriptionScreen(nav) }
+        composable(
+            route = Screen.Attention.route,
+            arguments = listOf(
+                navArgument("reservationId") { type = NavType.LongType },
+                navArgument("clientId") { type = NavType.LongType },
+                navArgument("specialistId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val resId = backStackEntry.arguments?.getLong("reservationId") ?: 0L
+            val cliId = backStackEntry.arguments?.getLong("clientId") ?: 0L
+            val specId = backStackEntry.arguments?.getLong("specialistId") ?: 0L
+            AttentionScreen(nav, resId, cliId, specId)
+        }
+        composable(
+            route = "billing/{resId}/{cliId}/{specId}?attId={attId}",
+            arguments = listOf(
+                navArgument("resId") { type = NavType.LongType },
+                navArgument("cliId") { type = NavType.LongType },
+                navArgument("specId") { type = NavType.LongType },
+                navArgument("attId") { 
+                    type = NavType.StringType // Se pasa como String para manejar nulos fácilmente
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val resId = backStackEntry.arguments?.getLong("resId") ?: 0L
+            val cliId = backStackEntry.arguments?.getLong("cliId") ?: 0L
+            val specId = backStackEntry.arguments?.getLong("specId") ?: 0L
+            val attId = backStackEntry.arguments?.getString("attId")?.toLongOrNull()
+            BillingScreen(nav, resId, cliId, specId, attId)
+        }
         composable(
             route = Screen.ServiceDetail.route,
             arguments = listOf(navArgument("serviceName") { type = NavType.StringType })

@@ -34,9 +34,32 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadServices() {
         viewModelScope.launch {
-            val profileId = prefs.professionalProfileId.first() ?: return@launch
+            // Intentamos obtener el ID de perfil. Si es nulo, es posible que el perfil se haya creado 
+            // en esta sesión, por lo que intentamos cargarlo del backend si no está en prefs.
+            var profileId = prefs.professionalProfileId.first()
+            
+            if (profileId == null) {
+                val userId = prefs.userId.first()
+                if (userId != null) {
+                    try {
+                        val response = ApiClient.instance.getProfessionalProfileByUserId(userId)
+                        if (response.isSuccessful) {
+                            response.body()?.let { 
+                                profileId = it.id
+                                prefs.saveProfessionalProfileId(it.id)
+                            }
+                        }
+                    } catch (_: Exception) { /* Silencioso */ }
+                }
+            }
+
+            if (profileId == null) {
+                _state.update { it.copy(isLoading = false) }
+                return@launch
+            }
+
             _state.update { it.copy(isLoading = true) }
-            repository.getServices(profileId)
+            repository.getServices(profileId!!)
                 .onSuccess { list -> _state.update { it.copy(services = list, isLoading = false) } }
                 .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }

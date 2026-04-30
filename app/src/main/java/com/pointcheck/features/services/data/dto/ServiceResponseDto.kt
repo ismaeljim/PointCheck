@@ -5,7 +5,7 @@ data class ServiceResponseDto(
     val professionalProfileId: Long,
     val name: String,
     val description: String? = null,
-    val price: Double,
-    val durationMinutes: Int,
+    val price: Double? = null,
+    val durationMinutes: Int? = null,
     val active: Boolean
 )

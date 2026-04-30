@@ -6,5 +6,7 @@ data class SubscriptionResponseDto(
     val planName: String,
     val status: String,
     val startDate: String,
-    val endDate: String
+    val endDate: String,
+    val createdAt: String,
+    val updatedAt: String?
 )
