@@ -12,6 +12,7 @@ import com.pointcheck.features.auth.data.repository.AuthRepository
 import com.pointcheck.features.profile.data.repository.ProfessionalProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class RegisterUiState(
@@ -22,7 +23,8 @@ data class RegisterUiState(
     val role: String = "CLIENT",
     val avatarUri: String? = null,
     val isValid: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isLoading: Boolean = false
 )
 
 class UserViewModel(app: Application) : AndroidViewModel(app) {
@@ -59,6 +61,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         if (!s.isValid) return
 
         viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
             val registerRequest = RegisterRequestDto(
                 name = s.name,
                 email = s.email,
@@ -69,6 +72,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
             
             authRepository.register(registerRequest)
                 .onSuccess { userResponse ->
+                    _state.update { it.copy(isLoading = false) }
                     prefs.saveSession(
                         userId = userResponse.id,
                         name = userResponse.name,
@@ -88,15 +92,17 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                     onDone()
                 }
                 .onFailure { e ->
-                    _state.value = _state.value.copy(error = e.message ?: "Error en el registro")
+                    _state.update { it.copy(isLoading = false, error = e.message ?: "Error en el registro") }
                 }
         }
     }
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
             authRepository.login(email, password)
                 .onSuccess { userResponse ->
+                    _state.update { it.copy(isLoading = false) }
                     prefs.saveSession(
                         userId = userResponse.id,
                         name = userResponse.name,
@@ -115,7 +121,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                     onResult(true)
                 }
                 .onFailure { e ->
-                    _state.value = _state.value.copy(error = e.message ?: "Error de credenciales")
+                    _state.update { it.copy(isLoading = false, error = e.message ?: "Error de credenciales") }
                     onResult(false)
                 }
         }
