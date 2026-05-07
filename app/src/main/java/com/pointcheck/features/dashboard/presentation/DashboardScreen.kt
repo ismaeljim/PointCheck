@@ -147,6 +147,7 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
         Spacer(Modifier.height(24.dp))
         Text("Accesos Rápidos", style = MaterialTheme.typography.titleMedium)
         
+        DashboardButton("Perfil Profesional", Icons.Default.Person) { nav.navigate(Screen.ProfessionalProfile.route) }
         DashboardButton("Mi Agenda", Icons.Default.CalendarMonth) { nav.navigate(Screen.Scheduled.route) }
         DashboardButton("Servicios", Icons.AutoMirrored.Filled.List) { nav.navigate(Screen.ServiceManagement.route) }
         DashboardButton("Suscripción", Icons.Default.Star) { nav.navigate(Screen.Subscription.route) }
@@ -166,24 +167,49 @@ fun FinancialRow(label: String, value: String, valueColor: androidx.compose.ui.g
 
 @Composable
 fun MetricCard(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(
+                    icon,
+                    null,
+                    modifier = Modifier.padding(8.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 1
+            )
         }
     }
 }
 
 @Composable
 fun DashboardButton(text: String, icon: ImageVector, onClick: () -> Unit) {
-    Button(
+    OutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(16.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
-        Icon(icon, null)
+        Icon(icon, null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
-        Text(text, fontSize = 16.sp)
+        Text(text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
     }
 }

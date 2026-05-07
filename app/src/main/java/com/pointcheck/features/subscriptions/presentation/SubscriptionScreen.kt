@@ -1,25 +1,31 @@
 package com.pointcheck.features.subscriptions.presentation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel()) {
     val s by vm.state.collectAsState()
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -27,7 +33,7 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
                 title = { Text("Mi Suscripción") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -36,10 +42,26 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
         Column(
             modifier = Modifier
                 .padding(pad)
-                .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Text(
+                "Gestiona tu plan comercial",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Text(
+                "Asegura la operatividad de tu negocio eligiendo el plan que mejor se adapte a tus necesidades.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             if (s.isLoading) {
                 CircularProgressIndicator()
             } else {
@@ -55,63 +77,94 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
                 }
             }
 
-            s.error?.let {
-                Spacer(Modifier.height(16.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
+            if (s.error != null) {
+                SubscriptionStatusMessage(s.error!!, isError = true)
             }
 
-            s.successMessage?.let {
-                Spacer(Modifier.height(16.dp))
-                Text(it, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+            if (s.successMessage != null) {
+                SubscriptionStatusMessage(s.successMessage!!, isError = false)
             }
             
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(32.dp))
             
-            Text(
-                "Gestión básica de plan comercial. No incluye cobro automático.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Nota: Esta es una gestión básica de plan comercial. Los cobros automáticos no están habilitados en esta versión.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 fun ActiveSubscriptionCard(
-    sub: com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto,
+    sub: SubscriptionResponseDto,
     onCancel: () -> Unit
 ) {
+    val isActive = sub.status == "ACTIVE"
+    val statusColor = if (isActive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+
     Card(
         modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (sub.status == "ACTIVE") Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+            containerColor = if (isActive) Color(0xFFF1F8E9) else Color(0xFFFFF1F0)
         )
     ) {
         Column(Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (sub.status == "ACTIVE") Icons.Default.CheckCircle else Icons.Default.Info,
+                    imageVector = if (isActive) Icons.Default.CheckCircle else Icons.Default.Info,
                     contentDescription = null,
-                    tint = if (sub.status == "ACTIVE") Color(0xFF2E7D32) else Color.Red
+                    tint = statusColor,
+                    modifier = Modifier.size(32.dp)
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Plan: ${sub.planName}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = sub.planName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor
+                    )
+                    Surface(
+                        color = statusColor.copy(alpha = 0.1f),
+                        shape = MaterialTheme.shapes.extraSmall
+                    ) {
+                        Text(
+                            text = sub.status,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.height(16.dp))
-            Text("Estado: ${sub.status}", fontWeight = FontWeight.Medium)
-            Text("Desde: ${sub.startDate}")
-            Text("Hasta: ${sub.endDate}")
             
-            if (sub.status == "ACTIVE") {
-                Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider(color = statusColor.copy(alpha = 0.2f))
+            Spacer(Modifier.height(16.dp))
+
+            SubDetailRow(Icons.Default.Info, "Vigencia desde", sub.startDate)
+            SubDetailRow(Icons.Default.Info, "Vigencia hasta", sub.endDate)
+            
+            if (isActive) {
+                Spacer(Modifier.height(32.dp))
                 OutlinedButton(
                     onClick = onCancel,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                    modifier = Modifier.fillMaxWidth()
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                 ) {
                     Text("CANCELAR SUSCRIPCIÓN")
                 }
@@ -121,28 +174,38 @@ fun ActiveSubscriptionCard(
 }
 
 @Composable
+fun SubDetailRow(icon: ImageVector, label: String, value: String) {
+    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.width(8.dp))
+        Text("$label: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
 fun NoSubscriptionView(onSelectPlan: (String) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            "No tienes una suscripción activa.",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            "Selecciona un plan para comenzar",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-        Spacer(Modifier.height(24.dp))
         
         PlanCard(
-            title = "BASIC",
-            desc = "Gestión de agenda y reportes básicos",
-            price = "GRATIS",
+            title = "PLAN BASIC",
+            desc = "Ideal para profesionales independientes. Gestión de agenda básica y reportes mensuales.",
+            price = "GRATUITO",
             onSelect = { onSelectPlan("BASIC") }
         )
         
         Spacer(Modifier.height(16.dp))
         
         PlanCard(
-            title = "PREMIUM",
-            desc = "Agenda ilimitada, reportes avanzados y soporte",
-            price = "9.990 CLP / mes",
+            title = "PLAN PREMIUM",
+            desc = "Para negocios en crecimiento. Agenda ilimitada, reportes avanzados, analítica y soporte prioritario.",
+            price = "$9.990 CLP / mes",
             isPremium = true,
             onSelect = { onSelectPlan("PREMIUM") }
         )
@@ -153,19 +216,66 @@ fun NoSubscriptionView(onSelectPlan: (String) -> Unit) {
 fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = false, onSelect: () -> Unit) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        onClick = onSelect
+        onClick = onSelect,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isPremium) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+        )
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    title, 
+                    style = MaterialTheme.typography.titleLarge, 
+                    fontWeight = FontWeight.Bold,
+                    color = if (isPremium) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                )
                 if (isPremium) {
                     Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFBC02D))
+                    Icon(Icons.Default.Stars, contentDescription = null, tint = Color(0xFFFBC02D))
                 }
             }
-            Text(desc, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
-            Text(price, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(
+                desc, 
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isPremium) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                price, 
+                style = MaterialTheme.typography.titleMedium, 
+                fontWeight = FontWeight.Bold,
+                color = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+            )
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onSelect,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text("Elegir este plan")
+            }
         }
+    }
+}
+
+@Composable
+fun SubscriptionStatusMessage(msg: String, isError: Boolean) {
+    val containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else Color(0xFFE8F5E9)
+    val contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else Color(0xFF2E7D32)
+    
+    Card(
+        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Text(
+            msg,
+            color = contentColor,
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center
+        )
     }
 }

@@ -1,9 +1,23 @@
 package com.pointcheck.features.billing.presentation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -19,14 +33,15 @@ fun BillingScreen(
     vm: BillingViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Registro de Cobro") },
+                title = { Text("Gestión de Cobro") },
                 navigationIcon = {
-                    TextButton(onClick = { nav.popBackStack() }) {
-                        Text("Atrás")
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
                 }
             )
@@ -35,131 +50,214 @@ fun BillingScreen(
         Column(
             modifier = Modifier
                 .padding(pad)
-                .padding(16.dp)
                 .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(16.dp)
         ) {
             if (s.currentBilling == null) {
                 // Formulario de creación
-                Text("Crear Registro de Cobro", style = MaterialTheme.typography.titleMedium)
-                Text("Reserva #$reservationId", style = MaterialTheme.typography.bodySmall)
-                attentionId?.let { Text("Atención #$it", style = MaterialTheme.typography.bodySmall) }
-                
-                Spacer(Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = s.amount,
-                    onValueChange = { vm.setAmount(it) },
-                    label = { Text("Monto ($)") },
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    "Información del Cobro",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
                 )
+                Text(
+                    "Complete los datos para generar el registro de pago.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(Modifier.height(24.dp))
 
-                Spacer(Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        OutlinedTextField(
+                            value = s.amount,
+                            onValueChange = { vm.setAmount(it) },
+                            label = { Text("Monto a Cobrar") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = { Icon(Icons.Default.AttachMoney, null) },
+                            shape = MaterialTheme.shapes.medium,
+                            prefix = { Text("$") }
+                        )
 
-                Text("Método de Pago:")
-                val methods = listOf("CASH", "TRANSFER", "CARD", "OTHER")
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    methods.forEach { method ->
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = s.paymentMethod == method,
-                                onClick = { vm.setPaymentMethod(method) }
-                            )
-                            Text(method, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(20.dp))
+
+                        Text(
+                            "Método de Pago",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        
+                        val methods = listOf(
+                            "CASH" to "Efectivo", 
+                            "TRANSFER" to "Transferencia", 
+                            "CARD" to "Tarjeta", 
+                            "OTHER" to "Otro"
+                        )
+                        
+                        methods.forEach { (code, label) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = s.paymentMethod == code,
+                                        onClick = { vm.setPaymentMethod(code) }
+                                    )
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = s.paymentMethod == code,
+                                    onClick = { vm.setPaymentMethod(code) }
+                                )
+                                Text(label, style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = s.notes,
+                            onValueChange = { vm.setNotes(it) },
+                            label = { Text("Notas (Opcional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = { Icon(Icons.Default.Description, null) },
+                            shape = MaterialTheme.shapes.medium
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = s.notes,
-                    onValueChange = { vm.setNotes(it) },
-                    label = { Text("Notas / Descripción") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
 
                 Button(
                     onClick = { vm.createBillingRecord(reservationId, attentionId) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !s.isLoading
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = !s.isLoading && s.amount.isNotBlank()
                 ) {
-                    Text("Registrar Cobro")
+                    if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    else Text("Generar Cobro")
                 }
             } else {
                 // Detalle del cobro creado
                 val billing = s.currentBilling!!
                 
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Detalle del Cobro", style = MaterialTheme.typography.headlineSmall)
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        Text("ID Cobro: ${billing.id}")
-                        Text("Estado: ${billing.status}", 
-                             color = if (billing.status == "PAID") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-                        Text("Monto: ${billing.amount} ${billing.currency}")
-                        Text("Método inicial: ${billing.paymentMethod ?: "No definido"}")
-                        Text("Creado: ${billing.createdAt}")
+                Text(
+                    "Resumen de Transacción",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                ) {
+                    Column(Modifier.padding(20.dp)) {
+                        BillingInfoRow(Icons.Default.Receipt, "ID Cobro", "#${billing.id}")
+                        BillingInfoRow(
+                            Icons.Default.Payment, 
+                            "Estado", 
+                            billing.status,
+                            color = if (billing.status == "PAID") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                        BillingInfoRow(Icons.Default.AttachMoney, "Monto", "${billing.amount} ${billing.currency}")
+                        BillingInfoRow(Icons.Default.CreditCard, "Método", billing.paymentMethod ?: "No definido")
+                        BillingInfoRow(Icons.Default.History, "Fecha", billing.createdAt)
                         
-                        billing.paidAt?.let { Text("Pagado el: $it") }
-                        billing.externalReference?.let { Text("Ref: $it") }
-                        billing.notes?.let { Text("Notas: $it") }
+                        billing.paidAt?.let { BillingInfoRow(Icons.Default.History, "Pagado el", it) }
+                        billing.externalReference?.let { BillingInfoRow(Icons.Default.Description, "Ref", it) }
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
 
                 if (billing.status == "PENDING") {
-                    Text("Completar Pago", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Confirmar Pago",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(12.dp))
                     
                     OutlinedTextField(
                         value = s.externalReference,
                         onValueChange = { vm.setExternalReference(it) },
-                        label = { Text("Referencia Externa (N° Transacción)") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Número de Referencia / Comprobante") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
                     )
                     
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     
                     Row(Modifier.fillMaxWidth()) {
                         Button(
                             onClick = { vm.markAsPaid(billing.id) },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            enabled = !s.isLoading
                         ) {
-                            Text("Pagar")
+                            Text("Registrar Pago")
                         }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(12.dp))
                         OutlinedButton(
                             onClick = { vm.cancelBillingRecord(billing.id) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            enabled = !s.isLoading,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("Cancelar")
+                            Text("Anular")
                         }
                     }
                 } else {
                     Button(
                         onClick = { nav.popBackStack() },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
                         Text("Finalizar y Volver")
                     }
                 }
             }
 
-            if (s.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            if (s.error != null) {
+                BillingMessage(s.error!!, isError = true)
             }
-
-            s.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-            }
-            s.successMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+            if (s.successMessage != null) {
+                BillingMessage(s.successMessage!!, isError = false)
             }
         }
+    }
+}
+
+@Composable
+fun BillingInfoRow(icon: ImageVector, label: String, value: String, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
+    Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(12.dp))
+        Text("$label:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.width(4.dp))
+        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = color)
+    }
+}
+
+@Composable
+fun BillingMessage(msg: String, isError: Boolean) {
+    val containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
+    val contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
+    
+    Card(
+        modifier = Modifier.padding(top = 24.dp).fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Text(
+            msg,
+            color = contentColor,
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

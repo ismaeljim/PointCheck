@@ -19,23 +19,47 @@ fun ProfileScreen(nav: NavController) {
     val prefs = UserPreferences(context)
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         email = prefs.email.first() ?: "No identificado"
+        role = prefs.role.first() ?: ""
     }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Mi Perfil") }) }) { pad ->
         Column(Modifier.padding(pad).padding(16.dp)) {
-            Text("Email: $email", style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = {
-                scope.launch {
-                    prefs.clear()
-                    nav.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Dashboard.route) { inclusive = true }
-                    }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Información de Cuenta", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Email: $email", style = MaterialTheme.typography.bodyLarge)
+                    Text("Rol: $role", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                 }
-            }) {
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            if (role == "SPECIALIST") {
+                Button(
+                    onClick = { nav.navigate(Screen.ProfessionalProfile.route) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Configurar Perfil Profesional")
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        prefs.clear()
+                        nav.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Dashboard.route) { inclusive = true }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Cerrar Sesión")
             }
         }
