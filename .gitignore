@@ -10,3 +10,12 @@ captures/
 .DS_Store
 .kotlin/
 backend/build/
+
+# Backups y temporales
+*.backup
+*.old
+*.bak
+*.tmp
+
+# Logs
+*.log
