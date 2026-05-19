@@ -20,6 +20,10 @@ class ReservationRepository(private val api: ApiService) {
         return handleApiCall { api.getUpcomingReservationsByClient(clientId) }
     }
 
+    suspend fun getReservationHistoryByClient(clientId: Long): Result<List<ReservationResponseDto>> {
+        return handleApiCall { api.getReservationHistoryByClient(clientId) }
+    }
+
     suspend fun getReservationsBySpecialist(specialistId: Long): Result<List<ReservationResponseDto>> {
         return handleApiCall { api.getReservationsBySpecialist(specialistId) }
     }
@@ -46,6 +50,10 @@ class ReservationRepository(private val api: ApiService) {
 
     suspend fun getServices(professionalProfileId: Long): Result<List<ServiceResponseDto>> {
         return handleApiCall { api.getServicesByProfessionalProfileId(professionalProfileId) }
+    }
+
+    suspend fun getWeather(city: String): Result<com.pointcheck.features.external.data.dto.WeatherResponseDto> {
+        return handleApiCall { api.getWeather(city) }
     }
 
     private suspend fun <T> handleApiCall(call: suspend () -> Response<T>): Result<T> {

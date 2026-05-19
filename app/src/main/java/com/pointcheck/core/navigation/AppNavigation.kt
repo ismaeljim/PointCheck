@@ -1,6 +1,7 @@
 package com.pointcheck.core.navigation
 
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,6 +13,8 @@ import com.pointcheck.features.auth.presentation.RegisterScreen
 import com.pointcheck.features.reservation.presentation.BookingScreen
 import com.pointcheck.features.reservation.presentation.ScheduledScreen
 import com.pointcheck.features.dashboard.presentation.DashboardScreen
+import com.pointcheck.features.dashboard.presentation.WeeklyReportScreen
+import com.pointcheck.features.reservation.presentation.AppointmentHistoryScreen
 import com.pointcheck.features.external.presentation.ServiceDetailScreen
 import com.pointcheck.features.profile.presentation.ProfileScreen
 import com.pointcheck.features.profile.presentation.ProfessionalProfileScreen
@@ -33,7 +36,10 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object Login : Screen("login")
     object Register : Screen("register")
-    object Booking : Screen("booking")
+    object Booking : Screen("booking?specialistId={specialistId}") {
+        fun createRoute(specialistId: Long? = null) = 
+            "booking" + (specialistId?.let { "?specialistId=$it" } ?: "")
+    }
     object Scheduled : Screen("scheduled")
     object Profile : Screen("profile")
     object ProfessionalProfile : Screen("professional_profile")
@@ -49,6 +55,10 @@ sealed class Screen(val route: String) {
     object ServiceDetail : Screen("service_detail/{serviceName}") {
         fun createRoute(serviceName: String) = "service_detail/$serviceName"
     }
+    object AppointmentHistory : Screen("appointment_history/{type}") {
+        fun createRoute(type: String) = "appointment_history/$type"
+    }
+    object WeeklyReport : Screen("weekly_report")
 }
 
 @Composable
@@ -59,7 +69,19 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         composable(Screen.Dashboard.route) { DashboardScreen(nav) }
         composable(Screen.Login.route) { LoginScreen(nav) }
         composable(Screen.Register.route) { RegisterScreen(nav) }
-        composable(Screen.Booking.route) { BookingScreen(nav, snackbar) }
+        composable(
+            route = Screen.Booking.route,
+            arguments = listOf(
+                navArgument("specialistId") { 
+                    type = NavType.StringType 
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val specId = backStackEntry.arguments?.getString("specialistId")?.toLongOrNull()
+            BookingScreen(nav, snackbar, specId)
+        }
         composable(Screen.Scheduled.route) { ScheduledScreen(nav) }
         composable(Screen.Profile.route) { ProfileScreen(nav) }
         composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
@@ -103,6 +125,16 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         ) { backStackEntry ->
             val name = backStackEntry.arguments?.getString("serviceName") ?: ""
             ServiceDetailScreen(name, nav)
+        }
+        composable(
+            route = Screen.AppointmentHistory.route,
+            arguments = listOf(navArgument("type") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val type = backStackEntry.arguments?.getString("type") ?: "recent"
+            AppointmentHistoryScreen(type, nav)
+        }
+        composable(Screen.WeeklyReport.route) {
+            WeeklyReportScreen(nav)
         }
     }
 }

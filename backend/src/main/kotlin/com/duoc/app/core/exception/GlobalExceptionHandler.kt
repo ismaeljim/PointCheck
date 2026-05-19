@@ -20,6 +20,17 @@ class GlobalExceptionHandler {
         return ResponseEntity(errorResponse, HttpStatus.BAD_REQUEST)
     }
 
+    @ExceptionHandler(IllegalStateException::class)
+    fun handleIllegalStateException(e: IllegalStateException): ResponseEntity<ApiErrorResponse> {
+        val errorResponse = ApiErrorResponse(
+            status = HttpStatus.CONFLICT.value(),
+            error = "Conflict",
+            message = e.message ?: "Conflicto en la solicitud",
+            timestamp = LocalDateTime.now()
+        )
+        return ResponseEntity(errorResponse, HttpStatus.CONFLICT)
+    }
+
     @ExceptionHandler(NoSuchElementException::class)
     fun handleNoSuchElementException(e: NoSuchElementException): ResponseEntity<ApiErrorResponse> {
         val errorResponse = ApiErrorResponse(

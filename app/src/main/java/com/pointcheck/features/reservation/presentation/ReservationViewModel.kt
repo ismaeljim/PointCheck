@@ -9,6 +9,7 @@ import com.pointcheck.features.reservation.data.dto.*
 import com.pointcheck.features.reservation.data.repository.ReservationRepository
 import com.pointcheck.features.services.data.dto.ServiceResponseDto
 import com.pointcheck.features.profile.data.dto.ProfessionalProfileResponseDto
+import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -19,6 +20,7 @@ data class BookingUiState(
     val services: List<ServiceResponseDto> = emptyList(),
     val selectedProfessional: SpecialistResponseDto? = null,
     val selectedService: ServiceResponseDto? = null,
+    val weather: WeatherResponseDto? = null,
     val reservationStartMillis: Long? = null,
     val notes: String = "",
     val isLoading: Boolean = false,
@@ -61,9 +63,34 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
             selectedProfessional = profile, 
             selectedService = null, 
             services = emptyList(),
+            weather = null,
             isValid = false
         ) }
         loadServicesForProfessional(profile.id)
+    }
+
+    fun selectProfessionalById(id: Long) {
+        viewModelScope.launch {
+            // Asegurarse de que los profesionales estén cargados
+            if (_state.value.professionals.isEmpty()) {
+                loadProfessionals()
+            }
+            // Buscar el profesional en la lista
+            val prof = _state.value.professionals.find { it.id == id }
+            if (prof != null) {
+                selectProfessional(prof)
+            }
+        }
+    }
+
+    private fun loadWeather(city: String?) {
+        if (city.isNullOrBlank()) return
+        viewModelScope.launch {
+            repository.getWeather(city)
+                .onSuccess { weather ->
+                    _state.update { it.copy(weather = weather) }
+                }
+        }
     }
 
     private fun loadServicesForProfessional(profileId: Long) {
@@ -89,6 +116,23 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     fun setReservationDateTime(millis: Long) {
         _state.update { s ->
             val newState = s.copy(reservationStartMillis = millis)
+            newState.copy(isValid = validate(newState))
+        }
+        // Trigger weather lookup when date is selected as per Prompt 5
+        _state.value.selectedProfessional?.city?.let { city ->
+            loadWeather(city)
+        }
+    }
+
+    fun updateReservationTime(hour: Int, minute: Int) {
+        _state.update { s ->
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = s.reservationStartMillis ?: System.currentTimeMillis()
+            calendar.set(Calendar.HOUR_OF_DAY, hour)
+            calendar.set(Calendar.MINUTE, minute)
+            calendar.set(Calendar.SECOND, 0)
+            
+            val newState = s.copy(reservationStartMillis = calendar.timeInMillis)
             newState.copy(isValid = validate(newState))
         }
     }
@@ -139,14 +183,17 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
             val clientId = prefs.userId.first() ?: return@launch
             _state.update { it.copy(isLoading = true) }
 
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-            val startDate = Date(s.reservationStartMillis!!)
-            val isoStart = sdf.format(startDate)
+            // Usar Calendar para ajustar la hora seleccionada (que suele ser 00:00 si viene solo del DatePicker)
+            // Para fines de este MVP, si el usuario no elige hora, pondremos una por defecto o usaremos la actual
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = s.reservationStartMillis!!
             
-            // Calcular fin (60 min por defecto o duración del servicio)
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val isoStart = sdf.format(calendar.time)
+            
             val duration = s.selectedService?.durationMinutes ?: 60
-            val endDate = Date(s.reservationStartMillis + (duration * 60 * 1000))
-            val isoEnd = sdf.format(endDate)
+            calendar.add(Calendar.MINUTE, duration)
+            val isoEnd = sdf.format(calendar.time)
 
             val request = ReservationRequestDto(
                 clientId = clientId,

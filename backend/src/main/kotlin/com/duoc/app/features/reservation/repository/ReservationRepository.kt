@@ -25,4 +25,10 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
         specialistId: Long,
         now: LocalDateTime
     ): List<Reservation>
+
+    fun existsBySpecialist_IdAndReservationStartLessThanEqualAndReservationEndGreaterThanEqual(
+        specialistId: Long,
+        end: LocalDateTime,
+        start: LocalDateTime
+    ): Boolean
 }

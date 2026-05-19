@@ -5,9 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
+import com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
+import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -16,8 +18,11 @@ import kotlinx.coroutines.launch
 
 data class DashboardUiState(
     val metrics: DashboardMetricsDto = DashboardMetricsDto(),
+    val clientDashboard: ClientDashboardResponseDto? = null,
     val reportSummary: ReportSummaryResponseDto? = null,
+    val weather: WeatherResponseDto? = null,
     val isLoading: Boolean = false,
+    val isLoadingWeather: Boolean = false,
     val error: String? = null,
     val userName: String = "",
     val userRole: String = ""
@@ -55,17 +60,52 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
                         }
                 } else {
-                    repository.getDashboardMetrics(userId, role)
-                        .onSuccess { metrics ->
-                            _state.update { it.copy(metrics = metrics, isLoading = false) }
+                    repository.getClientDashboard(userId)
+                        .onSuccess { dashboard ->
+                            _state.update { it.copy(clientDashboard = dashboard, isLoading = false) }
+                            // Cargar clima si hay una cita próxima con ciudad
+                            dashboard.nextAppointment?.city?.let { city ->
+                                loadWeather(city)
+                            }
                         }
                         .onFailure { e ->
-                            _state.update { it.copy(error = "Error al cargar métricas: ${e.message}", isLoading = false) }
+                            _state.update { it.copy(error = "Error al cargar dashboard: ${e.message}", isLoading = false) }
                         }
                 }
             } else {
                 _state.update { it.copy(isLoading = false) }
             }
+        }
+    }
+
+    private fun loadWeather(city: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingWeather = true) }
+            repository.getWeather(city)
+                .onSuccess { w ->
+                    _state.update { it.copy(weather = w, isLoadingWeather = false) }
+                }
+                .onFailure {
+                    _state.update { it.copy(isLoadingWeather = false) }
+                }
+        }
+    }
+
+    fun markAsRead(notificationId: Long) {
+        viewModelScope.launch {
+            repository.markNotificationAsRead(notificationId)
+                .onSuccess {
+                    // Actualizar estado local
+                    _state.update { s ->
+                        val updatedList = s.clientDashboard?.recentNotifications?.map {
+                            if (it.id == notificationId) it.copy(isRead = true) else it
+                        } ?: emptyList()
+                        
+                        s.copy(
+                            clientDashboard = s.clientDashboard?.copy(recentNotifications = updatedList)
+                        )
+                    }
+                }
         }
     }
 }

@@ -12,5 +12,6 @@ data class SpecialistResponseDto(
     @SerializedName("displayName")
     val name: String,
     val specialty: String?,
+    val city: String?,
     val defaultSessionDurationMinutes: Int? = 30
 )

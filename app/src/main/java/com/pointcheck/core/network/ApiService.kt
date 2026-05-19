@@ -17,7 +17,11 @@ import com.pointcheck.features.billing.data.dto.MarkAsPaidRequestDto
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionRequestDto
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
+import com.pointcheck.features.dashboard.data.dto.MonthlyReportResponseDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
+import com.pointcheck.features.dashboard.data.dto.WeeklyReportResponseDto
+import com.pointcheck.features.external.data.dto.WeatherResponseDto
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -45,6 +49,9 @@ interface ApiService {
 
     @GET("api/reservations/client/{clientId}/upcoming")
     suspend fun getUpcomingReservationsByClient(@Path("clientId") clientId: Long): Response<List<ReservationResponseDto>>
+
+    @GET("api/reservations/client/{clientId}/history")
+    suspend fun getReservationHistoryByClient(@Path("clientId") clientId: Long): Response<List<ReservationResponseDto>>
 
     @GET("api/reservations/specialist/{specialistId}")
     suspend fun getReservationsBySpecialist(@Path("specialistId") specialistId: Long): Response<List<ReservationResponseDto>>
@@ -181,10 +188,46 @@ interface ApiService {
         @Path("specialistId") specialistId: Long
     ): Response<ReportSummaryResponseDto>
 
+    @GET("api/reports/weekly/{userId}")
+    suspend fun getWeeklyReport(
+        @Path("userId") userId: Long,
+        @Query("weekOffset") weekOffset: Int = 0
+    ): Response<WeeklyReportResponseDto>
+
+    @GET("api/reports/monthly/{userId}")
+    suspend fun getMonthlyReport(
+        @Path("userId") userId: Long,
+        @Query("monthOffset") monthOffset: Int = 0
+    ): Response<MonthlyReportResponseDto>
+
+    @GET("api/reports/export/weekly/{userId}")
+    suspend fun exportWeeklyReport(
+        @Path("userId") userId: Long,
+        @Query("weekOffset") weekOffset: Int = 0
+    ): Response<ResponseBody>
+
+    @GET("api/reports/export/monthly/{userId}")
+    suspend fun exportMonthlyReport(
+        @Path("userId") userId: Long,
+        @Query("monthOffset") monthOffset: Int = 0
+    ): Response<ResponseBody>
+
+    // --- New Dashboard Endpoints ---
+
+    @GET("api/dashboard/client/{clientId}")
+    suspend fun getClientDashboard(
+        @Path("clientId") clientId: Long
+    ): Response<com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto>
+
+    // --- Notification Endpoints ---
+
+    @PUT("api/notifications/{id}/read")
+    suspend fun markNotificationAsRead(@Path("id") id: Long): Response<Unit>
+
     // --- External API Endpoints ---
 
     @GET("api/external/weather/{city}")
-    suspend fun getWeather(@Path("city") city: String): Response<Any>
+    suspend fun getWeather(@Path("city") city: String): Response<WeatherResponseDto>
 
     @GET("api/external/place/{placeId}")
     suspend fun getPlaceDetails(@Path("placeId") placeId: String): Response<Any>

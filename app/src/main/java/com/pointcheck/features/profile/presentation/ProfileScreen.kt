@@ -23,7 +23,7 @@ fun ProfileScreen(nav: NavController) {
 
     LaunchedEffect(Unit) {
         email = prefs.email.first() ?: "No identificado"
-        role = prefs.role.first() ?: ""
+        role = prefs.role.first() ?: "SIN ROL"
     }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Mi Perfil") }) }) { pad ->
@@ -39,7 +39,7 @@ fun ProfileScreen(nav: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
-            if (role == "SPECIALIST") {
+            if (role.equals("SPECIALIST", ignoreCase = true)) {
                 Button(
                     onClick = { nav.navigate(Screen.ProfessionalProfile.route) },
                     modifier = Modifier.fillMaxWidth()

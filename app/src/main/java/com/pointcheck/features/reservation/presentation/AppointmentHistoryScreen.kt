@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,6 +92,15 @@ fun AppointmentHistoryScreen(
 
 @Composable
 fun AppointmentItem(res: ReservationResponseDto) {
+    val formattedDate = try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        val date = inputFormat.parse(res.reservationStart)
+        if (date != null) outputFormat.format(date) else res.reservationStart
+    } catch (e: Exception) {
+        res.reservationStart
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -102,7 +111,7 @@ fun AppointmentItem(res: ReservationResponseDto) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = res.reservationStart.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                    text = formattedDate,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

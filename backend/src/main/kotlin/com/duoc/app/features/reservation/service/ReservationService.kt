@@ -19,16 +19,15 @@ class ReservationService(
     private val reservationRepository: ReservationRepository,
     private val userRepository: UserRepository,
     private val serviceOfferingRepository: ServiceOfferingRepository,
-    private val professionalProfileRepository: ProfessionalProfileRepository
+    private val professionalProfileRepository: ProfessionalProfileRepository,
+    private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
 
     fun create(request: ReservationRequest): ReservationResponse {
         val client = userRepository.findById(request.clientId).orElseThrow {
             IllegalArgumentException("El cliente con ID ${request.clientId} no existe.")
         }
-        if (client.role != UserRole.CLIENT) {
-            throw IllegalArgumentException("El usuario con ID ${request.clientId} no es un cliente.")
-        }
+        // Permitimos que cualquier usuario (CLIENT o SPECIALIST) pueda agendar una cita
 
         val specialist = userRepository.findById(request.specialistId).orElseThrow {
             IllegalArgumentException("El especialista con ID ${request.specialistId} no existe.")
@@ -56,17 +55,39 @@ class ReservationService(
             service = serviceEntity
         }
 
+        // Validación de Traslape de Horarios (Conflictos)
+        val reservationEnd = request.reservationEnd ?: request.reservationStart.plusMinutes(60)
+        val hasConflict = reservationRepository.existsBySpecialist_IdAndReservationStartLessThanEqualAndReservationEndGreaterThanEqual(
+            request.specialistId,
+            reservationEnd,
+            request.reservationStart
+        )
+
+        if (hasConflict) {
+            throw IllegalStateException("El especialista ya tiene una cita agendada en este horario.")
+        }
+
         val reservation = Reservation(
             client = client,
             specialist = specialist,
             service = service,
             reservationStart = request.reservationStart,
-            reservationEnd = request.reservationEnd,
+            reservationEnd = reservationEnd,
             notes = request.notes,
             status = ReservationStatus.PENDING
         )
 
-        return reservationRepository.save(reservation).toResponse()
+        val savedReservation = reservationRepository.save(reservation)
+
+        // Paso 2: Notificar al cliente sobre la nueva reserva
+        notificationService.createNotification(
+            user = client,
+            title = "Nueva Cita Agendada",
+            message = "Tu cita con ${specialist.name} para el ${reservation.reservationStart} ha sido confirmada.",
+            type = com.duoc.app.features.notification.model.NotificationType.CONFIRMATION
+        )
+
+        return savedReservation.toResponse()
     }
 
     fun getByClient(clientId: Long): List<ReservationResponse> {
@@ -94,13 +115,23 @@ class ReservationService(
             IllegalArgumentException("Reserva no encontrada con ID: $id")
         }
 
-        // TODO: Si status es COMPLETED, validar que corresponda al flujo de attention
         val updatedReservation = reservation.copy(
             status = status,
-            updatedAt = LocalDateTime.now()
+            updatedAt = java.time.LocalDateTime.now()
         )
+        val saved = reservationRepository.save(updatedReservation)
 
-        return reservationRepository.save(updatedReservation).toResponse()
+        // Paso 2: Notificar si se cancela
+        if (status == ReservationStatus.CANCELLED) {
+            notificationService.createNotification(
+                user = reservation.client,
+                title = "Cita Cancelada",
+                message = "Tu cita con ${reservation.specialist.name} para el ${reservation.reservationStart} ha sido cancelada.",
+                type = com.duoc.app.features.notification.model.NotificationType.ALERT
+            )
+        }
+
+        return saved.toResponse()
     }
 
     fun cancel(id: Long): ReservationResponse {
@@ -111,7 +142,11 @@ class ReservationService(
         id = this.id,
         clientId = this.client.id,
         specialistId = this.specialist.id,
+        specialistName = this.specialist.name,
+        city = this.service?.professionalProfile?.city,
+        address = this.service?.professionalProfile?.address,
         serviceId = this.service?.id,
+        serviceName = this.service?.name,
         reservationStart = this.reservationStart,
         reservationEnd = this.reservationEnd,
         status = this.status,

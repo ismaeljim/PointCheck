@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.AccessTime
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -23,22 +24,34 @@ import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScreen(
     nav: NavController, 
     snackbar: SnackbarHostState, 
+    preSelectedSpecialistId: Long? = null,
     vm: ReservationViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
     val scope = rememberCoroutineScope()
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    
     val datePickerState = rememberDatePickerState()
+    val timePickerState = rememberTimePickerState()
+
     val scrollState = rememberScrollState()
 
     var professionalExpanded by remember { mutableStateOf(false) }
     var serviceExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(preSelectedSpecialistId) {
+        preSelectedSpecialistId?.let { id ->
+            vm.selectProfessionalById(id)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -128,7 +141,21 @@ fun BookingScreen(
             ) {
                 Icon(Icons.Default.CalendarMonth, null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (s.reservationStartMillis == null) "Elegir fecha de cita" else "Cambiar fecha")
+                Text(if (s.reservationStartMillis == null) "Elegir fecha" else "Cambiar fecha")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = s.reservationStartMillis != null,
+                shape = MaterialTheme.shapes.medium,
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                Icon(Icons.Filled.AccessTime, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Elegir hora")
             }
 
             s.reservationStartMillis?.let {
@@ -143,7 +170,47 @@ fun BookingScreen(
                         Text(formattedDate, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                     }
                 }
+
+                // Weather component integrated as per Prompt 5
+                s.weather?.let { w ->
+                    Card(
+                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Pronóstico para el día", style = MaterialTheme.typography.labelMedium)
+                                Text("${w.main.temp.toInt()}°C - ${w.weather.firstOrNull()?.description?.replaceFirstChar { it.uppercase() } ?: ""}", 
+                                    style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            }
+                            w.weather.firstOrNull()?.icon?.let { icon ->
+                                AsyncImage(
+                                    model = "https://openweathermap.org/img/wn/$icon@2x.png",
+                                    contentDescription = "Weather Icon",
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
+            Spacer(Modifier.height(24.dp))
+            Text("Paso 3: Notas Adicionales", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = s.notes,
+                onValueChange = { vm.setNotes(it) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Instrucciones especiales, síntomas, etc.") },
+                minLines = 3,
+                maxLines = 5,
+                shape = MaterialTheme.shapes.medium
+            )
 
             if (s.error != null) {
                 Text(s.error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp))
@@ -181,6 +248,25 @@ fun BookingScreen(
                     TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
                 }
             ) { DatePicker(state = datePickerState) }
+        }
+        if (showTimePicker) {
+            AlertDialog(
+                onDismissRequest = { showTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        vm.updateReservationTime(timePickerState.hour, timePickerState.minute)
+                        showTimePicker = false
+                    }) { Text("Confirmar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showTimePicker = false }) { Text("Cancelar") }
+                },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        TimePicker(state = timePickerState)
+                    }
+                }
+            )
         }
     }
 }

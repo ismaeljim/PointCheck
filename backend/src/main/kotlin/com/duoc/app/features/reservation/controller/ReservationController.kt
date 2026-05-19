@@ -40,6 +40,11 @@ class ReservationController(
         return ResponseEntity.ok(reservationService.getUpcomingByClient(clientId))
     }
 
+    @GetMapping("/client/{clientId}/history")
+    fun getHistoryByClient(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
+        return ResponseEntity.ok(reservationService.getByClient(clientId))
+    }
+
     @PutMapping("/{id}/status")
     fun updateStatus(
         @PathVariable id: Long,
