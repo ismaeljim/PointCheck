@@ -1,5 +1,6 @@
 package com.duoc.app.features.professionalprofile.model
 
+import com.duoc.app.features.service.model.Category
 import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.time.LocalDateTime
@@ -23,6 +24,10 @@ data class ProfessionalProfile(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     val user: User,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    var category: Category? = null,
 
     @Column(nullable = false, length = 150)
     val displayName: String,

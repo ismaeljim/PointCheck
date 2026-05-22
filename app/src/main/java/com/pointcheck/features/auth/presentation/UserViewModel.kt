@@ -7,9 +7,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
+import com.pointcheck.features.auth.data.dto.ServiceOfferingDto
 import com.pointcheck.features.auth.data.dto.RegisterRequestDto
 import com.pointcheck.features.auth.data.repository.AuthRepository
 import com.pointcheck.features.profile.data.repository.ProfessionalProfileRepository
+import com.pointcheck.core.util.RutUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -18,9 +20,15 @@ import kotlinx.coroutines.launch
 data class RegisterUiState(
     val name: String = "",
     val email: String = "",
+    val rut: String = "",
+    val phone: String = "",
     val password: String = "",
     val confirm: String = "",
     val role: String = "CLIENT",
+    val city: String = "",
+    val address: String = "",
+    val categoryId: Long? = null,
+    val selectedServices: List<ServiceOfferingDto> = emptyList(),
     val avatarUri: String? = null,
     val isValid: Boolean = false,
     val error: String? = null,
@@ -39,17 +47,38 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         val n = when (field) {
             "name" -> s.copy(name = value)
             "email" -> s.copy(email = value)
+            "rut" -> s.copy(rut = value.replace(".", "").replace("-", ""))
+            "phone" -> s.copy(phone = value)
             "password" -> s.copy(password = value)
             "confirm" -> s.copy(confirm = value)
             "role" -> s.copy(role = value)
+            "city" -> s.copy(city = value)
+            "address" -> s.copy(address = value)
+            "categoryId" -> s.copy(categoryId = value.toLongOrNull())
             else -> s
         }
         _state.value = n.copy(isValid = validate(n), error = null)
     }
 
-    private fun validate(s: RegisterUiState) = s.name.isNotBlank()
-            && Patterns.EMAIL_ADDRESS.matcher(s.email).matches()
-            && s.password.length >= 6 && s.password == s.confirm
+    fun onServicesSelected(services: List<ServiceOfferingDto>) {
+        val n = _state.value.copy(selectedServices = services)
+        _state.value = n.copy(isValid = validate(n))
+    }
+
+    private fun validate(s: RegisterUiState): Boolean {
+        val baseValid = s.name.isNotBlank()
+                && Patterns.EMAIL_ADDRESS.matcher(s.email).matches()
+                && RutUtils.validateRut(s.rut)
+                && s.phone.length >= 8
+                && s.password.length >= 6 
+                && s.password == s.confirm
+        
+        return if (s.role == "SPECIALIST" || s.role == "PROFESSIONAL") {
+            baseValid && s.city.isNotBlank() && s.address.isNotBlank() && s.categoryId != null
+        } else {
+            baseValid
+        }
+    }
 
     fun setAvatar(uri: Uri) {
         val s = _state.value
@@ -66,8 +95,13 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                 name = s.name,
                 email = s.email,
                 password = s.password,
-                phone = null,
-                role = s.role
+                rut = s.rut,
+                phone = s.phone,
+                role = s.role,
+                city = if (s.role != "CLIENT") s.city else null,
+                address = if (s.role != "CLIENT") s.address else null,
+                categoryId = s.categoryId,
+                services = if (s.role != "CLIENT") s.selectedServices else null
             )
             
             authRepository.register(registerRequest)
@@ -97,12 +131,14 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun clearError() = _state.update { it.copy(error = null) }
+
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            authRepository.login(email, password)
+            authRepository.login(email.trim(), password)
                 .onSuccess { userResponse ->
-                    _state.update { it.copy(isLoading = false) }
+                    // Guardar sesión antes de notificar éxito
                     prefs.saveSession(
                         userId = userResponse.id,
                         name = userResponse.name,
@@ -118,6 +154,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                             }
                     }
                     
+                    _state.update { it.copy(isLoading = false) }
                     onResult(true)
                 }
                 .onFailure { e ->

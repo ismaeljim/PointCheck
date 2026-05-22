@@ -4,6 +4,7 @@ import com.duoc.app.features.professionalprofile.dto.ProfessionalProfileRequest
 import com.duoc.app.features.professionalprofile.dto.ProfessionalProfileResponse
 import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
+import com.duoc.app.features.service.repository.CategoryRepository
 import com.duoc.app.features.user.model.UserRole
 import com.duoc.app.features.user.repository.UserRepository
 import org.springframework.stereotype.Service
@@ -13,7 +14,8 @@ import java.time.LocalDateTime
 @Service
 class ProfessionalProfileService(
     private val professionalProfileRepository: ProfessionalProfileRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val categoryRepository: CategoryRepository
 ) {
 
     @Transactional
@@ -46,8 +48,12 @@ class ProfessionalProfileService(
         return professionalProfileRepository.save(profile).toResponse()
     }
 
-    fun getActive(): List<ProfessionalProfileResponse> {
-        return professionalProfileRepository.findByActiveTrue().map { it.toResponse() }
+    fun getActive(categoryId: Long? = null): List<ProfessionalProfileResponse> {
+        return if (categoryId != null) {
+            professionalProfileRepository.findByCategoryIdAndActiveTrue(categoryId).map { it.toResponse() }
+        } else {
+            professionalProfileRepository.findByActiveTrue().map { it.toResponse() }
+        }
     }
 
     fun getByUserId(userId: Long): ProfessionalProfileResponse {
@@ -95,6 +101,7 @@ class ProfessionalProfileService(
         return ProfessionalProfileResponse(
             id = this.id,
             userId = this.user.id,
+            categoryId = this.category?.id,
             displayName = this.displayName,
             businessName = this.businessName,
             specialty = this.specialty,

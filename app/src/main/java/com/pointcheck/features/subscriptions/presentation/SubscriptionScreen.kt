@@ -26,8 +26,24 @@ import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel()) {
     val s by vm.state.collectAsState()
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearSuccess()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Mi Suscripción") },
@@ -63,28 +79,24 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
             Spacer(Modifier.height(24.dp))
 
             if (s.isLoading) {
-                CircularProgressIndicator()
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
                 if (s.currentSubscription != null) {
                     ActiveSubscriptionCard(
                         sub = s.currentSubscription!!,
-                        onCancel = { vm.cancelSubscription() }
+                        onCancel = { vm.cancelSubscription() },
+                        isLoading = s.isLoading
                     )
                 } else {
                     NoSubscriptionView(
-                        onSelectPlan = { vm.createSubscription(it) }
+                        onSelectPlan = { vm.createSubscription(it) },
+                        isLoading = s.isLoading
                     )
                 }
             }
 
-            if (s.error != null) {
-                SubscriptionStatusMessage(s.error!!, isError = true)
-            }
-
-            if (s.successMessage != null) {
-                SubscriptionStatusMessage(s.successMessage!!, isError = false)
-            }
-            
             Spacer(Modifier.height(32.dp))
             
             Surface(
@@ -108,7 +120,8 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
 @Composable
 fun ActiveSubscriptionCard(
     sub: SubscriptionResponseDto,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    isLoading: Boolean
 ) {
     val isActive = sub.status == "ACTIVE"
     val statusColor = if (isActive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
@@ -164,9 +177,11 @@ fun ActiveSubscriptionCard(
                     onClick = onCancel,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                    enabled = !isLoading
                 ) {
-                    Text("CANCELAR SUSCRIPCIÓN")
+                    if (isLoading) CircularProgressIndicator(Modifier.size(24.dp))
+                    else Text("CANCELAR SUSCRIPCIÓN")
                 }
             }
         }
@@ -184,7 +199,7 @@ fun SubDetailRow(icon: ImageVector, label: String, value: String) {
 }
 
 @Composable
-fun NoSubscriptionView(onSelectPlan: (String) -> Unit) {
+fun NoSubscriptionView(onSelectPlan: (String) -> Unit, isLoading: Boolean) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             "Selecciona un plan para comenzar",
@@ -197,7 +212,8 @@ fun NoSubscriptionView(onSelectPlan: (String) -> Unit) {
             title = "PLAN BASIC",
             desc = "Ideal para profesionales independientes. Gestión de agenda básica y reportes mensuales.",
             price = "GRATUITO",
-            onSelect = { onSelectPlan("BASIC") }
+            onSelect = { onSelectPlan("BASIC") },
+            isLoading = isLoading
         )
         
         Spacer(Modifier.height(16.dp))
@@ -207,16 +223,17 @@ fun NoSubscriptionView(onSelectPlan: (String) -> Unit) {
             desc = "Para negocios en crecimiento. Agenda ilimitada, reportes avanzados, analítica y soporte prioritario.",
             price = "$9.990 CLP / mes",
             isPremium = true,
-            onSelect = { onSelectPlan("PREMIUM") }
+            onSelect = { onSelectPlan("PREMIUM") },
+            isLoading = isLoading
         )
     }
 }
 
 @Composable
-fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = false, onSelect: () -> Unit) {
+fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = false, onSelect: () -> Unit, isLoading: Boolean) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        onClick = onSelect,
+        onClick = if (!isLoading) onSelect else ({}),
         colors = CardDefaults.elevatedCardColors(
             containerColor = if (isPremium) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         )
@@ -251,31 +268,15 @@ fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = fa
             Button(
                 onClick = onSelect,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                 )
             ) {
-                Text("Elegir este plan")
+                if (isLoading) CircularProgressIndicator(Modifier.size(24.dp))
+                else Text("Elegir este plan")
             }
         }
     }
 }
 
-@Composable
-fun SubscriptionStatusMessage(msg: String, isError: Boolean) {
-    val containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else Color(0xFFE8F5E9)
-    val contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else Color(0xFF2E7D32)
-    
-    Card(
-        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Text(
-            msg,
-            color = contentColor,
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
-    }
-}

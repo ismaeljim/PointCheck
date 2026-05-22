@@ -6,7 +6,9 @@ data class UserResponse(
     val id: Long,
     val name: String,
     val email: String,
+    val rut: String,
     val phone: String?,
     val role: UserRole,
-    val active: Boolean
+    val active: Boolean,
+    val categoryId: Long? = null
 )

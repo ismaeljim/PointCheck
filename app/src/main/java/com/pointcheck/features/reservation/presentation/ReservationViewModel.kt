@@ -47,13 +47,13 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
 
     fun loadProfessionals() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             repository.getActiveProfiles()
                 .onSuccess { list -> 
                     _state.update { it.copy(professionals = list, isLoading = false) } 
                 }
                 .onFailure { e -> 
-                    _state.update { it.copy(error = "Error al cargar profesionales", isLoading = false) } 
+                    _state.update { it.copy(error = e.message, isLoading = false) } 
                 }
         }
     }
@@ -95,13 +95,13 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun loadServicesForProfessional(profileId: Long) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             repository.getServices(profileId)
                 .onSuccess { list -> 
                     _state.update { it.copy(services = list, isLoading = false) } 
                 }
-                .onFailure { 
-                    _state.update { it.copy(error = "Error al cargar servicios", isLoading = false) } 
+                .onFailure { e -> 
+                    _state.update { it.copy(error = e.message, isLoading = false) } 
                 }
         }
     }
@@ -153,7 +153,7 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
             val userId = prefs.userId.first() ?: return@launch
             val role = prefs.role.first() ?: "CLIENT"
 
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
 
             val result = if (role == "SPECIALIST" || role == "PROFESSIONAL") {
                 val profileId = prefs.professionalProfileId.first()
@@ -169,8 +169,8 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
             result.onSuccess { list ->
                 _reservations.value = list.filter { it.status != "CANCELLED" }
                 _state.update { it.copy(isLoading = false) }
-            }.onFailure {
-                _state.update { it.copy(error = "Error al cargar reservas", isLoading = false) }
+            }.onFailure { e ->
+                _state.update { it.copy(error = e.message, isLoading = false) }
             }
         }
     }
@@ -211,22 +211,25 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
                     onSuccess()
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false, error = "Error: ${e.message}") }
+                    _state.update { it.copy(isLoading = false, error = e.message) }
                 }
         }
     }
 
     fun cancelReservation(id: Long) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             repository.cancelReservation(id)
                 .onSuccess {
+                    _state.update { it.copy(successMessage = "Reserva cancelada") }
                     loadMyReservations()
-                    _state.update { it.copy(isLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al cancelar: ${e.message}", isLoading = false) }
+                    _state.update { it.copy(error = e.message, isLoading = false) }
                 }
         }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

@@ -23,6 +23,8 @@ fun ProfessionalProfileScreen(
     vm: ProfessionalProfileViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
     var displayName by remember { mutableStateOf("") }
     var businessName by remember { mutableStateOf("") }
@@ -32,16 +34,31 @@ fun ProfessionalProfileScreen(
     var city by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("30") }
 
+    // Auditoría de UI: Mostrar mensajes emergentes para éxito o error
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearSuccess()
+        }
+    }
+
     // Sincronizar campos cuando el perfil carga
     LaunchedEffect(s.profile) {
         s.profile?.let {
-            displayName = it.displayName
+            displayName = it.displayName ?: ""
             businessName = it.businessName ?: ""
-            specialty = it.specialty
+            specialty = it.specialty ?: ""
             description = it.description ?: ""
             address = it.address ?: ""
             city = it.city ?: ""
-            duration = it.defaultSessionDurationMinutes.toString()
+            duration = (it.defaultSessionDurationMinutes ?: 30).toString()
         }
     }
 
@@ -50,19 +67,20 @@ fun ProfessionalProfileScreen(
             TopAppBar(
                 title = { Text("Perfil Profesional") },
                 navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
+                    IconButton(onClick = { nav.popBackStack() }, enabled = !s.isLoading) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 actions = {
                     if (!s.isEditing && s.profile != null) {
-                        IconButton(onClick = { vm.toggleEdit() }) {
+                        IconButton(onClick = { vm.toggleEdit() }, enabled = !s.isLoading) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar")
                         }
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
         Column(
             modifier = Modifier
@@ -177,6 +195,15 @@ fun ProfessionalProfileScreen(
 
                 Spacer(Modifier.height(32.dp))
 
+                if (s.error != null) {
+                    Text(
+                        text = s.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
                 if (s.isEditing) {
                     Button(
                         onClick = {
@@ -189,20 +216,18 @@ fun ProfessionalProfileScreen(
                         else Text("Guardar Perfil Profesional")
                     }
                     Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth(), enabled = !s.isLoading) {
                         Text("Cancelar edición")
                     }
                 } else {
                     Button(
                         onClick = { vm.toggleEdit() }, 
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = !s.isLoading
                     ) {
                         Text("Editar mi Información")
                     }
                 }
-
-                if (s.error != null) ProfileStatusMessage(s.error!!, isError = true)
-                if (s.successMessage != null) ProfileStatusMessage(s.successMessage!!, isError = false)
                 
                 Spacer(Modifier.height(24.dp))
             }

@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.navigation.Screen
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,12 +25,19 @@ fun LoginScreen(
     vm: UserViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    // Auditoría de errores: Mostrar snackbar automáticamente
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Iniciar sesión") }) },
@@ -77,7 +83,8 @@ fun LoginScreen(
                         label = { Text("Correo electrónico") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !s.isLoading
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
@@ -88,6 +95,7 @@ fun LoginScreen(
                         singleLine = true,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !s.isLoading,
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
@@ -102,13 +110,9 @@ fun LoginScreen(
                     Button(
                         onClick = {
                             vm.login(email.trim(), password) { ok ->
-                                scope.launch {
-                                    if (ok) {
-                                        nav.navigate(Screen.Dashboard.route) {
-                                            popUpTo(Screen.Login.route) { inclusive = true }
-                                        }
-                                    } else {
-                                        snackbarHostState.showSnackbar(s.error ?: "Credenciales inválidas")
+                                if (ok) {
+                                    nav.navigate(Screen.Dashboard.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
                                     }
                                 }
                             }
@@ -127,7 +131,7 @@ fun LoginScreen(
             
             Spacer(Modifier.height(16.dp))
             
-            TextButton(onClick = { nav.navigate(Screen.Register.route) }) {
+            TextButton(onClick = { nav.navigate(Screen.Register.route) }, enabled = !s.isLoading) {
                 Text("¿No tienes cuenta? Regístrate aquí")
             }
         }

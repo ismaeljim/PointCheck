@@ -7,7 +7,9 @@ data class UserResponseDto(
     val id: Long,
     val name: String,
     val email: String,
+    val rut: String,
     val phone: String?,
     val role: String,
-    val active: Boolean
+    val active: Boolean,
+    val categoryId: Long? = null
 )

@@ -19,6 +19,7 @@ CREATE TABLE users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
+    rut VARCHAR(12) NOT NULL,
     phone VARCHAR(255) NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'CLIENT',
     active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -28,9 +29,29 @@ CREATE TABLE users (
     PRIMARY KEY (id),
 
     CONSTRAINT uk_users_email UNIQUE (email),
+    CONSTRAINT uk_users_rut UNIQUE (rut),
 
     INDEX idx_users_role (role),
     INDEX idx_users_active (active)
+) ENGINE=InnoDB;
+
+
+-- ============================================================
+-- TABLE: categories
+-- Description:
+-- Stores predefined service categories.
+-- ============================================================
+
+CREATE TABLE categories (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    icon_key VARCHAR(100) NOT NULL,
+    color_hex VARCHAR(7) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME(6) NOT NULL,
+
+    PRIMARY KEY (id),
+    CONSTRAINT uk_categories_name UNIQUE (name)
 ) ENGINE=InnoDB;
 
 
@@ -45,6 +66,7 @@ CREATE TABLE users (
 CREATE TABLE professional_profiles (
     id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
+    category_id BIGINT NULL,
     display_name VARCHAR(150) NOT NULL,
     business_name VARCHAR(150) NULL,
     specialty VARCHAR(100) NULL,
@@ -63,12 +85,43 @@ CREATE TABLE professional_profiles (
 
     INDEX idx_professional_profiles_user (user_id),
     INDEX idx_professional_profiles_active (active),
+    INDEX idx_professional_profiles_category (category_id),
 
     CONSTRAINT fk_professional_profiles_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_professional_profiles_category
+        FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+
+-- ============================================================
+-- TABLE: service_templates
+-- Description:
+-- Stores predefined service templates for each category.
+-- ============================================================
+
+CREATE TABLE service_templates (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    category_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    default_price DECIMAL(10,2) NULL,
+    default_duration INT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_service_templates_category
+        FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 
@@ -87,6 +140,8 @@ CREATE TABLE services (
     description VARCHAR(500) NULL,
     price DECIMAL(10,2) NULL,
     duration_minutes INT NULL,
+    price_unit VARCHAR(50) NOT NULL DEFAULT 'SESSION',
+    is_at_home BOOLEAN NOT NULL DEFAULT FALSE,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NULL,
@@ -293,3 +348,51 @@ CREATE TABLE subscriptions (
         ON UPDATE CASCADE
         ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+-- ============================================================
+-- DATA SEEDING: Initial Categories and Templates
+-- ============================================================
+
+INSERT INTO categories (name, icon_key, color_hex, created_at) VALUES
+('Barbería', 'content_cut', '#FFB74D', NOW()),
+('Salud', 'medical_services', '#81C784', NOW()),
+('Deporte', 'sports_soccer', '#64B5F6', NOW()),
+('Estética', 'face', '#F06292', NOW()),
+('Bienestar', 'self_improvement', '#BA68C8', NOW()),
+('Hogar', 'home_repair_service', '#A1887F', NOW());
+
+-- Templates for Barbería (ID: 1)
+INSERT INTO service_templates (category_id, name, default_price, default_duration) VALUES
+(1, 'Corte de Cabello', 10000.00, 30),
+(1, 'Corte de Barba', 8000.00, 20),
+(1, 'Perfilado de Cejas', 5000.00, 15);
+
+-- Templates for Salud (ID: 2)
+INSERT INTO service_templates (category_id, name, default_price, default_duration) VALUES
+(2, 'Consulta General', 25000.00, 30),
+(2, 'Kinesiología', 35000.00, 60),
+(2, 'Nutrición', 30000.00, 45);
+
+-- Templates for Deporte (ID: 3)
+INSERT INTO service_templates (category_id, name, default_price, default_duration) VALUES
+(3, 'Entrenamiento Personal', 20000.00, 60),
+(3, 'Evaluación Física', 15000.00, 30),
+(3, 'Masaje Deportivo', 25000.00, 60);
+
+-- Templates for Estética (ID: 4)
+INSERT INTO service_templates (category_id, name, default_price, default_duration) VALUES
+(4, 'Limpieza Facial', 20000.00, 45),
+(4, 'Manicure', 12000.00, 60),
+(4, 'Pedicure', 15000.00, 60);
+
+-- Templates for Bienestar (ID: 5)
+INSERT INTO service_templates (category_id, name, default_price, default_duration) VALUES
+(5, 'Masaje Relajante', 30000.00, 60),
+(5, 'Yoga 1 a 1', 25000.00, 60),
+(5, 'Meditación Guiada', 15000.00, 30);
+
+-- Templates for Hogar (ID: 6)
+INSERT INTO service_templates (category_id, name, default_price, default_duration) VALUES
+(6, 'Limpieza Express', 15000.00, 120),
+(6, 'Mantenimiento Eléctrico', 25000.00, 60),
+(6, 'Gasfitería', 25000.00, 60);

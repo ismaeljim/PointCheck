@@ -23,6 +23,8 @@ import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
 import com.pointcheck.core.navigation.Screen
 
+import com.pointcheck.core.util.RutVisualTransformation
+import com.pointcheck.core.util.RutUtils
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,6 +45,17 @@ fun RegisterScreen(
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setAvatar(uri)
+    }
+
+    // Auditoría de errores: Mostrar snackbar automáticamente cuando hay error
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Long
+            )
+            vm.clearError()
+        }
     }
 
     var passwordVisible by remember { mutableStateOf(false) }
@@ -87,7 +100,8 @@ fun RegisterScreen(
                         onValueChange = { vm.onValueChange("name", it) },
                         label = { Text("Nombre Completo") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        enabled = !s.isLoading
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
@@ -96,7 +110,38 @@ fun RegisterScreen(
                         label = { Text("Correo Electrónico") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !s.isLoading
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    
+                    val isRutValid = remember(s.rut) { RutUtils.validateRut(s.rut) || s.rut.isEmpty() }
+                    OutlinedTextField(
+                        value = s.rut,
+                        onValueChange = { if (it.length <= 9) vm.onValueChange("rut", it) },
+                        label = { Text("RUT") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("12.345.678-9") },
+                        visualTransformation = RutVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        enabled = !s.isLoading,
+                        isError = !isRutValid,
+                        supportingText = {
+                            if (!isRutValid) {
+                                Text("RUT inválido", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = s.phone,
+                        onValueChange = { vm.onValueChange("phone", it) },
+                        label = { Text("Teléfono de contacto") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        placeholder = { Text("+56 9 ...") }
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
@@ -148,6 +193,29 @@ fun RegisterScreen(
                             onCheckedChange = { isSpec -> vm.onValueChange("role", if (isSpec) "SPECIALIST" else "CLIENT") }
                         )
                     }
+
+                    if (s.role == "SPECIALIST") {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Datos de Ubicación (Especialista)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = s.city,
+                            onValueChange = { vm.onValueChange("city", it) },
+                            label = { Text("Ciudad") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            placeholder = { Text("Ej: Santiago") }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = s.address,
+                            onValueChange = { vm.onValueChange("address", it) },
+                            label = { Text("Dirección (Calle y Número)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            placeholder = { Text("Av. Providencia 123...") }
+                        )
+                    }
                     
                     HorizontalDivider(Modifier.padding(vertical = 12.dp))
                     
@@ -179,25 +247,25 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            if (s.error != null) {
-                Text(s.error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 12.dp))
-            }
-
             Button(
                 onClick = {
-                    vm.save {
-                        nav.navigate(Screen.Dashboard.route) {
-                            popUpTo(Screen.Register.route) { inclusive = true }
+                    if (s.role == "SPECIALIST") {
+                        nav.navigate("category_selection")
+                    } else {
+                        vm.save {
+                            nav.navigate(Screen.Dashboard.route) {
+                                popUpTo(Screen.Register.route) { inclusive = true }
+                            }
                         }
                     }
                 },
-                enabled = s.isValid && !s.isLoading,
+                enabled = (if (s.role == "SPECIALIST") (s.name.isNotBlank() && RutUtils.validateRut(s.rut) && s.email.isNotBlank() && s.password.length >= 6) else s.isValid) && !s.isLoading,
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 if (s.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    Text("Crear mi cuenta", fontSize = 16.sp)
+                    Text(if (s.role == "SPECIALIST") "Siguiente: Especialidad" else "Crear mi cuenta", fontSize = 16.sp)
                 }
             }
             

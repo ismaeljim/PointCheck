@@ -19,8 +19,10 @@ class ProfessionalProfileController(
     }
 
     @GetMapping
-    fun getActive(): ResponseEntity<List<ProfessionalProfileResponse>> {
-        return ResponseEntity.ok(professionalProfileService.getActive())
+    fun getActive(
+        @RequestParam(required = false) categoryId: Long?
+    ): ResponseEntity<List<ProfessionalProfileResponse>> {
+        return ResponseEntity.ok(professionalProfileService.getActive(categoryId))
     }
 
     @GetMapping("/user/{userId}")

@@ -110,4 +110,6 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
     fun clearExport() {
         _state.update { it.copy(exportContent = null) }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
 }

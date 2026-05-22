@@ -1,6 +1,7 @@
 package com.pointcheck.features.attentions.data.repository
 
 import com.pointcheck.core.network.ApiService
+import com.pointcheck.core.network.NetworkHandler
 import com.pointcheck.features.attentions.data.dto.StartAttentionRequestDto
 import com.pointcheck.features.attentions.data.dto.FinishAttentionRequestDto
 import com.pointcheck.features.attentions.data.dto.AttentionResponseDto
@@ -12,7 +13,7 @@ class AttentionRepository(private val api: ApiService) {
         reservationId: Long,
         observations: String? = null
     ): Result<AttentionResponseDto> {
-        return handleApiCall { 
+        return handleApiCall("Error al iniciar atención") { 
             api.startAttention(StartAttentionRequestDto(reservationId, observations)) 
         }
     }
@@ -21,35 +22,26 @@ class AttentionRepository(private val api: ApiService) {
         attentionId: Long,
         observations: String? = null
     ): Result<AttentionResponseDto> {
-        return handleApiCall { 
+        return handleApiCall("Error al finalizar atención") { 
             api.finishAttention(attentionId, FinishAttentionRequestDto(observations)) 
         }
     }
 
     suspend fun getTodayAttentionsBySpecialist(specialistId: Long): Result<List<AttentionResponseDto>> {
-        return handleApiCall { api.getTodayAttentionsBySpecialist(specialistId) }
+        return handleApiCall("Error al obtener atenciones de hoy") { api.getTodayAttentionsBySpecialist(specialistId) }
     }
 
     suspend fun getAttentionHistoryByClient(clientId: Long): Result<List<AttentionResponseDto>> {
-        return handleApiCall { api.getAttentionHistoryByClient(clientId) }
+        return handleApiCall("Error al obtener historial de atenciones") { api.getAttentionHistoryByClient(clientId) }
     }
 
-    private suspend fun <T> handleApiCall(call: suspend () -> Response<T>): Result<T> {
+    private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {
         return try {
             val response = call()
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body != null) {
-                    Result.success(body)
-                } else {
-                    Result.failure(Exception("Cuerpo de respuesta vacío"))
-                }
-            } else {
-                val errorMsg = response.errorBody()?.string() ?: "Error servidor: ${response.code()}"
-                Result.failure(Exception(errorMsg))
-            }
+            NetworkHandler.handleResponse(response, errorMsg)
         } catch (e: Exception) {
-            Result.failure(e)
+            NetworkHandler.handleException(e)
         }
     }
 }
+

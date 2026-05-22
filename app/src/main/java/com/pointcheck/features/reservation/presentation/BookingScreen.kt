@@ -53,6 +53,21 @@ fun BookingScreen(
         }
     }
 
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbar.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbar.showSnackbar(it)
+            vm.clearSuccess()
+            nav.popBackStack()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -81,11 +96,12 @@ fun BookingScreen(
                         label = "Profesional",
                         value = s.selectedProfessional?.name ?: "Seleccionar especialista",
                         icon = Icons.Default.Person,
-                        onClick = { professionalExpanded = true }
+                        onClick = { professionalExpanded = true },
+                        enabled = !s.isLoading
                     )
 
                     DropdownMenu(
-                        expanded = professionalExpanded,
+                        expanded = professionalExpanded && !s.isLoading,
                         onDismissRequest = { professionalExpanded = false },
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
@@ -106,12 +122,12 @@ fun BookingScreen(
                         label = "Servicio",
                         value = s.selectedService?.name ?: "Seleccionar servicio",
                         icon = Icons.Default.Work,
-                        enabled = s.selectedProfessional != null,
+                        enabled = s.selectedProfessional != null && !s.isLoading,
                         onClick = { serviceExpanded = true }
                     )
 
                     DropdownMenu(
-                        expanded = serviceExpanded,
+                        expanded = serviceExpanded && !s.isLoading,
                         onDismissRequest = { serviceExpanded = false },
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
@@ -135,7 +151,7 @@ fun BookingScreen(
             OutlinedButton(
                 onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = s.selectedService != null,
+                enabled = s.selectedService != null && !s.isLoading,
                 shape = MaterialTheme.shapes.medium,
                 contentPadding = PaddingValues(16.dp)
             ) {
@@ -149,7 +165,7 @@ fun BookingScreen(
             OutlinedButton(
                 onClick = { showTimePicker = true },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = s.reservationStartMillis != null,
+                enabled = s.reservationStartMillis != null && !s.isLoading,
                 shape = MaterialTheme.shapes.medium,
                 contentPadding = PaddingValues(16.dp)
             ) {
@@ -209,22 +225,16 @@ fun BookingScreen(
                 placeholder = { Text("Instrucciones especiales, síntomas, etc.") },
                 minLines = 3,
                 maxLines = 5,
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = !s.isLoading
             )
-
-            if (s.error != null) {
-                Text(s.error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp))
-            }
 
             Spacer(Modifier.height(32.dp))
 
             Button(
                 onClick = {
                     vm.createReservation {
-                        scope.launch {
-                            snackbar.showSnackbar("¡Reserva confirmada con éxito!")
-                            nav.popBackStack()
-                        }
+                        // success handled by LaunchedEffect
                     }
                 },
                 enabled = s.isValid && !s.isLoading,

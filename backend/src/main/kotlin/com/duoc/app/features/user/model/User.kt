@@ -28,6 +28,9 @@ data class User(
     @Column(nullable = false)
     val password: String,
     
+    @Column(nullable = false, unique = true)
+    val rut: String,
+    
     val phone: String? = null,
     
     @Enumerated(EnumType.STRING)

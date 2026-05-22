@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*
 
 @RestController("featureReservationController")
 @RequestMapping("/api/reservations")
-@CrossOrigin("*")
 class ReservationController(
     private val reservationService: ReservationService
 ) {
@@ -20,7 +19,7 @@ class ReservationController(
         return ResponseEntity.ok(reservationService.create(request))
     }
 
-    @GetMapping("/client/{clientId}")
+    @GetMapping("/client/{clientId}/all")
     fun getByClient(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
         return ResponseEntity.ok(reservationService.getByClient(clientId))
     }
@@ -42,6 +41,7 @@ class ReservationController(
 
     @GetMapping("/client/{clientId}/history")
     fun getHistoryByClient(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
+        println("Requesting history for client: $clientId")
         return ResponseEntity.ok(reservationService.getByClient(clientId))
     }
 

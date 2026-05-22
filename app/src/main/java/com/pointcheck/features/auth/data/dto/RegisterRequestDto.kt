@@ -8,6 +8,17 @@ data class RegisterRequestDto(
     val name: String,
     val email: String,
     val password: String,
+    val rut: String,
     val phone: String? = null,
-    val role: String = "CLIENT"
+    val role: String = "CLIENT",
+    val city: String? = null,
+    val address: String? = null,
+    val categoryId: Long? = null,
+    val services: List<ServiceOfferingDto>? = null
+)
+
+data class ServiceOfferingDto(
+    val templateId: Long,
+    val price: Double,
+    val unit: String
 )

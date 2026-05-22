@@ -122,7 +122,6 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    fun clearMessages() {
-        _state.update { it.copy(error = null, successMessage = null) }
-    }
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

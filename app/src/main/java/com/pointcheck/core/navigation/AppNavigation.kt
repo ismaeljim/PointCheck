@@ -22,6 +22,11 @@ import com.pointcheck.features.services.presentation.ServiceListScreen
 import com.pointcheck.features.attentions.presentation.AttentionScreen
 import com.pointcheck.features.billing.presentation.BillingScreen
 import com.pointcheck.features.subscriptions.presentation.SubscriptionScreen
+import com.pointcheck.features.onboarding.presentation.CategorySelectionScreen
+import com.pointcheck.features.onboarding.presentation.ServiceConfigurationScreen
+import com.pointcheck.features.onboarding.presentation.CategoryViewModel
+import com.pointcheck.features.auth.presentation.UserViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.prefs.UserPreferences
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,11 +69,25 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation(snackbar: SnackbarHostState) {
     val nav = rememberNavController()
+    val authVm: UserViewModel = viewModel()
+    
     NavHost(navController = nav, startDestination = Screen.Splash.route) {
         composable(Screen.Splash.route) { SplashScreen(nav) }
         composable(Screen.Dashboard.route) { DashboardScreen(nav) }
         composable(Screen.Login.route) { LoginScreen(nav) }
-        composable(Screen.Register.route) { RegisterScreen(nav) }
+        composable(Screen.Register.route) { RegisterScreen(nav, authVm) }
+        
+        composable("category_selection") {
+            CategorySelectionScreen(nav, authVm)
+        }
+        
+        composable(
+            "service_configuration/{categoryId}",
+            arguments = listOf(navArgument("categoryId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val catId = backStackEntry.arguments?.getLong("categoryId") ?: 0L
+            ServiceConfigurationScreen(catId, nav, authVm)
+        }
         composable(
             route = Screen.Booking.route,
             arguments = listOf(

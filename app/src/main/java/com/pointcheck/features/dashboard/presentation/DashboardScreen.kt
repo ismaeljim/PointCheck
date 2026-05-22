@@ -36,10 +36,18 @@ import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 @Composable
 fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
     val s by vm.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     var showMenu by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(false) }
 
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("PointCheck") },
@@ -110,10 +118,9 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
                 ClientDashboardV2(s.clientDashboard, s.weather, nav)
             }
 
-            s.error?.let {
+            if (s.error != null) {
                 Spacer(Modifier.height(16.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
-                Button(onClick = { vm.loadDashboard() }) {
+                Button(onClick = { vm.loadDashboard() }, enabled = !s.isLoading) {
                     Text("Reintentar")
                 }
             }

@@ -121,4 +121,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
                 .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

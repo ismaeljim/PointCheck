@@ -34,8 +34,24 @@ fun BillingScreen(
 ) {
     val s by vm.state.collectAsState()
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearSuccess()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Gestión de Cobro") },
@@ -81,7 +97,8 @@ fun BillingScreen(
                             modifier = Modifier.fillMaxWidth(),
                             leadingIcon = { Icon(Icons.Default.AttachMoney, null) },
                             shape = MaterialTheme.shapes.medium,
-                            prefix = { Text("$") }
+                            prefix = { Text("$") },
+                            enabled = !s.isLoading
                         )
 
                         Spacer(Modifier.height(20.dp))
@@ -107,14 +124,15 @@ fun BillingScreen(
                                     .fillMaxWidth()
                                     .selectable(
                                         selected = s.paymentMethod == code,
-                                        onClick = { vm.setPaymentMethod(code) }
+                                        onClick = { if (!s.isLoading) vm.setPaymentMethod(code) }
                                     )
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
                                     selected = s.paymentMethod == code,
-                                    onClick = { vm.setPaymentMethod(code) }
+                                    onClick = { if (!s.isLoading) vm.setPaymentMethod(code) },
+                                    enabled = !s.isLoading
                                 )
                                 Text(label, style = MaterialTheme.typography.bodyMedium)
                             }
@@ -128,7 +146,8 @@ fun BillingScreen(
                             label = { Text("Notas (Opcional)") },
                             modifier = Modifier.fillMaxWidth(),
                             leadingIcon = { Icon(Icons.Default.Description, null) },
-                            shape = MaterialTheme.shapes.medium
+                            shape = MaterialTheme.shapes.medium,
+                            enabled = !s.isLoading
                         )
                     }
                 }
@@ -190,7 +209,8 @@ fun BillingScreen(
                         onValueChange = { vm.setExternalReference(it) },
                         label = { Text("Número de Referencia / Comprobante") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.shapes.medium,
+                        enabled = !s.isLoading
                     )
                     
                     Spacer(Modifier.height(24.dp))
@@ -201,7 +221,8 @@ fun BillingScreen(
                             modifier = Modifier.weight(1f).height(56.dp),
                             enabled = !s.isLoading
                         ) {
-                            Text("Registrar Pago")
+                            if (s.isLoading) CircularProgressIndicator(Modifier.size(24.dp))
+                            else Text("Registrar Pago")
                         }
                         Spacer(Modifier.width(12.dp))
                         OutlinedButton(
@@ -223,12 +244,7 @@ fun BillingScreen(
                 }
             }
 
-            if (s.error != null) {
-                BillingMessage(s.error!!, isError = true)
-            }
-            if (s.successMessage != null) {
-                BillingMessage(s.successMessage!!, isError = false)
-            }
+            // Eliminados mensajes estáticos redundantes
         }
     }
 }
@@ -244,20 +260,3 @@ fun BillingInfoRow(icon: ImageVector, label: String, value: String, color: andro
     }
 }
 
-@Composable
-fun BillingMessage(msg: String, isError: Boolean) {
-    val containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
-    val contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
-    
-    Card(
-        modifier = Modifier.padding(top = 24.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Text(
-            msg,
-            color = contentColor,
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}

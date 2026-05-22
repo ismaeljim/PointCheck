@@ -10,6 +10,8 @@ import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
+import com.pointcheck.features.onboarding.presentation.dto.CategoryDto
+import com.pointcheck.features.onboarding.presentation.CategoryApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -25,12 +27,14 @@ data class DashboardUiState(
     val isLoadingWeather: Boolean = false,
     val error: String? = null,
     val userName: String = "",
-    val userRole: String = ""
+    val userRole: String = "",
+    val categories: List<CategoryDto> = emptyList()
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = DashboardRepository(ApiClient.instance)
+    private val categoryApi = ApiClient.retrofitInstance.create(CategoryApi::class.java)
     private val prefs = UserPreferences(application)
 
     private val _state = MutableStateFlow(DashboardUiState())
@@ -51,6 +55,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             _state.update { it.copy(userName = name, userRole = role) }
 
             if (userId != null) {
+                if (role == "CLIENT") {
+                    loadCategories()
+                }
                 if (role == "SPECIALIST" || role == "PROFESSIONAL") {
                     repository.getReportSummaryBySpecialist(userId)
                         .onSuccess { summary ->
@@ -74,6 +81,17 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             } else {
                 _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    private fun loadCategories() {
+        viewModelScope.launch {
+            try {
+                val cats = categoryApi.getCategories()
+                _state.update { it.copy(categories = cats) }
+            } catch (e: Exception) {
+                // Silently fail or log, categories are secondary to core dashboard
             }
         }
     }
@@ -108,4 +126,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 }
         }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
 }

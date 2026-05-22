@@ -28,6 +28,14 @@ fun AppointmentHistoryScreen(
     vm: AppointmentHistoryViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
 
     LaunchedEffect(type) {
         vm.loadAppointments(type)
@@ -40,6 +48,7 @@ fun AppointmentHistoryScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(title) },
@@ -52,19 +61,8 @@ fun AppointmentHistoryScreen(
         }
     ) { pad ->
         Box(modifier = Modifier.padding(pad).fillMaxSize()) {
-            if (s.isLoading) {
+            if (s.isLoading && s.appointments.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (s.error != null) {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(s.error!!, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = { vm.loadAppointments(type) }) {
-                        Text("Reintentar")
-                    }
-                }
             } else if (s.appointments.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -74,6 +72,12 @@ fun AppointmentHistoryScreen(
                     Icon(Icons.Default.Info, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
                     Spacer(Modifier.height(16.dp))
                     Text("No hay citas para mostrar", color = Color.Gray)
+                    if (s.error != null) {
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { vm.loadAppointments(type) }) {
+                            Text("Reintentar")
+                        }
+                    }
                 }
             } else {
                 LazyColumn(

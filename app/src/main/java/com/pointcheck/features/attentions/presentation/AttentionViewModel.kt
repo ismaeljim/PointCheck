@@ -68,4 +68,7 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     fun resetState() {
         _state.value = AttentionUiState()
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

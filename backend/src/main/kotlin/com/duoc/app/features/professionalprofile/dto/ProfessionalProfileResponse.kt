@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 data class ProfessionalProfileResponse(
     val id: Long,
     val userId: Long,
+    val categoryId: Long?,
     val displayName: String,
     val businessName: String?,
     val specialty: String?,

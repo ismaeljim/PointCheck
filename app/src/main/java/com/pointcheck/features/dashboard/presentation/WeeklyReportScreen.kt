@@ -28,6 +28,7 @@ import com.pointcheck.features.dashboard.data.dto.WeeklySummaryDto
 fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel()) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle CSV Export
     LaunchedEffect(s.exportContent) {
@@ -45,7 +46,15 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
         }
     }
 
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(if (s.period == ReportPeriod.WEEKLY) "Reporte Semanal" else "Reporte Mensual") },
@@ -96,10 +105,6 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
 
             if (s.isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp))
-            }
-
-            s.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 8.dp))
             }
 
             val totalRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.totalRevenue else s.monthlyReport?.totalRevenue

@@ -29,14 +29,26 @@ fun AttentionScreen(
     vm: AttentionViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Reseteamos el estado al entrar si es necesario o cargamos datos previos si existiera el endpoint
-    // Como el backend no tiene GET by reservationId directo para atenciones activas sin conocer el ID de atención,
-    // confiamos en el flujo de la UI.
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearSuccess()
+        }
+    }
 
     val scrollState = rememberScrollState()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Módulo de Atención") },
@@ -99,16 +111,19 @@ fun AttentionScreen(
                     placeholder = { Text("Ej: Motivo de consulta, estado inicial...") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    enabled = !s.isLoading
                 )
                 
                 Spacer(Modifier.height(24.dp))
                 
                 Button(
                     onClick = { vm.startAttention(reservationId) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = !s.isLoading
                 ) {
-                    Text("Iniciar Atención")
+                    if (s.isLoading) CircularProgressIndicator(Modifier.size(24.dp))
+                    else Text("Iniciar Atención")
                 }
             } else {
                 // Estado: En progreso o Finalizada
@@ -143,7 +158,7 @@ fun AttentionScreen(
                     label = { Text("Bitácora de la sesión") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5,
-                    enabled = !isFinished,
+                    enabled = !isFinished && !s.isLoading,
                     shape = MaterialTheme.shapes.medium,
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, null) }
                 )
@@ -153,9 +168,11 @@ fun AttentionScreen(
                 if (!isFinished) {
                     Button(
                         onClick = { vm.finishAttention() },
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = !s.isLoading
                     ) {
-                        Text("Finalizar y Guardar")
+                        if (s.isLoading) CircularProgressIndicator(Modifier.size(24.dp))
+                        else Text("Finalizar y Guardar")
                     }
                 } else {
                     Button(
@@ -186,12 +203,7 @@ fun AttentionScreen(
                 }
             }
 
-            s.error?.let {
-                ErrorMessage(it)
-            }
-            s.successMessage?.let {
-                SuccessMessage(it)
-            }
+            // Eliminados mensajes estáticos de error/éxito duplicados
         }
     }
 }
@@ -206,32 +218,3 @@ fun AttentionDetailRow(icon: ImageVector, label: String, value: String) {
     }
 }
 
-@Composable
-fun ErrorMessage(msg: String) {
-    Card(
-        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    ) {
-        Text(
-            msg,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
-
-@Composable
-fun SuccessMessage(msg: String) {
-    Card(
-        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        Text(
-            msg,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}

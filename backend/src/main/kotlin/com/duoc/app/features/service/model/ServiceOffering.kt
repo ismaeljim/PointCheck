@@ -33,6 +33,13 @@ data class ServiceOffering(
 
     val durationMinutes: Int? = null,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "price_unit", nullable = false)
+    val priceUnit: PriceUnit = PriceUnit.SESSION,
+
+    @Column(name = "is_at_home", nullable = false)
+    val isAtHome: Boolean = false,
+
     val active: Boolean = true,
 
     @Column(name = "created_at", nullable = false, updatable = false)

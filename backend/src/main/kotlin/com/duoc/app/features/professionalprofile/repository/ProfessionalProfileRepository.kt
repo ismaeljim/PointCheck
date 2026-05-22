@@ -9,4 +9,5 @@ interface ProfessionalProfileRepository : JpaRepository<ProfessionalProfile, Lon
     fun findByUser_Id(userId: Long): ProfessionalProfile?
     fun existsByUser_Id(userId: Long): Boolean
     fun findByActiveTrue(): List<ProfessionalProfile>
+    fun findByCategoryIdAndActiveTrue(categoryId: Long): List<ProfessionalProfile>
 }

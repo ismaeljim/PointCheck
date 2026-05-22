@@ -94,4 +94,7 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
     fun toggleEdit() {
         _state.update { it.copy(isEditing = !it.isEditing) }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }
