@@ -19,24 +19,22 @@ class DashboardService(
     private val attentionRepository: AttentionRepository,
     private val billingRecordRepository: BillingRecordRepository,
     private val profileRepository: ProfessionalProfileRepository,
+    private val userRepository: com.duoc.app.features.user.repository.UserRepository,
     private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
 
     fun getReportSummary(userId: Long): ReportSummaryResponse {
-        val profile = profileRepository.findByUser_Id(userId) ?: return ReportSummaryResponse()
-        val specialistId = profile.id
-
-        val reservations = reservationRepository.findBySpecialist_Id(specialistId)
+        val reservations = reservationRepository.findBySpecialist_Id(userId)
         val today = LocalDate.now()
         val todayStart = LocalDateTime.of(today, LocalTime.MIN)
         val todayEnd = LocalDateTime.of(today, LocalTime.MAX)
         
         val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-            specialistId, todayStart, todayEnd
+            userId, todayStart, todayEnd
         )
         
-        val attentions = attentionRepository.findBySpecialist_Id(specialistId)
-        val billing = billingRecordRepository.findBySpecialist_Id(specialistId)
+        val attentions = attentionRepository.findBySpecialist_Id(userId)
+        val billing = billingRecordRepository.findBySpecialist_Id(userId)
 
         return ReportSummaryResponse(
             totalReservations = reservations.size,
@@ -55,41 +53,61 @@ class DashboardService(
     fun getMetrics(userId: Long, role: String): DashboardMetricsResponse {
         val now = LocalDateTime.now()
         
-        return if (role.equals("CLIENT", ignoreCase = true)) {
-            val upcoming = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
-            val all = reservationRepository.findByClient_Id(userId)
-            
-            DashboardMetricsResponse(
-                upcomingReservationsCount = upcoming.size,
-                recentReservationsCount = all.size,
-                lastReservationStatus = all.maxByOrNull { it.updatedAt!! }?.status?.name
-            )
-        } else {
-            val profile = profileRepository.findByUser_Id(userId)
-            if (profile == null) return DashboardMetricsResponse()
+        return when {
+            role.equals("ADMIN", ignoreCase = true) -> {
+                // Métricas globales para el Administrador
+                val totalReservations = reservationRepository.count()
+                val totalClients = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.CLIENT)
+                val totalSpecialists = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.SPECIALIST)
+                val totalRevenue = billingRecordRepository.findByStatus(PaymentStatus.PAID).sumOf { it.amount.toDouble() }
 
-            val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
-            val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
-            
-            val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-                profile.id, todayStart, todayEnd
-            )
-            
-            val attentions = attentionRepository.findBySpecialist_Id(profile.id)
-            val pendingBilling = billingRecordRepository.findBySpecialist_IdAndStatus(profile.id, PaymentStatus.PENDING)
-            val paidBilling = billingRecordRepository.findBySpecialist_IdAndStatus(profile.id, PaymentStatus.PAID)
+                DashboardMetricsResponse(
+                    appointmentsToday = totalReservations.toInt(),
+                    totalAttentionsPerformed = totalClients.toInt(), // Reutilizamos campos para el Admin
+                    averageDurationMinutes = totalSpecialists.toDouble(),
+                    paidBillingAmount = totalRevenue,
+                    subscriptionStatus = "ADMIN_MODE"
+                )
+            }
+            role.equals("CLIENT", ignoreCase = true) -> {
+                val upcoming = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
+                val all = reservationRepository.findByClient_Id(userId)
+                
+                DashboardMetricsResponse(
+                    upcomingReservationsCount = upcoming.size,
+                    recentReservationsCount = all.size,
+                    lastReservationStatus = all.maxByOrNull { it.updatedAt!! }?.status?.name
+                )
+            }
+            else -> {
+                val profile = profileRepository.findByUser_Id(userId)
+                if (profile == null) return DashboardMetricsResponse()
 
-            DashboardMetricsResponse(
-                appointmentsToday = todayReservations.size,
-                totalAttentionsPerformed = attentions.size,
-                averageDurationMinutes = if (attentions.isNotEmpty()) {
-                    val durations = attentions.mapNotNull { it.durationMinutes }
-                    if (durations.isNotEmpty()) durations.average() else 0.0
-                } else 0.0,
-                pendingBillingAmount = pendingBilling.sumOf { it.amount.toDouble() },
-                paidBillingAmount = paidBilling.sumOf { it.amount.toDouble() },
-                subscriptionStatus = "ACTIVE" // Placeholder
-            )
+                val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
+                val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
+                
+                // Usamos userId directamente porque la reserva apunta al User, no al Profile
+                val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
+                    userId, todayStart, todayEnd
+                )
+                
+                val allReservations = reservationRepository.findBySpecialist_Id(userId)
+                val attentions = attentionRepository.findBySpecialist_Id(userId)
+                val pendingBilling = billingRecordRepository.findBySpecialist_IdAndStatus(userId, PaymentStatus.PENDING)
+                val paidBilling = billingRecordRepository.findBySpecialist_IdAndStatus(userId, PaymentStatus.PAID)
+
+                DashboardMetricsResponse(
+                    appointmentsToday = todayReservations.size,
+                    totalAttentionsPerformed = allReservations.size, // Usamos este para "Citas Mes" en la UI
+                    averageDurationMinutes = if (attentions.isNotEmpty()) {
+                        val durations = attentions.mapNotNull { it.durationMinutes }
+                        if (durations.isNotEmpty()) durations.average() else 0.0
+                    } else 0.0,
+                    pendingBillingAmount = pendingBilling.sumOf { it.amount.toDouble() },
+                    paidBillingAmount = paidBilling.sumOf { it.amount.toDouble() },
+                    subscriptionStatus = "ACTIVE"
+                )
+            }
         }
     }
 
@@ -137,21 +155,28 @@ class DashboardService(
         )
     }
 
-    // Helper extension to convert Reservation to ReservationResponse if not already available in the scope
-    private fun com.duoc.app.features.reservation.model.Reservation.toResponse() = 
-        com.duoc.app.features.reservation.dto.ReservationResponse(
+    // Helper extension to convert Reservation to ReservationResponse
+    private fun com.duoc.app.features.reservation.model.Reservation.toResponse(): com.duoc.app.features.reservation.dto.ReservationResponse {
+        val profProfile = this.service?.professionalProfile
+        return com.duoc.app.features.reservation.dto.ReservationResponse(
             id = this.id,
             clientId = this.client.id,
+            clientRut = this.client.rut,
             specialistId = this.specialist.id,
             specialistName = this.specialist.name,
-            city = this.service?.professionalProfile?.city,
-            address = this.service?.professionalProfile?.address,
+            specialistRut = this.specialist.rut,
+            city = profProfile?.city,
+            address = profProfile?.address,
             serviceId = this.service?.id,
             serviceName = this.service?.name,
+            categoryIcon = profProfile?.category?.iconKey,
+            categoryColor = profProfile?.category?.colorHex,
+            isAtHome = this.service?.isAtHome ?: false,
             reservationStart = this.reservationStart,
             reservationEnd = this.reservationEnd,
             status = this.status,
             notes = this.notes,
             createdAt = this.createdAt
         )
+    }
 }

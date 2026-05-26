@@ -28,7 +28,11 @@ data class DashboardUiState(
     val error: String? = null,
     val userName: String = "",
     val userRole: String = "",
-    val categories: List<CategoryDto> = emptyList()
+    val categories: List<CategoryDto> = emptyList(),
+    val adminUsers: List<com.pointcheck.features.auth.data.dto.UserResponseDto> = emptyList(),
+    val financialReport: Map<String, Any>? = null,
+    val adminSettings: List<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto> = emptyList(),
+    val auditLogs: List<com.pointcheck.features.admin.data.dto.AuditLogDto> = emptyList()
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -55,10 +59,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             _state.update { it.copy(userName = name, userRole = role) }
 
             if (userId != null) {
-                if (role == "CLIENT") {
-                    loadCategories()
-                }
-                if (role == "SPECIALIST" || role == "PROFESSIONAL") {
+                loadCategories()
+
+                if (role == "ADMIN") {
+                    repository.getDashboardMetrics(userId, role)
+                        .onSuccess { metrics ->
+                            _state.update { it.copy(metrics = metrics) }
+                        }
+                    loadAdminData()
+                } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
                     repository.getReportSummaryBySpecialist(userId)
                         .onSuccess { summary ->
                             _state.update { it.copy(reportSummary = summary, isLoading = false) }
@@ -82,6 +91,51 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             } else {
                 _state.update { it.copy(isLoading = false) }
             }
+        }
+    }
+
+    private fun loadAdminData() {
+        viewModelScope.launch {
+            // Cargar usuarios para auditoría
+            repository.getAllUsers()
+                .onSuccess { users ->
+                    _state.update { it.copy(adminUsers = users) }
+                }
+            
+            // Cargar configuraciones
+            repository.getSettings()
+                .onSuccess { settings ->
+                    _state.update { it.copy(adminSettings = settings) }
+                }
+            
+            // Cargar reporte financiero global
+            repository.getFinancialReport()
+                .onSuccess { report ->
+                    _state.update { it.copy(financialReport = report) }
+                }
+
+            // Cargar Logs de Auditoría
+            repository.getAuditLogs()
+                .onSuccess { logs ->
+                    _state.update { it.copy(auditLogs = logs, isLoading = false) }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(error = "Error Admin: ${e.message}", isLoading = false) }
+                }
+        }
+    }
+
+    fun updateSetting(key: String, value: String) {
+        viewModelScope.launch {
+            repository.updateSetting(key, value)
+                .onSuccess { loadAdminData() }
+        }
+    }
+
+    fun toggleUserStatus(userId: Long) {
+        viewModelScope.launch {
+            repository.toggleUserStatus(userId)
+                .onSuccess { loadAdminData() } // Recargar lista
         }
     }
 

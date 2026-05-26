@@ -7,5 +7,6 @@ data class ServiceResponseDto(
     val description: String? = null,
     val price: Double? = null,
     val durationMinutes: Int? = null,
+    val priceUnit: String? = "SESSION",
     val active: Boolean
 )

@@ -19,8 +19,13 @@ class ReservationController(
         return ResponseEntity.ok(reservationService.create(request))
     }
 
-    @GetMapping("/client/{clientId}/all")
+    @GetMapping("/client/{clientId}")
     fun getByClient(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
+        return ResponseEntity.ok(reservationService.getByClient(clientId))
+    }
+
+    @GetMapping("/client/{clientId}/all")
+    fun getByClientAll(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
         return ResponseEntity.ok(reservationService.getByClient(clientId))
     }
 

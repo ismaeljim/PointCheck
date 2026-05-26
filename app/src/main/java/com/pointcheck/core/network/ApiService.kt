@@ -85,7 +85,9 @@ interface ApiService {
     // --- Specialist & Service Endpoints ---
 
     @GET("api/professional-profiles")
-    suspend fun getActiveProfessionalProfiles(): Response<List<SpecialistResponseDto>>
+    suspend fun getActiveProfessionalProfiles(
+        @Query("categoryId") categoryId: Long? = null
+    ): Response<List<SpecialistResponseDto>>
 
     @GET("api/services/professional-profile/{professionalProfileId}")
     suspend fun getServicesByProfessionalProfileId(@Path("professionalProfileId") professionalProfileId: Long): Response<List<ServiceResponseDto>>
@@ -223,6 +225,29 @@ interface ApiService {
 
     @PUT("api/notifications/{id}/read")
     suspend fun markNotificationAsRead(@Path("id") id: Long): Response<Unit>
+
+    // --- Admin Endpoints ---
+
+    @GET("api/admin/users")
+    suspend fun getAllUsers(): Response<List<UserResponseDto>>
+
+    @PATCH("api/admin/users/{id}/toggle-status")
+    suspend fun toggleUserStatus(@Path("id") id: Long): Response<UserResponseDto>
+
+    @GET("api/admin/reports/financial")
+    suspend fun getFinancialReport(): Response<Map<String, Any>>
+
+    @GET("api/admin/settings")
+    suspend fun getSettings(): Response<List<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto>>
+
+    @POST("api/admin/settings")
+    suspend fun updateSetting(
+        @Query("key") key: String,
+        @Query("value") value: String
+    ): Response<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto>
+
+    @GET("api/admin/audit-logs")
+    suspend fun getAuditLogs(): Response<List<com.pointcheck.features.admin.data.dto.AuditLogDto>>
 
     // --- External API Endpoints ---
 

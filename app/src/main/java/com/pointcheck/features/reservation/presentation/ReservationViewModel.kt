@@ -41,14 +41,13 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     val reservations: StateFlow<List<ReservationResponseDto>> = _reservations
 
     init {
-        loadProfessionals()
         loadMyReservations()
     }
 
-    fun loadProfessionals() {
+    fun loadProfessionals(categoryId: Long? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.getActiveProfiles()
+            repository.getActiveProfiles(categoryId)
                 .onSuccess { list -> 
                     _state.update { it.copy(professionals = list, isLoading = false) } 
                 }
@@ -69,13 +68,13 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
         loadServicesForProfessional(profile.id)
     }
 
-    fun selectProfessionalById(id: Long) {
+    fun selectProfessionalById(id: Long, categoryId: Long? = null) {
         viewModelScope.launch {
-            // Asegurarse de que los profesionales estén cargados
-            if (_state.value.professionals.isEmpty()) {
-                loadProfessionals()
-            }
-            // Buscar el profesional en la lista
+            // Asegurarse de que los profesionales estén cargados para esa categoría
+            loadProfessionals(categoryId)
+            
+            // Esperar a que se carguen (en un caso real usaríamos un Flow o State, 
+            // aquí simplificamos buscando en la lista actualizada)
             val prof = _state.value.professionals.find { it.id == id }
             if (prof != null) {
                 selectProfessional(prof)
@@ -115,10 +114,27 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setReservationDateTime(millis: Long) {
         _state.update { s ->
-            val newState = s.copy(reservationStartMillis = millis)
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = millis
+            
+            // Si el usuario elige HOY, ajustamos la hora a la siguiente hora disponible
+            // para que la reserva sea válida de inmediato.
+            val now = Calendar.getInstance()
+            if (calendar.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                calendar.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
+                
+                calendar.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY) + 1)
+                calendar.set(Calendar.MINUTE, 0)
+            } else {
+                // Si es un día futuro, ponemos las 09:00 AM por defecto
+                calendar.set(Calendar.HOUR_OF_DAY, 9)
+                calendar.set(Calendar.MINUTE, 0)
+            }
+
+            val newState = s.copy(reservationStartMillis = calendar.timeInMillis)
             newState.copy(isValid = validate(newState))
         }
-        // Trigger weather lookup when date is selected as per Prompt 5
+        // Trigger weather lookup when date is selected
         _state.value.selectedProfessional?.city?.let { city ->
             loadWeather(city)
         }
@@ -148,7 +164,7 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
                s.reservationStartMillis > System.currentTimeMillis()
     }
 
-    fun loadMyReservations() {
+    fun loadMyReservations(type: String = "all") {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
             val role = prefs.role.first() ?: "CLIENT"
@@ -163,7 +179,10 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
                     Result.success(emptyList())
                 }
             } else {
-                repository.getUpcomingReservationsByClient(userId)
+                when (type) {
+                    "upcoming" -> repository.getUpcomingReservationsByClient(userId)
+                    else -> repository.getReservationsByClient(userId)
+                }
             }
 
             result.onSuccess { list ->

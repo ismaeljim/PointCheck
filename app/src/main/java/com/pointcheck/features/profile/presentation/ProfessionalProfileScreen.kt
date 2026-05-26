@@ -3,6 +3,7 @@ package com.pointcheck.features.profile.presentation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -15,6 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,8 @@ fun ProfessionalProfileScreen(
     var address by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("30") }
+    var selectedCategoryId by remember { mutableStateOf<Long?>(null) }
+    var expandedCategory by remember { mutableStateOf(false) }
 
     // Auditoría de UI: Mostrar mensajes emergentes para éxito o error
     LaunchedEffect(s.error) {
@@ -59,6 +65,7 @@ fun ProfessionalProfileScreen(
             address = it.address ?: ""
             city = it.city ?: ""
             duration = (it.defaultSessionDurationMinutes ?: 30).toString()
+            selectedCategoryId = it.categoryId
         }
     }
 
@@ -112,19 +119,19 @@ fun ProfessionalProfileScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Información de Identidad", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                         
-                        ProfileField(
+                        AppTextField(
                             value = displayName,
                             onValueChange = { displayName = it },
                             label = "Nombre Público",
-                            icon = Icons.Default.Badge,
+                            leadingIcon = Icons.Default.Badge,
                             enabled = s.isEditing
                         )
                         
-                        ProfileField(
+                        AppTextField(
                             value = businessName,
                             onValueChange = { businessName = it },
                             label = "Nombre de Empresa (Opcional)",
-                            icon = Icons.Default.Business,
+                            leadingIcon = Icons.Default.Business,
                             enabled = s.isEditing
                         )
                     }
@@ -134,33 +141,72 @@ fun ProfessionalProfileScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Especialidad y Servicios", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
-                        ProfileField(
+                        // Selector de Categoría (Visual)
+                        ExposedDropdownMenuBox(
+                            expanded = expandedCategory && s.isEditing,
+                            onExpandedChange = { if (s.isEditing) expandedCategory = !expandedCategory },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val selectedCategory = s.categories.find { it.id == selectedCategoryId }
+                            OutlinedTextField(
+                                value = selectedCategory?.name ?: "Seleccionar Categoría",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Categoría de Servicio") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory) },
+                                leadingIcon = { Icon(Icons.Default.Category, null, tint = MaterialTheme.colorScheme.primary) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                enabled = s.isEditing,
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expandedCategory && s.isEditing,
+                                onDismissRequest = { expandedCategory = false }
+                            ) {
+                                s.categories.forEach { category ->
+                                    DropdownMenuItem(
+                                        text = { Text(category.name) },
+                                        onClick = {
+                                            selectedCategoryId = category.id
+                                            expandedCategory = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        AppTextField(
                             value = specialty,
                             onValueChange = { specialty = it },
-                            label = "Especialidad Principal",
-                            icon = Icons.Default.Work,
+                            label = "Título Profesional (Ej: Peluquero, Kinesiólogo)",
+                            leadingIcon = Icons.Default.Work,
                             enabled = s.isEditing
                         )
 
-                        ProfileField(
+                        AppTextField(
                             value = description,
                             onValueChange = { description = it },
                             label = "Descripción / Bio",
-                            icon = Icons.Default.Description,
-                            enabled = s.isEditing,
-                            minLines = 3
+                            leadingIcon = Icons.Default.Description,
+                            enabled = s.isEditing
                         )
                         
-                        ProfileField(
+                        AppTextField(
                             value = duration,
                             onValueChange = { duration = it },
                             label = "Duración promedio cita (min)",
-                            icon = Icons.Default.Timer,
+                            leadingIcon = Icons.Default.Timer,
                             enabled = s.isEditing
                         )
                     }
@@ -170,24 +216,25 @@ fun ProfessionalProfileScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Ubicación", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
-                        ProfileField(
+                        AppTextField(
                             value = address,
                             onValueChange = { address = it },
                             label = "Dirección de atención",
-                            icon = Icons.Default.Place,
+                            leadingIcon = Icons.Default.Place,
                             enabled = s.isEditing
                         )
 
-                        ProfileField(
+                        AppTextField(
                             value = city,
                             onValueChange = { city = it },
                             label = "Ciudad",
-                            icon = Icons.Default.LocationCity,
+                            leadingIcon = Icons.Default.LocationCity,
                             enabled = s.isEditing
                         )
                     }
@@ -205,28 +252,24 @@ fun ProfessionalProfileScreen(
                 }
 
                 if (s.isEditing) {
-                    Button(
+                    AppButton(
+                        text = "Guardar Perfil Profesional",
                         onClick = {
-                            vm.saveProfile(displayName, businessName, specialty, description, address, city, duration.toIntOrNull() ?: 30)
+                            vm.saveProfile(selectedCategoryId, displayName, businessName, specialty, description, address, city, duration.toIntOrNull() ?: 30)
                         },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        enabled = !s.isLoading && displayName.isNotBlank() && specialty.isNotBlank()
-                    ) {
-                        if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        else Text("Guardar Perfil Profesional")
-                    }
+                        isLoading = s.isLoading,
+                        enabled = displayName.isNotBlank() && specialty.isNotBlank() && selectedCategoryId != null
+                    )
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth(), enabled = !s.isLoading) {
                         Text("Cancelar edición")
                     }
                 } else {
-                    Button(
+                    AppButton(
+                        text = "Editar mi Información",
                         onClick = { vm.toggleEdit() }, 
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
                         enabled = !s.isLoading
-                    ) {
-                        Text("Editar mi Información")
-                    }
+                    )
                 }
                 
                 Spacer(Modifier.height(24.dp))

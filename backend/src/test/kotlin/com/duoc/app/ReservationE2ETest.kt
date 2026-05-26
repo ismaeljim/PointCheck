@@ -62,6 +62,7 @@ class ReservationE2ETest @Autowired constructor(
                 name = "Especialista Cliente",
                 email = "cliente@specialist.com",
                 password = "password",
+                rut = "22222222-2",
                 role = UserRole.SPECIALIST
             )
         )
@@ -72,6 +73,7 @@ class ReservationE2ETest @Autowired constructor(
                 name = "Especialista Provee",
                 email = "provee@specialist.com",
                 password = "password",
+                rut = "33333333-3",
                 role = UserRole.SPECIALIST
             )
         )

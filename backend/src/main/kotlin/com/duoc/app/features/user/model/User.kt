@@ -20,25 +20,25 @@ data class User(
     val id: Long = 0,
     
     @Column(nullable = false)
-    val name: String,
+    var name: String,
     
     @Column(nullable = false)
-    val email: String,
+    var email: String,
     
     @Column(nullable = false)
-    val password: String,
+    var password: String,
     
     @Column(nullable = false, unique = true)
     val rut: String,
     
-    val phone: String? = null,
+    var phone: String? = null,
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val role: UserRole = UserRole.CLIENT,
+    var role: UserRole = UserRole.CLIENT,
     
     @Column(nullable = false)
-    val active: Boolean = true,
+    var active: Boolean = true,
     
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),

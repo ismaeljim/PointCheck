@@ -75,6 +75,32 @@ class DashboardRepository(private val api: ApiService) {
         }
     }
 
+    // --- Admin Functions ---
+
+    suspend fun getAllUsers(): Result<List<com.pointcheck.features.auth.data.dto.UserResponseDto>> {
+        return handleApiCall("Error al obtener usuarios") { api.getAllUsers() }
+    }
+
+    suspend fun toggleUserStatus(userId: Long): Result<com.pointcheck.features.auth.data.dto.UserResponseDto> {
+        return handleApiCall("Error al cambiar estado de usuario") { api.toggleUserStatus(userId) }
+    }
+
+    suspend fun getFinancialReport(): Result<Map<String, Any>> {
+        return handleApiCall("Error al obtener reporte financiero") { api.getFinancialReport() }
+    }
+
+    suspend fun getSettings(): Result<List<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto>> {
+        return handleApiCall("Error al obtener configuraciones") { api.getSettings() }
+    }
+
+    suspend fun updateSetting(key: String, value: String): Result<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto> {
+        return handleApiCall("Error al actualizar configuración") { api.updateSetting(key, value) }
+    }
+
+    suspend fun getAuditLogs(): Result<List<com.pointcheck.features.admin.data.dto.AuditLogDto>> {
+        return handleApiCall("Error al obtener logs de auditoría") { api.getAuditLogs() }
+    }
+
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {
         return try {
             val response = call()

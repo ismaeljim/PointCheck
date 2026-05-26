@@ -2,6 +2,7 @@ package com.duoc.app.features.professionalprofile.dto
 
 data class ProfessionalProfileRequest(
     val userId: Long,
+    val categoryId: Long? = null,
     val displayName: String,
     val businessName: String? = null,
     val specialty: String? = null,

@@ -32,8 +32,13 @@ class ProfessionalProfileService(
             throw IllegalArgumentException("El especialista ya tiene un perfil profesional")
         }
 
+        val category = request.categoryId?.let { 
+            categoryRepository.findById(it).orElse(null)
+        }
+
         val profile = ProfessionalProfile(
             user = user,
+            category = category,
             displayName = request.displayName,
             businessName = request.businessName,
             specialty = request.specialty,
@@ -68,7 +73,12 @@ class ProfessionalProfileService(
             NoSuchElementException("Perfil profesional no encontrado con id $id")
         }
 
+        val category = request.categoryId?.let { 
+            categoryRepository.findById(it).orElse(null)
+        }
+
         val updatedProfile = profile.copy(
+            category = category,
             displayName = request.displayName,
             businessName = request.businessName,
             specialty = request.specialty,

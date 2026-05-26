@@ -23,4 +23,6 @@ interface BillingRecordRepository : JpaRepository<BillingRecord, Long> {
         start: LocalDateTime,
         end: LocalDateTime
     ): List<BillingRecord>
+
+    fun findByStatus(status: PaymentStatus): List<BillingRecord>
 }

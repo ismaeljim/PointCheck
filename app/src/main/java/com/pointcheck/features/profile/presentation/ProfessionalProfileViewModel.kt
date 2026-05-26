@@ -19,12 +19,14 @@ data class ProfessionalProfileUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null,
-    val isEditing: Boolean = false
+    val isEditing: Boolean = false,
+    val categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto> = emptyList()
 )
 
 class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(application) {
     
     private val repository = ProfessionalProfileRepository(ApiClient.instance)
+    private val categoryApi = ApiClient.retrofitInstance.create(com.pointcheck.features.onboarding.presentation.CategoryApi::class.java)
     private val prefs = UserPreferences(application)
     
     private val _state = MutableStateFlow(ProfessionalProfileUiState())
@@ -32,6 +34,18 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
 
     init {
         loadProfile()
+        loadCategories()
+    }
+
+    private fun loadCategories() {
+        viewModelScope.launch {
+            try {
+                val cats = categoryApi.getCategories()
+                _state.update { it.copy(categories = cats) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Error al cargar categorías") }
+            }
+        }
     }
 
     fun loadProfile() {
@@ -52,6 +66,7 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
     }
 
     fun saveProfile(
+        categoryId: Long?,
         displayName: String,
         businessName: String,
         specialty: String,
@@ -66,6 +81,7 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
 
             val request = ProfessionalProfileRequestDto(
                 userId = userId,
+                categoryId = categoryId,
                 displayName = displayName,
                 businessName = businessName,
                 specialty = specialty,

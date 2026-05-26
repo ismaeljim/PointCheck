@@ -5,6 +5,7 @@ package com.pointcheck.features.profile.data.dto
  */
 data class ProfessionalProfileRequestDto(
     val userId: Long,
+    val categoryId: Long? = null,
     val displayName: String,
     val businessName: String? = null,
     val specialty: String,

@@ -1,10 +1,10 @@
 package com.pointcheck.features.auth.presentation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +33,6 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // Auditoría de errores: Mostrar snackbar automáticamente
     LaunchedEffect(s.error) {
         s.error?.let {
             snackbarHostState.showSnackbar(it)
@@ -67,9 +68,10 @@ fun LoginScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(20.dp)) {
                     Text(
                         "Bienvenido",
                         style = MaterialTheme.typography.headlineSmall,
@@ -77,22 +79,24 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     
-                    OutlinedTextField(
+                    AppTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Correo electrónico") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
+                        label = "Correo electrónico",
+                        leadingIcon = Icons.Default.Email,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         enabled = !s.isLoading
                     )
                     Spacer(Modifier.height(12.dp))
+                    
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Contraseña") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         enabled = !s.isLoading,
@@ -103,11 +107,16 @@ fun LoginScreen(
                                     contentDescription = null
                                 )
                             }
-                        }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
                     )
                     Spacer(Modifier.height(24.dp))
                     
-                    Button(
+                    AppButton(
+                        text = "Iniciar Sesión",
                         onClick = {
                             vm.login(email.trim(), password) { ok ->
                                 if (ok) {
@@ -117,15 +126,9 @@ fun LoginScreen(
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = email.isNotBlank() && password.isNotBlank() && !s.isLoading
-                    ) {
-                        if (s.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        } else {
-                            Text("Iniciar Sesión")
-                        }
-                    }
+                        isLoading = s.isLoading,
+                        enabled = email.isNotBlank() && password.isNotBlank()
+                    )
                 }
             }
             

@@ -45,8 +45,8 @@ class ReservationRepository(private val api: ApiService) {
         return handleApiCall("Error al cancelar reserva") { api.cancelReservation(id) }
     }
 
-    suspend fun getActiveProfiles(): Result<List<SpecialistResponseDto>> {
-        return handleApiCall("Error al obtener perfiles activos") { api.getActiveProfessionalProfiles() }
+    suspend fun getActiveProfiles(categoryId: Long? = null): Result<List<SpecialistResponseDto>> {
+        return handleApiCall("Error al obtener perfiles activos") { api.getActiveProfessionalProfiles(categoryId) }
     }
 
     suspend fun getServices(professionalProfileId: Long): Result<List<ServiceResponseDto>> {

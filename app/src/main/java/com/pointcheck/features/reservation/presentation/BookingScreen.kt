@@ -32,6 +32,7 @@ fun BookingScreen(
     nav: NavController, 
     snackbar: SnackbarHostState, 
     preSelectedSpecialistId: Long? = null,
+    preSelectedCategoryId: Long? = null,
     vm: ReservationViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
@@ -39,7 +40,22 @@ fun BookingScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     
-    val datePickerState = rememberDatePickerState()
+    val isDayUnit = s.selectedService?.priceUnit == "DAY"
+    
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // Bloquea días anteriores a hoy (comparando solo la fecha, sin hora)
+                val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                return utcTimeMillis >= calendar.timeInMillis
+            }
+        }
+    )
     val timePickerState = rememberTimePickerState()
 
     val scrollState = rememberScrollState()
@@ -47,9 +63,11 @@ fun BookingScreen(
     var professionalExpanded by remember { mutableStateOf(false) }
     var serviceExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(preSelectedSpecialistId) {
-        preSelectedSpecialistId?.let { id ->
-            vm.selectProfessionalById(id)
+    LaunchedEffect(preSelectedSpecialistId, preSelectedCategoryId) {
+        if (preSelectedSpecialistId != null) {
+            vm.selectProfessionalById(preSelectedSpecialistId, preSelectedCategoryId)
+        } else {
+            vm.loadProfessionals(preSelectedCategoryId)
         }
     }
 
@@ -165,17 +183,18 @@ fun BookingScreen(
             OutlinedButton(
                 onClick = { showTimePicker = true },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = s.reservationStartMillis != null && !s.isLoading,
+                enabled = s.reservationStartMillis != null && !s.isLoading && !isDayUnit,
                 shape = MaterialTheme.shapes.medium,
                 contentPadding = PaddingValues(16.dp)
             ) {
                 Icon(Icons.Filled.AccessTime, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Elegir hora")
+                Text(if (isDayUnit) "Bloque de día completo" else "Elegir hora")
             }
 
             s.reservationStartMillis?.let {
-                val formattedDate = SimpleDateFormat("EEEE d 'de' MMMM, HH:mm", Locale.getDefault()).format(Date(it))
+                val pattern = if (isDayUnit) "EEEE d 'de' MMMM" else "EEEE d 'de' MMMM, HH:mm"
+                val formattedDate = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(it))
                 Card(
                     modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)

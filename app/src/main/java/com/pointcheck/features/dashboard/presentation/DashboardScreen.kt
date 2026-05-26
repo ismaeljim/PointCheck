@@ -6,12 +6,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material3.*
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.composed
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.utils.CategoryIdentityMapper
 import com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.FavoriteSpecialistDto
@@ -39,6 +50,10 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     var showMenu by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(false) }
+    var showAdminUsers by remember { mutableStateOf(false) }
+    var showAdminFinance by remember { mutableStateOf(false) }
+    var showAdminSettings by remember { mutableStateOf(false) }
+    var showAuditLogs by remember { mutableStateOf(false) }
 
     LaunchedEffect(s.error) {
         s.error?.let {
@@ -87,6 +102,18 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
                 onDismiss = { showNotifications = false }
             )
         }
+        if (showAdminUsers) {
+            AdminUsersBottomSheet(onDismiss = { showAdminUsers = false })
+        }
+        if (showAdminFinance) {
+            AdminFinanceBottomSheet(onDismiss = { showAdminFinance = false })
+        }
+        if (showAdminSettings) {
+            AdminSettingsBottomSheet(onDismiss = { showAdminSettings = false })
+        }
+        if (showAuditLogs) {
+            AuditLogsBottomSheet(onDismiss = { showAuditLogs = false })
+        }
         Column(
             modifier = Modifier
                 .padding(pad)
@@ -107,15 +134,24 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
             )
 
             if (s.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp))
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            if (s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL") {
-                ProfessionalDashboard(s.reportSummary, nav)
+                ShimmerDashboard()
             } else {
-                ClientDashboardV2(s.clientDashboard, s.weather, nav)
+                Spacer(Modifier.height(24.dp))
+
+                if (s.userRole == "ADMIN") {
+                    AdminDashboard(
+                        m = s.metrics,
+                        nav = nav,
+                        onShowUsers = { showAdminUsers = true },
+                        onShowAudit = { showAuditLogs = true },
+                        onShowFinance = { showAdminFinance = true },
+                        onShowSettings = { showAdminSettings = true }
+                    )
+                } else if (s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL") {
+                    ProfessionalDashboard(s.reportSummary, nav)
+                } else {
+                    ClientDashboardV2(s, nav)
+                }
             }
 
             if (s.error != null) {
@@ -217,7 +253,9 @@ fun NotificationItem(
 }
 
 @Composable
-fun ClientDashboardV2(d: ClientDashboardResponseDto?, weather: WeatherResponseDto?, nav: NavController) {
+fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
+    val d = s.clientDashboard
+    val weather = s.weather
     Column(Modifier.fillMaxWidth()) {
         if (d?.nextAppointment != null) {
             Text("Tu Próxima Cita", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -243,8 +281,11 @@ fun ClientDashboardV2(d: ClientDashboardResponseDto?, weather: WeatherResponseDt
         }
 
         Text("Explorar Servicios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        ServiceCategoryGrid(nav)
+        if (s.categories.isEmpty() && s.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        } else {
+            ServiceCategoryGrid(s.categories, nav)
+        }
 
         Spacer(Modifier.height(24.dp))
         DashboardButton("Historial Completo", Icons.Default.History) { 
@@ -417,22 +458,29 @@ fun FavoriteSpecialistCard(specialist: FavoriteSpecialistDto, onClick: () -> Uni
 }
 
 @Composable
-fun ServiceCategoryGrid(nav: NavController) {
-    val categories = listOf(
-        CategoryData("Barbería", Icons.Default.ContentCut, Color(0xFFFFE0B2)),
-        CategoryData("Salud", Icons.Default.MedicalServices, Color(0xFFC8E6C9)),
-        CategoryData("Deporte", Icons.Default.FitnessCenter, Color(0xFFB3E5FC)),
-        CategoryData("Estética", Icons.Default.Face, Color(0xFFF8BBD0)),
-        CategoryData("Bienestar", Icons.Default.SelfImprovement, Color(0xFFD1C4E9)),
-        CategoryData("Hogar", Icons.Default.Home, Color(0xFFF5F5F5))
-    )
-    
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+fun ServiceCategoryGrid(categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto>, nav: NavController) {
+    if (categories.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(150.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Category, null, tint = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Cargando categorías...", color = MaterialTheme.colorScheme.secondary)
+            }
+        }
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
         categories.chunked(2).forEach { rowItems ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { cat ->
-                    CategoryCard(cat, Modifier.weight(1f)) {
-                        nav.navigate(Screen.Booking.route)
+                    val icon = CategoryIdentityMapper.mapIcon(cat.icon)
+                    
+                    CategoryCard(cat.name, icon, Modifier.weight(1f)) {
+                        nav.navigate(Screen.Booking.createRoute(null, cat.id))
                     }
                 }
             }
@@ -440,15 +488,14 @@ fun ServiceCategoryGrid(nav: NavController) {
     }
 }
 
-data class CategoryData(val name: String, val icon: ImageVector, val color: Color)
-
 @Composable
-fun CategoryCard(cat: CategoryData, modifier: Modifier, onClick: () -> Unit) {
+fun CategoryCard(name: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
     Card(
         modifier = modifier
-            .height(100.dp)
+            .height(110.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = cat.color),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -456,18 +503,24 @@ fun CategoryCard(cat: CategoryData, modifier: Modifier, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                cat.icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = Color.DarkGray
-            )
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(10.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Text(
-                cat.name,
-                style = MaterialTheme.typography.titleMedium,
+                name,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.DarkGray
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -565,6 +618,190 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
 }
 
 @Composable
+fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -> Unit, onShowAudit: () -> Unit, onShowFinance: () -> Unit, onShowSettings: () -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            text = "Panel de Control Maestro",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Supervisión global de la plataforma",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(24.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiary,
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Analytics, 
+                            null, 
+                            tint = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text("Métricas del Ecosistema", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(20.dp))
+                
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricCard(
+                        label = "Citas Totales", 
+                        value = m.appointmentsToday.toString(), 
+                        icon = Icons.Default.EventNote, 
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricCard(
+                        label = "Ingresos Netos", 
+                        value = "$${String.format("%,.0f", m.paidBillingAmount)}", 
+                        icon = Icons.Default.MonetizationOn, 
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricCard(
+                        label = "Usuarios Clientes", 
+                        value = m.totalAttentionsPerformed.toString(), 
+                        icon = Icons.Default.People, 
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricCard(
+                        label = "Especialistas", 
+                        value = m.averageDurationMinutes.toInt().toString(), 
+                        icon = Icons.Default.Engineering, 
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text("Accesos Directos Administrativos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
+        
+        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles", onShowUsers)
+        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas", onShowAudit)
+        AdminActionButton("Reportes Financieros", Icons.Default.Payments, "Exportar balances globales", onShowFinance)
+        AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
+    }
+}
+
+@Composable
+fun AdminActionButton(title: String, icon: ImageVector, subtitle: String, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuditLogsBottomSheet(onDismiss: () -> Unit) {
+    val vm: DashboardViewModel = viewModel()
+    val s by vm.state.collectAsState()
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                "Historial de Auditoría",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp),
+                fontWeight = FontWeight.Bold
+            )
+
+            if (s.auditLogs.isEmpty()) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text("No hay registros de auditoría", color = MaterialTheme.colorScheme.secondary)
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    s.auditLogs.forEach { log ->
+                        AuditLogItem(log)
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
+    val icon = when (log.action) {
+        "ACTIVATE_USER" -> Icons.Default.PersonAdd
+        "DEACTIVATE_USER" -> Icons.Default.PersonRemove
+        "UPDATE_SETTING" -> Icons.Default.SettingsSuggest
+        else -> Icons.Default.History
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(log.action.replace("_", " "), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+            Text(log.details ?: "Sin detalles", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AdminPanelSettings, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "Por: ${log.performedBy.substringBefore("@")}", 
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(Modifier.width(12.dp))
+                Icon(Icons.Default.AccessTime, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    log.timestamp.replace("T", " ").substringBeforeLast("."), 
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun FinancialRow(label: String, value: String, valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -575,6 +812,51 @@ fun FinancialRow(label: String, value: String, valueColor: androidx.compose.ui.g
     }
 }
 
+@Composable
+fun ShimmerDashboard() {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .shimmerEffect()
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
+            Box(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
+        }
+        repeat(3) {
+            Box(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
+        }
+    }
+}
+
+fun Modifier.shimmerEffect(): Modifier = composed {
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val transition = rememberInfiniteTransition(label = "")
+    val startOffsetX by transition.animateFloat(
+        initialValue = -2 * size.width.toFloat(),
+        targetValue = 2 * size.width.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000)
+        ), label = ""
+    )
+
+    background(
+        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFEBEBF4),
+                Color(0xFFF4F4F4),
+                Color(0xFFEBEBF4),
+            ),
+            start = androidx.compose.ui.geometry.Offset(startOffsetX, 0f),
+            end = androidx.compose.ui.geometry.Offset(startOffsetX + size.width.toFloat(), size.height.toFloat())
+        )
+    ).onGloballyPositioned {
+        size = it.size
+    }
+}
 @Composable
 fun MetricCard(
     label: String, 
@@ -629,5 +911,157 @@ fun DashboardButton(text: String, icon: ImageVector, onClick: () -> Unit) {
         Icon(icon, null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminUsersBottomSheet(onDismiss: () -> Unit) {
+    val vm: DashboardViewModel = viewModel()
+    val s by vm.state.collectAsState()
+    
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+            Text("Gestión de Usuarios", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
+            
+            if (s.adminUsers.isEmpty()) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text("No se encontraron usuarios", color = MaterialTheme.colorScheme.secondary)
+                }
+            } else {
+                s.adminUsers.forEach { user ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(user.name, fontWeight = FontWeight.Bold)
+                            Text("${user.role} • ${user.email}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(
+                            checked = user.active,
+                            onCheckedChange = { vm.toggleUserStatus(user.id) }
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminFinanceBottomSheet(onDismiss: () -> Unit) {
+    val vm: DashboardViewModel = viewModel()
+    val s by vm.state.collectAsState()
+    val report = s.financialReport
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 20.dp)) {
+            Text("Balance Global", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(24.dp))
+            
+            if (report == null) {
+                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+            } else {
+                MetricCard("Ingresos Totales", "$${report["totalRevenue"]}", Icons.Default.MonetizationOn, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(16.dp))
+                FinancialRow("Transacciones", report["totalTransactions"].toString())
+                FinancialRow("Cobros Pendientes", "$${report["pendingRevenue"]}", MaterialTheme.colorScheme.error)
+                FinancialRow("Pagos Realizados", report["paidTransactions"].toString(), Color(0xFF4CAF50))
+                
+                Spacer(Modifier.height(32.dp))
+                AppButton("Descargar Reporte PDF", onClick = { /* Simular descarga */ })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminSettingsBottomSheet(onDismiss: () -> Unit) {
+    val vm: DashboardViewModel = viewModel()
+    val s by vm.state.collectAsState()
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 40.dp)
+                .padding(horizontal = 20.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(
+                "Configuración Global",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(16.dp))
+
+            if (s.adminSettings.isEmpty()) {
+                Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                s.adminSettings.forEach { setting ->
+                    SettingItem(setting) { newValue ->
+                        vm.updateSetting(setting.key, newValue)
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            AppButton("Cerrar", onClick = onDismiss)
+        }
+    }
+}
+
+@Composable
+fun SettingItem(
+    setting: com.pointcheck.features.dashboard.data.dto.GlobalSettingDto,
+    onUpdate: (String) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            setting.key.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        if (setting.description != null) {
+            Text(setting.description, style = MaterialTheme.typography.bodySmall)
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        
+        // Determinar si es un booleano o un texto/número
+        if (setting.value == "true" || setting.value == "false") {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(if (setting.value == "true") "Activado" else "Desactivado")
+                Switch(
+                    checked = setting.value == "true",
+                    onCheckedChange = { onUpdate(it.toString()) }
+                )
+            }
+        } else {
+            var textValue by remember { mutableStateOf(setting.value) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { textValue = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+                IconButton(onClick = { onUpdate(textValue) }) {
+                    Icon(Icons.Default.Save, "Guardar", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
     }
 }

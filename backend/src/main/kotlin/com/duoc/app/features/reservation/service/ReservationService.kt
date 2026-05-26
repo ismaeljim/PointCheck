@@ -138,19 +138,27 @@ class ReservationService(
         return updateStatus(id, ReservationStatus.CANCELLED)
     }
 
-    private fun Reservation.toResponse(): ReservationResponse = ReservationResponse(
-        id = this.id,
-        clientId = this.client.id,
-        specialistId = this.specialist.id,
-        specialistName = this.specialist.name,
-        city = this.service?.professionalProfile?.city,
-        address = this.service?.professionalProfile?.address,
-        serviceId = this.service?.id,
-        serviceName = this.service?.name,
-        reservationStart = this.reservationStart,
-        reservationEnd = this.reservationEnd,
-        status = this.status,
-        notes = this.notes,
-        createdAt = this.createdAt
-    )
+    private fun Reservation.toResponse(): ReservationResponse {
+        val profProfile = this.service?.professionalProfile
+        return ReservationResponse(
+            id = this.id,
+            clientId = this.client.id,
+            clientRut = this.client.rut,
+            specialistId = this.specialist.id,
+            specialistName = this.specialist.name,
+            specialistRut = this.specialist.rut,
+            city = profProfile?.city,
+            address = profProfile?.address,
+            serviceId = this.service?.id,
+            serviceName = this.service?.name,
+            categoryIcon = profProfile?.category?.iconKey,
+            categoryColor = profProfile?.category?.colorHex,
+            isAtHome = this.service?.isAtHome ?: false,
+            reservationStart = this.reservationStart,
+            reservationEnd = this.reservationEnd,
+            status = this.status,
+            notes = this.notes,
+            createdAt = this.createdAt
+        )
+    }
 }

@@ -41,9 +41,12 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object Login : Screen("login")
     object Register : Screen("register")
-    object Booking : Screen("booking?specialistId={specialistId}") {
-        fun createRoute(specialistId: Long? = null) = 
-            "booking" + (specialistId?.let { "?specialistId=$it" } ?: "")
+    object Booking : Screen("booking?specialistId={specialistId}&categoryId={categoryId}") {
+        fun createRoute(specialistId: Long? = null, categoryId: Long? = null) = 
+            "booking?" + 
+            (specialistId?.let { "specialistId=$it" } ?: "") +
+            (if (specialistId != null && categoryId != null) "&" else "") +
+            (categoryId?.let { "categoryId=$it" } ?: "")
     }
     object Scheduled : Screen("scheduled")
     object Profile : Screen("profile")
@@ -95,11 +98,17 @@ fun AppNavigation(snackbar: SnackbarHostState) {
                     type = NavType.StringType 
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("categoryId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val specId = backStackEntry.arguments?.getString("specialistId")?.toLongOrNull()
-            BookingScreen(nav, snackbar, specId)
+            val catId = backStackEntry.arguments?.getString("categoryId")?.toLongOrNull()
+            BookingScreen(nav, snackbar, specId, catId)
         }
         composable(Screen.Scheduled.route) { ScheduledScreen(nav) }
         composable(Screen.Profile.route) { ProfileScreen(nav) }

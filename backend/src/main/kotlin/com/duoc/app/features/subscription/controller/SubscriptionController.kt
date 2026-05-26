@@ -21,7 +21,7 @@ class SubscriptionController(
     @GetMapping("/professional-profile/{professionalProfileId}/current")
     fun getCurrentByProfessionalProfile(@PathVariable professionalProfileId: Long): ResponseEntity<SubscriptionResponse> {
         val subscription = subscriptionService.getCurrentByProfessionalProfile(professionalProfileId)
-            ?: throw NoSuchElementException("No se encontró suscripción activa para el perfil profesional")
+            ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(subscription)
     }
 
