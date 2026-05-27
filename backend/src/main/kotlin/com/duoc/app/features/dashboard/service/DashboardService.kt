@@ -24,20 +24,30 @@ class DashboardService(
 ) {
 
     fun getReportSummary(userId: Long): ReportSummaryResponse {
-        val reservations = reservationRepository.findBySpecialist_Id(userId)
+        println("\n" + "#".repeat(60))
+        println("!!! [DASHBOARD] LLAMADA RECIBIDA PARA USUARIO ID: $userId")
+        
+        val allReservations = reservationRepository.findBySpecialist_Id(userId)
         val today = LocalDate.now()
-        val todayStart = LocalDateTime.of(today, LocalTime.MIN)
-        val todayEnd = LocalDateTime.of(today, LocalTime.MAX)
         
-        val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-            userId, todayStart, todayEnd
-        )
+        println("!!! [DASHBOARD] FECHA ACTUAL SERVIDOR: $today")
+        println("!!! [DASHBOARD] TOTAL RESERVAS ENCONTRADAS EN DB: ${allReservations.size}")
+
+        // Filtro infalible por día (ignora horas)
+        val todayReservations = allReservations.filter { 
+            val match = it.reservationStart.toLocalDate().isEqual(today)
+            if (match) println("!!! [DASHBOARD] MATCH HOY -> Cita ID: ${it.id} Hora: ${it.reservationStart}")
+            match
+        }
         
+        println("!!! [DASHBOARD] RESULTADO FINAL -> Hoy: ${todayReservations.size} | Total: ${allReservations.size}")
+        println("#".repeat(60) + "\n")
+
         val attentions = attentionRepository.findBySpecialist_Id(userId)
         val billing = billingRecordRepository.findBySpecialist_Id(userId)
 
         return ReportSummaryResponse(
-            totalReservations = reservations.size,
+            totalReservations = allReservations.size,
             todayReservations = todayReservations.size,
             completedAttentions = attentions.size,
             averageAttentionMinutes = if (attentions.isNotEmpty()) {
@@ -80,32 +90,25 @@ class DashboardService(
                 )
             }
             else -> {
-                val profile = profileRepository.findByUser_Id(userId)
-                if (profile == null) return DashboardMetricsResponse()
-
-                val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
-                val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
-                
-                // Usamos userId directamente porque la reserva apunta al User, no al Profile
-                val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-                    userId, todayStart, todayEnd
-                )
-                
+                val today = LocalDate.now()
                 val allReservations = reservationRepository.findBySpecialist_Id(userId)
+                val todayReservations = allReservations.filter { 
+                    it.reservationStart.toLocalDate().isEqual(today) 
+                }
+                
                 val attentions = attentionRepository.findBySpecialist_Id(userId)
-                val pendingBilling = billingRecordRepository.findBySpecialist_IdAndStatus(userId, PaymentStatus.PENDING)
-                val paidBilling = billingRecordRepository.findBySpecialist_IdAndStatus(userId, PaymentStatus.PAID)
+                val billing = billingRecordRepository.findBySpecialist_Id(userId)
 
                 DashboardMetricsResponse(
                     appointmentsToday = todayReservations.size,
-                    totalAttentionsPerformed = allReservations.size, // Usamos este para "Citas Mes" en la UI
+                    totalAttentionsPerformed = allReservations.size,
                     averageDurationMinutes = if (attentions.isNotEmpty()) {
-                        val durations = attentions.mapNotNull { it.durationMinutes }
-                        if (durations.isNotEmpty()) durations.average() else 0.0
+                        attentions.mapNotNull { it.durationMinutes }.average().let { if (it.isNaN()) 0.0 else it }
                     } else 0.0,
-                    pendingBillingAmount = pendingBilling.sumOf { it.amount.toDouble() },
-                    paidBillingAmount = paidBilling.sumOf { it.amount.toDouble() },
-                    subscriptionStatus = "ACTIVE"
+                    pendingBillingAmount = billing.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() },
+                    paidBillingAmount = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() },
+                    subscriptionStatus = "ACTIVE",
+                    subscriptionPlan = "Premium Plan"
                 )
             }
         }

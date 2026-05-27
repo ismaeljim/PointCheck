@@ -128,9 +128,9 @@ fun ReservationCard(
 
             Spacer(Modifier.height(8.dp))
 
-            InfoRow(icon = Icons.Default.MedicalServices, text = "Servicio #${res.serviceId ?: "N/A"}")
-            InfoRow(icon = Icons.Default.Person, text = "Especialista #${res.specialistId}")
-            InfoRow(icon = Icons.Default.CalendarToday, text = res.reservationStart)
+            InfoRow(icon = Icons.Default.MedicalServices, text = res.serviceName ?: "Servicio sin nombre")
+            InfoRow(icon = Icons.Default.Person, text = "Especialista: ${res.specialistName ?: res.specialistId}")
+            InfoRow(icon = Icons.Default.CalendarToday, text = res.reservationStart.replace("T", " ").substringBeforeLast(":"))
 
             Spacer(Modifier.height(16.dp))
 
@@ -142,10 +142,14 @@ fun ReservationCard(
                     Text("Cancelar")
                 }
 
-                if (userRole == "SPECIALIST" || userRole == "PROFESSIONAL") {
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = onAtender) {
-                        Text("Atender")
+                val roleUpper = userRole?.uppercase()?.trim()
+                if (roleUpper == "SPECIALIST" || roleUpper == "PROFESSIONAL" || roleUpper == "ADMIN") {
+                    val statusUpper = res.status.uppercase()
+                    if (statusUpper != "COMPLETED" && statusUpper != "CANCELLED") {
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = onAtender) {
+                            Text("Atender")
+                        }
                     }
                 }
             }

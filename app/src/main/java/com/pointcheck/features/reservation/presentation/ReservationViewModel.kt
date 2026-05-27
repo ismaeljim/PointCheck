@@ -114,19 +114,18 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setReservationDateTime(millis: Long) {
         _state.update { s ->
-            val calendar = Calendar.getInstance()
+            // Usar la zona horaria local para el cálculo de "ahora"
+            val now = Calendar.getInstance(TimeZone.getDefault())
+            val calendar = Calendar.getInstance(TimeZone.getDefault())
             calendar.timeInMillis = millis
             
-            // Si el usuario elige HOY, ajustamos la hora a la siguiente hora disponible
-            // para que la reserva sea válida de inmediato.
-            val now = Calendar.getInstance()
             if (calendar.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
                 calendar.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
                 
+                // Si es hoy, ponemos la hora actual + 1
                 calendar.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY) + 1)
                 calendar.set(Calendar.MINUTE, 0)
             } else {
-                // Si es un día futuro, ponemos las 09:00 AM por defecto
                 calendar.set(Calendar.HOUR_OF_DAY, 9)
                 calendar.set(Calendar.MINUTE, 0)
             }
@@ -202,17 +201,18 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
             val clientId = prefs.userId.first() ?: return@launch
             _state.update { it.copy(isLoading = true) }
 
-            // Usar Calendar para ajustar la hora seleccionada (que suele ser 00:00 si viene solo del DatePicker)
-            // Para fines de este MVP, si el usuario no elige hora, pondremos una por defecto o usaremos la actual
             val calendar = Calendar.getInstance()
             calendar.timeInMillis = s.reservationStartMillis!!
             
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            // Usamos un formato que el backend entienda sin ambigüedades de zona horaria
+            // y nos aseguramos de usar la fecha que el usuario seleccionó
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
             val isoStart = sdf.format(calendar.time)
             
             val duration = s.selectedService?.durationMinutes ?: 60
-            calendar.add(Calendar.MINUTE, duration)
-            val isoEnd = sdf.format(calendar.time)
+            val endCalendar = calendar.clone() as Calendar
+            endCalendar.add(Calendar.MINUTE, duration)
+            val isoEnd = sdf.format(endCalendar.time)
 
             val request = ReservationRequestDto(
                 clientId = clientId,
