@@ -14,6 +14,7 @@ object UserPrefsKeys {
     val EMAIL = stringPreferencesKey("email")
     val ROLE = stringPreferencesKey("role")
     val PHONE = stringPreferencesKey("phone")
+    val RUT = stringPreferencesKey("rut")
     val LOGGED = booleanPreferencesKey("logged")
     val AVATAR_URI = stringPreferencesKey("avatar_uri")
     val PROFESSIONAL_PROFILE_ID = stringPreferencesKey("professional_profile_id")
@@ -30,16 +31,16 @@ class UserPreferences(private val context: Context) {
         name: String,
         email: String,
         role: String,
-        phone: String? = null
+        phone: String,
+        rut: String
     ) {
         context.dataStore.edit { p ->
             p[UserPrefsKeys.USER_ID] = userId
             p[UserPrefsKeys.NAME] = name
             p[UserPrefsKeys.EMAIL] = email
             p[UserPrefsKeys.ROLE] = role
-            if (phone != null) {
-                p[UserPrefsKeys.PHONE] = phone
-            }
+            p[UserPrefsKeys.PHONE] = phone
+            p[UserPrefsKeys.RUT] = rut
             p[UserPrefsKeys.LOGGED] = true
         }
     }
@@ -88,6 +89,7 @@ class UserPreferences(private val context: Context) {
     val email: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.EMAIL] }
     val role: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.ROLE] }
     val phone: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.PHONE] }
+    val rut: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.RUT] }
     val avatar: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.AVATAR_URI] }
     val professionalProfileId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.PROFESSIONAL_PROFILE_ID] }
     val subscriptionStatus: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.SUBSCRIPTION_STATUS] }

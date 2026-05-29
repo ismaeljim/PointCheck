@@ -112,7 +112,8 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                         name = userResponse.name,
                         email = userResponse.email,
                         role = userResponse.role,
-                        phone = userResponse.phone
+                        phone = userResponse.phone,
+                        rut = userResponse.rut
                     )
                     
                     if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
@@ -144,7 +145,8 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                         name = userResponse.name,
                         email = userResponse.email,
                         role = userResponse.role,
-                        phone = userResponse.phone
+                        phone = userResponse.phone,
+                        rut = userResponse.rut
                     )
                     
                     if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {

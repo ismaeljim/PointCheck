@@ -9,7 +9,7 @@ data class RegisterRequestDto(
     val email: String,
     val password: String,
     val rut: String,
-    val phone: String? = null,
+    val phone: String,
     val role: String = "CLIENT",
     val city: String? = null,
     val address: String? = null,
