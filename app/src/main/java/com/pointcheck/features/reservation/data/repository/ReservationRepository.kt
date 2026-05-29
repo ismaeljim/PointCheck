@@ -13,6 +13,7 @@ import retrofit2.Response
  */
 class ReservationRepository(private val api: ApiService) {
 
+<<<<<<< Updated upstream
     suspend fun getReservationsByClient(clientId: Long): Result<List<ReservationResponseDto>> {
         return handleApiCall("Error al obtener reservas del cliente") { api.getReservationsByClient(clientId) }
     }
@@ -31,26 +32,61 @@ class ReservationRepository(private val api: ApiService) {
 
     suspend fun getTodayReservationsBySpecialist(specialistId: Long): Result<List<ReservationResponseDto>> {
         return handleApiCall("Error al obtener reservas de hoy") { api.getTodayReservationsBySpecialist(specialistId) }
+=======
+    // CAMBIO DE NOMBRE: De 'getReservationsByClient' a 'getReservationHistoryByClient'
+    // Esto quita el error en AppointmentHistoryViewModel
+    suspend fun getReservationHistoryByClient(clientId: String): Result<List<ReservationResponseDto>> {
+        return handleApiCall { api.getReservationsByClient(clientId) }
+    }
+
+    suspend fun getUpcomingReservationsByClient(clientId: String): Result<List<ReservationResponseDto>> {
+        return handleApiCall { api.getUpcomingReservationsByClient(clientId) }
+    }
+
+    suspend fun getReservationsBySpecialist(specialistId: String): Result<List<ReservationResponseDto>> {
+        return handleApiCall { api.getReservationsBySpecialist(specialistId) }
+    }
+
+    suspend fun getTodayReservationsBySpecialist(specialistId: String): Result<List<ReservationResponseDto>> {
+        return handleApiCall { api.getTodayReservationsBySpecialist(specialistId) }
+>>>>>>> Stashed changes
     }
 
     suspend fun createReservation(request: ReservationRequestDto): Result<ReservationResponseDto> {
         return handleApiCall("Error al crear reserva") { api.createReservation(request) }
     }
 
+<<<<<<< Updated upstream
     suspend fun updateReservationStatus(id: Long, status: String): Result<ReservationResponseDto> {
         return handleApiCall("Error al actualizar estado de reserva") { api.updateReservationStatus(id, ReservationStatusUpdateRequestDto(status)) }
     }
 
     suspend fun cancelReservation(id: Long): Result<ReservationResponseDto> {
         return handleApiCall("Error al cancelar reserva") { api.cancelReservation(id) }
+=======
+    // ID como String para UUID
+    suspend fun updateReservationStatus(id: String, status: String): Result<ReservationResponseDto> {
+        return handleApiCall { api.updateReservationStatus(id, ReservationStatusUpdateRequestDto(status)) }
+    }
+
+    // ID como String para UUID
+    suspend fun cancelReservation(id: String): Result<ReservationResponseDto> {
+        return handleApiCall { api.cancelReservation(id) }
+>>>>>>> Stashed changes
     }
 
     suspend fun getActiveProfiles(categoryId: Long? = null): Result<List<SpecialistResponseDto>> {
         return handleApiCall("Error al obtener perfiles activos") { api.getActiveProfessionalProfiles(categoryId) }
     }
 
+<<<<<<< Updated upstream
     suspend fun getServices(professionalProfileId: Long): Result<List<ServiceResponseDto>> {
         return handleApiCall("Error al obtener servicios") { api.getServicesByProfessionalProfileId(professionalProfileId) }
+=======
+    // ID como String para UUID
+    suspend fun getServices(professionalProfileId: String): Result<List<ServiceResponseDto>> {
+        return handleApiCall { api.getServicesByProfessionalProfileId(professionalProfileId) }
+>>>>>>> Stashed changes
     }
 
     suspend fun getWeather(city: String): Result<com.pointcheck.features.external.data.dto.WeatherResponseDto> {

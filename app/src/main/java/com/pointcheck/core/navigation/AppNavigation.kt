@@ -22,6 +22,7 @@ import com.pointcheck.features.services.presentation.ServiceListScreen
 import com.pointcheck.features.attentions.presentation.AttentionScreen
 import com.pointcheck.features.billing.presentation.BillingScreen
 import com.pointcheck.features.subscriptions.presentation.SubscriptionScreen
+<<<<<<< Updated upstream
 import com.pointcheck.features.onboarding.presentation.CategorySelectionScreen
 import com.pointcheck.features.onboarding.presentation.ServiceConfigurationScreen
 import com.pointcheck.features.onboarding.presentation.CategoryViewModel
@@ -35,6 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.first
+=======
+>>>>>>> Stashed changes
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -54,10 +57,10 @@ sealed class Screen(val route: String) {
     object ServiceManagement : Screen("service_management")
     object Subscription : Screen("subscription")
     object Attention : Screen("attention/{reservationId}/{clientId}/{specialistId}") {
-        fun createRoute(reservationId: Long, clientId: Long, specialistId: Long) = "attention/$reservationId/$clientId/$specialistId"
+        fun createRoute(reservationId: String, clientId: String, specialistId: String) = "attention/$reservationId/$clientId/$specialistId"
     }
     object Billing : Screen("billing/{resId}/{cliId}/{specId}?attId={attId}") {
-        fun createRoute(resId: Long, cliId: Long, specId: Long, attId: Long?) = 
+        fun createRoute(resId: String, cliId: String, specId: String, attId: String?) =
             "billing/$resId/$cliId/$specId" + (attId?.let { "?attId=$it" } ?: "")
     }
     object ServiceDetail : Screen("service_detail/{serviceName}") {
@@ -75,9 +78,10 @@ fun AppNavigation(snackbar: SnackbarHostState) {
     val authVm: UserViewModel = viewModel()
     
     NavHost(navController = nav, startDestination = Screen.Splash.route) {
+
         composable(Screen.Splash.route) { SplashScreen(nav) }
-        composable(Screen.Dashboard.route) { DashboardScreen(nav) }
         composable(Screen.Login.route) { LoginScreen(nav) }
+<<<<<<< Updated upstream
         composable(Screen.Register.route) { RegisterScreen(nav, authVm) }
         
         composable("category_selection") {
@@ -110,43 +114,51 @@ fun AppNavigation(snackbar: SnackbarHostState) {
             val catId = backStackEntry.arguments?.getString("categoryId")?.toLongOrNull()
             BookingScreen(nav, snackbar, specId, catId)
         }
+=======
+        composable(Screen.Dashboard.route) { DashboardScreen(nav) }
+        composable(Screen.Register.route) { RegisterScreen(nav) }
+        composable(Screen.Booking.route) { BookingScreen(nav, snackbar) }
+>>>>>>> Stashed changes
         composable(Screen.Scheduled.route) { ScheduledScreen(nav) }
         composable(Screen.Profile.route) { ProfileScreen(nav) }
         composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
         composable(Screen.ServiceManagement.route) { ServiceListScreen(nav) }
         composable(Screen.Subscription.route) { SubscriptionScreen(nav) }
+
         composable(
             route = Screen.Attention.route,
             arguments = listOf(
-                navArgument("reservationId") { type = NavType.LongType },
-                navArgument("clientId") { type = NavType.LongType },
-                navArgument("specialistId") { type = NavType.LongType }
+                navArgument("reservationId") { type = NavType.StringType },
+                navArgument("clientId") { type = NavType.StringType },
+                navArgument("specialistId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val resId = backStackEntry.arguments?.getLong("reservationId") ?: 0L
-            val cliId = backStackEntry.arguments?.getLong("clientId") ?: 0L
-            val specId = backStackEntry.arguments?.getLong("specialistId") ?: 0L
+            val resId = backStackEntry.arguments?.getString("reservationId") ?: ""
+            val cliId = backStackEntry.arguments?.getString("clientId") ?: ""
+            val specId = backStackEntry.arguments?.getString("specialistId") ?: ""
             AttentionScreen(nav, resId, cliId, specId)
         }
+
         composable(
-            route = "billing/{resId}/{cliId}/{specId}?attId={attId}",
+            route = Screen.Billing.route,
             arguments = listOf(
-                navArgument("resId") { type = NavType.LongType },
-                navArgument("cliId") { type = NavType.LongType },
-                navArgument("specId") { type = NavType.LongType },
-                navArgument("attId") { 
-                    type = NavType.StringType // Se pasa como String para manejar nulos fácilmente
+                navArgument("resId") { type = NavType.StringType },
+                navArgument("cliId") { type = NavType.StringType },
+                navArgument("specId") { type = NavType.StringType },
+                navArgument("attId") {
+                    type = NavType.StringType
                     nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
-            val resId = backStackEntry.arguments?.getLong("resId") ?: 0L
-            val cliId = backStackEntry.arguments?.getLong("cliId") ?: 0L
-            val specId = backStackEntry.arguments?.getLong("specId") ?: 0L
-            val attId = backStackEntry.arguments?.getString("attId")?.toLongOrNull()
+            val resId = backStackEntry.arguments?.getString("resId") ?: ""
+            val cliId = backStackEntry.arguments?.getString("cliId") ?: ""
+            val specId = backStackEntry.arguments?.getString("specId") ?: ""
+            val attId = backStackEntry.arguments?.getString("attId")
             BillingScreen(nav, resId, cliId, specId, attId)
         }
+<<<<<<< Updated upstream
         composable(
             route = Screen.ServiceDetail.route,
             arguments = listOf(navArgument("serviceName") { type = NavType.StringType })
@@ -164,5 +176,7 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         composable(Screen.WeeklyReport.route) {
             WeeklyReportScreen(nav)
         }
+=======
+>>>>>>> Stashed changes
     }
 }

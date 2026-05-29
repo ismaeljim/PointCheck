@@ -9,14 +9,14 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "user_prefs")
 
 object UserPrefsKeys {
-    val USER_ID = longPreferencesKey("user_id")
+    val USER_ID = stringPreferencesKey("user_id")
     val NAME = stringPreferencesKey("name")
     val EMAIL = stringPreferencesKey("email")
     val ROLE = stringPreferencesKey("role")
     val PHONE = stringPreferencesKey("phone")
     val LOGGED = booleanPreferencesKey("logged")
     val AVATAR_URI = stringPreferencesKey("avatar_uri")
-    val PROFESSIONAL_PROFILE_ID = longPreferencesKey("professional_profile_id")
+    val PROFESSIONAL_PROFILE_ID = stringPreferencesKey("professional_profile_id")
     val SUBSCRIPTION_STATUS = stringPreferencesKey("subscription_status")
 }
 
@@ -26,7 +26,7 @@ class UserPreferences(private val context: Context) {
      * Guarda la sesión completa del usuario obtenida del backend.
      */
     suspend fun saveSession(
-        userId: Long,
+        userId: String,
         name: String,
         email: String,
         role: String,
@@ -73,7 +73,7 @@ class UserPreferences(private val context: Context) {
         context.dataStore.edit { it[UserPrefsKeys.AVATAR_URI] = uri }
     }
 
-    suspend fun saveProfessionalProfileId(id: Long) {
+    suspend fun saveProfessionalProfileId(id: String) {
         context.dataStore.edit { it[UserPrefsKeys.PROFESSIONAL_PROFILE_ID] = id }
     }
 
@@ -83,13 +83,13 @@ class UserPreferences(private val context: Context) {
 
     // --- Flows para observar datos de sesión ---
 
-    val userId: Flow<Long?> = context.dataStore.data.map { it[UserPrefsKeys.USER_ID] }
+    val userId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.USER_ID] }
     val name: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.NAME] }
     val email: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.EMAIL] }
     val role: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.ROLE] }
     val phone: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.PHONE] }
     val avatar: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.AVATAR_URI] }
-    val professionalProfileId: Flow<Long?> = context.dataStore.data.map { it[UserPrefsKeys.PROFESSIONAL_PROFILE_ID] }
+    val professionalProfileId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.PROFESSIONAL_PROFILE_ID] }
     val subscriptionStatus: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.SUBSCRIPTION_STATUS] }
     val isLogged: Flow<Boolean> = context.dataStore.data.map { it[UserPrefsKeys.LOGGED] ?: false }
 

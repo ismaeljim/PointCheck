@@ -4,6 +4,7 @@ import com.duoc.app.features.reservation.model.ReservationStatus
 import java.time.LocalDateTime
 
 data class ReservationResponse(
+<<<<<<< Updated upstream
     val id: Long,
     val clientId: Long,
     val clientRut: String?,
@@ -20,6 +21,15 @@ data class ReservationResponse(
     val reservationStart: java.time.LocalDateTime,
     val reservationEnd: java.time.LocalDateTime?,
     val status: com.duoc.app.features.reservation.model.ReservationStatus,
+=======
+    val id: String?,
+    val clientId: String?,
+    val specialistId: String?,
+    val serviceId: String?,
+    val reservationStart: LocalDateTime,
+    val reservationEnd: LocalDateTime?,
+    val status: ReservationStatus,
+>>>>>>> Stashed changes
     val notes: String?,
     val createdAt: java.time.LocalDateTime
 )

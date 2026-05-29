@@ -30,7 +30,7 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(observations = value) }
     }
 
-    fun startAttention(reservationId: Long) {
+    fun startAttention(reservationId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             repository.startAttention(reservationId, _state.value.observations)

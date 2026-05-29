@@ -1,11 +1,11 @@
 package com.pointcheck.features.billing.data.dto
 
 data class BillingRecordResponseDto(
-    val id: Long,
-    val reservationId: Long,
-    val attentionId: Long?,
-    val clientId: Long,
-    val specialistId: Long,
+    val id: String,
+    val reservationId: String,
+    val attentionId: String?,
+    val clientId: String,
+    val specialistId: String,
     val amount: Double,
     val currency: String,
     val paymentMethod: String?,

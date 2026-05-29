@@ -5,8 +5,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 data class SubscriptionResponse(
-    val id: Long,
-    val professionalProfileId: Long,
+    val id: String?,
+    val professionalProfileId: String?,
     val planName: String,
     val status: SubscriptionStatus,
     val startDate: LocalDate,

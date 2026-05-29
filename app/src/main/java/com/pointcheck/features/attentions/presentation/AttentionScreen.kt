@@ -23,9 +23,9 @@ import com.pointcheck.core.navigation.Screen
 @Composable
 fun AttentionScreen(
     nav: NavController,
-    reservationId: Long,
-    clientId: Long,
-    specialistId: Long,
+    reservationId: String,
+    clientId: String,
+    specialistId: String,
     vm: AttentionViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()

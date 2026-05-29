@@ -23,6 +23,7 @@ class DashboardService(
     private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
 
+<<<<<<< Updated upstream
     fun getReportSummary(userId: Long): ReportSummaryResponse {
         println("\n" + "#".repeat(60))
         println("!!! [DASHBOARD] LLAMADA RECIBIDA PARA USUARIO ID: $userId")
@@ -111,6 +112,53 @@ class DashboardService(
                     subscriptionPlan = "Premium Plan"
                 )
             }
+=======
+    fun getMetrics(userId: String, role: String): DashboardMetricsResponse {
+        val now = LocalDateTime.now()
+
+        return if (role.equals("CLIENT", ignoreCase = true)) {
+            // Consultas para Clientes usando String ID
+            val upcoming = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
+            val all = reservationRepository.findByClient_Id(userId)
+
+            DashboardMetricsResponse(
+                upcomingReservationsCount = upcoming.size,
+                recentReservationsCount = all.size,
+                // Corrección: Usamos el operador Elvis para comparar contra createdAt si updatedAt es nulo
+                lastReservationStatus = all.maxByOrNull { it.updatedAt ?: it.createdAt }?.status?.name
+            )
+        } else {
+            // Consultas para Especialistas
+            val profile = profileRepository.findByUser_Id(userId)
+            if (profile == null) return DashboardMetricsResponse()
+
+            val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
+            val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
+
+            val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
+                profile.id, todayStart, todayEnd
+            )
+
+            // 1. Primero obtenemos la lista de atenciones
+            val attentions = attentionRepository.findBySpecialist_Id(profile.id)
+
+            // 2. Luego calculamos el promedio filtrando nulos para que no falle .average()
+            val averageDuration = if (attentions.isNotEmpty()) {
+                attentions.mapNotNull { it.durationMinutes }.average()
+            } else 0.0
+
+            val pendingBilling = billingRecordRepository.findBySpecialist_IdAndStatus(profile.id, PaymentStatus.PENDING)
+            val paidBilling = billingRecordRepository.findBySpecialist_IdAndStatus(profile.id, PaymentStatus.PAID)
+
+            DashboardMetricsResponse(
+                appointmentsToday = todayReservations.size,
+                totalAttentionsPerformed = attentions.size,
+                averageDurationMinutes = averageDuration,
+                pendingBillingAmount = pendingBilling.sumOf { it.amount.toDouble() },
+                paidBillingAmount = paidBilling.sumOf { it.amount.toDouble() },
+                subscriptionStatus = "ACTIVE" // Placeholder
+            )
+>>>>>>> Stashed changes
         }
     }
 

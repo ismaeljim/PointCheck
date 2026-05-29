@@ -68,6 +68,7 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
         loadServicesForProfessional(profile.id)
     }
 
+<<<<<<< Updated upstream
     fun selectProfessionalById(id: Long, categoryId: Long? = null) {
         viewModelScope.launch {
             // Asegurarse de que los profesionales estén cargados para esa categoría
@@ -93,6 +94,9 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun loadServicesForProfessional(profileId: Long) {
+=======
+    private fun loadServicesForProfessional(profileId: String) {
+>>>>>>> Stashed changes
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             repository.getServices(profileId)
@@ -235,7 +239,7 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun cancelReservation(id: Long) {
+    fun cancelReservation(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             repository.cancelReservation(id)

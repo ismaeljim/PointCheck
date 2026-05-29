@@ -7,7 +7,7 @@ import com.pointcheck.features.services.data.dto.ServiceResponseDto
 
 class ServiceRepository(private val api: ApiService) {
 
-    suspend fun getServices(professionalProfileId: Long): Result<List<ServiceResponseDto>> {
+    suspend fun getServices(professionalProfileId: String): Result<List<ServiceResponseDto>> {
         return try {
             val response = api.getServicesByProfessionalProfileId(professionalProfileId)
             NetworkHandler.handleResponse(response, "Error al obtener servicios")
@@ -25,7 +25,7 @@ class ServiceRepository(private val api: ApiService) {
         }
     }
 
-    suspend fun deleteService(id: Long): Result<Unit> {
+    suspend fun deleteService(id: String): Result<Unit> {
         return try {
             val response = api.deleteService(id)
             if (response.isSuccessful) {

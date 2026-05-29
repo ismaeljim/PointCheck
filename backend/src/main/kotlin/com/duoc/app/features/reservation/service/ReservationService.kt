@@ -46,10 +46,12 @@ class ReservationService(
             }
 
             // Validar que el servicio pertenece al professional profile cuyo userId corresponde al specialistId de la reserva
-            val profile = professionalProfileRepository.findById(serviceEntity.professionalProfile.id).orElseThrow {
-                IllegalArgumentException("Perfil profesional no encontrado para el servicio.")
+            val profile = serviceEntity.professionalProfile.id?.let {
+                professionalProfileRepository.findById(it).orElseThrow {
+                    IllegalArgumentException("Perfil profesional no encontrado para el servicio.")
+                }
             }
-            if (profile.user.id != request.specialistId) {
+            if (profile?.user?.id != request.specialistId) {
                 throw IllegalArgumentException("El servicio seleccionado no pertenece al especialista de la reserva.")
             }
             service = serviceEntity
@@ -90,27 +92,27 @@ class ReservationService(
         return savedReservation.toResponse()
     }
 
-    fun getByClient(clientId: Long): List<ReservationResponse> {
+    fun getByClient(clientId: String): List<ReservationResponse> {
         return reservationRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 
-    fun getBySpecialist(specialistId: Long): List<ReservationResponse> {
+    fun getBySpecialist(specialistId: String): List<ReservationResponse> {
         return reservationRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
     }
 
-    fun getTodayBySpecialist(specialistId: Long): List<ReservationResponse> {
+    fun getTodayBySpecialist(specialistId: String): List<ReservationResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
         return reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
-    fun getUpcomingByClient(clientId: Long): List<ReservationResponse> {
+    fun getUpcomingByClient(clientId: String): List<ReservationResponse> {
         return reservationRepository.findByClient_IdAndReservationStartAfter(clientId, LocalDateTime.now())
             .map { it.toResponse() }
     }
 
-    fun updateStatus(id: Long, status: ReservationStatus): ReservationResponse {
+    fun updateStatus(id: String, status: ReservationStatus): ReservationResponse {
         val reservation = reservationRepository.findById(id).orElseThrow {
             IllegalArgumentException("Reserva no encontrada con ID: $id")
         }
@@ -134,7 +136,7 @@ class ReservationService(
         return saved.toResponse()
     }
 
-    fun cancel(id: Long): ReservationResponse {
+    fun cancel(id: String): ReservationResponse {
         return updateStatus(id, ReservationStatus.CANCELLED)
     }
 

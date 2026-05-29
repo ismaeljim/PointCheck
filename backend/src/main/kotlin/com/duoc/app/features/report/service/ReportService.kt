@@ -24,6 +24,7 @@ class ReportService(
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
+<<<<<<< Updated upstream
     fun getSummaryBySpecialist(userId: Long): ReportSummaryResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId) 
             ?: return ReportSummaryResponse()
@@ -32,6 +33,13 @@ class ReportService(
         val now = LocalDateTime.now()
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN)
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX)
+=======
+    fun getSummaryBySpecialist(specialistId: String): ReportSummaryResponse {
+        // Reservas
+        val allReservations = reservationRepository.findBySpecialist_Id(specialistId)
+        val today = LocalDate.now()
+        val todayReservations = allReservations.filter { it.reservationStart.toLocalDate() == today }
+>>>>>>> Stashed changes
 
         val monthReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistId, monthStart, monthEnd)
         val today = LocalDate.now()

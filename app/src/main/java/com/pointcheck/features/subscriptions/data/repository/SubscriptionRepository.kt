@@ -9,7 +9,7 @@ import retrofit2.Response
 class SubscriptionRepository(private val api: ApiService) {
 
     suspend fun getCurrentSubscriptionByProfessionalProfile(
-        professionalProfileId: Long
+        professionalProfileId: String
     ): Result<SubscriptionResponseDto> {
         return handleApiCall("No se encontró suscripción activa") { 
             api.getCurrentSubscriptionByProfessionalProfile(professionalProfileId) 
@@ -20,8 +20,13 @@ class SubscriptionRepository(private val api: ApiService) {
         return handleApiCall("Error al crear suscripción") { api.createSubscription(request) }
     }
 
+<<<<<<< Updated upstream
     suspend fun cancelSubscription(id: Long): Result<SubscriptionResponseDto> {
         return handleApiCall("Error al cancelar suscripción") { api.cancelSubscription(id) }
+=======
+    suspend fun cancelSubscription(id: String): Result<SubscriptionResponseDto> {
+        return handleApiCall { api.cancelSubscription(id) }
+>>>>>>> Stashed changes
     }
 
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {

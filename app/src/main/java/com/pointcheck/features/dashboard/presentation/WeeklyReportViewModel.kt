@@ -7,6 +7,7 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.dashboard.data.dto.MonthlyReportResponseDto
 import com.pointcheck.features.dashboard.data.dto.WeeklyReportResponseDto
+import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ enum class ReportPeriod { WEEKLY, MONTHLY }
 data class WeeklyReportUiState(
     val report: WeeklyReportResponseDto? = null,
     val monthlyReport: MonthlyReportResponseDto? = null,
+    val summary: ReportSummaryResponseDto? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val weekOffset: Int = 0,
@@ -54,10 +56,10 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
 
                 result.fold(
                     onSuccess = { data ->
-                        if (data is WeeklyReportResponseDto) {
-                            _state.update { it.copy(report = data, isLoading = false) }
-                        } else if (data is MonthlyReportResponseDto) {
-                            _state.update { it.copy(monthlyReport = data, isLoading = false) }
+                        when (data) {
+                            is WeeklyReportResponseDto -> _state.update { it.copy(report = data, isLoading = false) }
+                            is MonthlyReportResponseDto -> _state.update { it.copy(monthlyReport = data, isLoading = false) }
+                            is ReportSummaryResponseDto -> _state.update { it.copy(summary = data, isLoading = false) }
                         }
                     },
                     onFailure = { e ->

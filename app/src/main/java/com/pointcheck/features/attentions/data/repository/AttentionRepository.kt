@@ -10,7 +10,7 @@ import retrofit2.Response
 class AttentionRepository(private val api: ApiService) {
 
     suspend fun startAttention(
-        reservationId: Long,
+        reservationId: String,
         observations: String? = null
     ): Result<AttentionResponseDto> {
         return handleApiCall("Error al iniciar atención") { 
@@ -19,7 +19,7 @@ class AttentionRepository(private val api: ApiService) {
     }
 
     suspend fun finishAttention(
-        attentionId: Long,
+        attentionId: String,
         observations: String? = null
     ): Result<AttentionResponseDto> {
         return handleApiCall("Error al finalizar atención") { 
@@ -27,12 +27,21 @@ class AttentionRepository(private val api: ApiService) {
         }
     }
 
+<<<<<<< Updated upstream
     suspend fun getTodayAttentionsBySpecialist(specialistId: Long): Result<List<AttentionResponseDto>> {
         return handleApiCall("Error al obtener atenciones de hoy") { api.getTodayAttentionsBySpecialist(specialistId) }
     }
 
     suspend fun getAttentionHistoryByClient(clientId: Long): Result<List<AttentionResponseDto>> {
         return handleApiCall("Error al obtener historial de atenciones") { api.getAttentionHistoryByClient(clientId) }
+=======
+    suspend fun getTodayAttentionsBySpecialist(specialistId: String): Result<List<AttentionResponseDto>> {
+        return handleApiCall { api.getTodayAttentionsBySpecialist(specialistId) }
+    }
+
+    suspend fun getAttentionHistoryByClient(clientId: String): Result<List<AttentionResponseDto>> {
+        return handleApiCall { api.getAttentionHistoryByClient(clientId) }
+>>>>>>> Stashed changes
     }
 
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {

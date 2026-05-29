@@ -6,16 +6,16 @@ import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 
 @Repository
-interface AttentionRepository : JpaRepository<Attention, Long> {
-    fun findByReservation_Id(reservationId: Long): Attention?
-    fun existsByReservation_Id(reservationId: Long): Boolean
-    
+interface AttentionRepository : JpaRepository<Attention, String> {
+    fun findByReservation_Id(reservationId: String): Attention?
+    fun existsByReservation_Id(reservationId: String): Boolean
+
     fun findBySpecialist_IdAndStartedAtBetween(
-        specialistId: Long,
+        specialistId: String,
         start: LocalDateTime,
         end: LocalDateTime
     ): List<Attention>
 
-    fun findByClient_Id(clientId: Long): List<Attention>
-    fun findBySpecialist_Id(specialistId: Long): List<Attention>
+    fun findByClient_Id(clientId: String): List<Attention>
+    fun findBySpecialist_Id(specialistId: String?): List<Attention>
 }

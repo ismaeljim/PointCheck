@@ -21,29 +21,29 @@ class BillingController(
 
     @PutMapping("/{id}/paid")
     fun markAsPaid(
-        @PathVariable id: Long,
+        @PathVariable id: String,
         @RequestBody request: MarkAsPaidRequest
     ): ResponseEntity<BillingRecordResponse> {
         return ResponseEntity.ok(billingService.markAsPaid(id, request))
     }
 
     @PutMapping("/{id}/cancel")
-    fun cancel(@PathVariable id: Long): ResponseEntity<BillingRecordResponse> {
+    fun cancel(@PathVariable id: String): ResponseEntity<BillingRecordResponse> {
         return ResponseEntity.ok(billingService.cancel(id))
     }
 
     @GetMapping("/specialist/{specialistId}")
-    fun getBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<BillingRecordResponse>> {
+    fun getBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<BillingRecordResponse>> {
         return ResponseEntity.ok(billingService.getBySpecialist(specialistId))
     }
 
     @GetMapping("/specialist/{specialistId}/pending")
-    fun getPendingBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<BillingRecordResponse>> {
+    fun getPendingBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<BillingRecordResponse>> {
         return ResponseEntity.ok(billingService.getPendingBySpecialist(specialistId))
     }
 
     @GetMapping("/specialist/{specialistId}/today")
-    fun getTodayBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<BillingRecordResponse>> {
+    fun getTodayBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<BillingRecordResponse>> {
         return ResponseEntity.ok(billingService.getTodayBySpecialist(specialistId))
     }
 }

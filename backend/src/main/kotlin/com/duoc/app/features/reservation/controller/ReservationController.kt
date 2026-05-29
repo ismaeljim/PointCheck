@@ -20,7 +20,7 @@ class ReservationController(
     }
 
     @GetMapping("/client/{clientId}")
-    fun getByClient(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
+    fun getByClient(@PathVariable clientId: String): ResponseEntity<List<ReservationResponse>> {
         return ResponseEntity.ok(reservationService.getByClient(clientId))
     }
 
@@ -30,17 +30,17 @@ class ReservationController(
     }
 
     @GetMapping("/specialist/{specialistId}")
-    fun getBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<ReservationResponse>> {
+    fun getBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<ReservationResponse>> {
         return ResponseEntity.ok(reservationService.getBySpecialist(specialistId))
     }
 
     @GetMapping("/specialist/{specialistId}/today")
-    fun getTodayBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<ReservationResponse>> {
+    fun getTodayBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<ReservationResponse>> {
         return ResponseEntity.ok(reservationService.getTodayBySpecialist(specialistId))
     }
 
     @GetMapping("/client/{clientId}/upcoming")
-    fun getUpcomingByClient(@PathVariable clientId: Long): ResponseEntity<List<ReservationResponse>> {
+    fun getUpcomingByClient(@PathVariable clientId: String): ResponseEntity<List<ReservationResponse>> {
         return ResponseEntity.ok(reservationService.getUpcomingByClient(clientId))
     }
 
@@ -52,14 +52,14 @@ class ReservationController(
 
     @PutMapping("/{id}/status")
     fun updateStatus(
-        @PathVariable id: Long,
+        @PathVariable id: String,
         @RequestBody request: ReservationStatusUpdateRequest
     ): ResponseEntity<ReservationResponse> {
         return ResponseEntity.ok(reservationService.updateStatus(id, request.status))
     }
 
     @PutMapping("/{id}/cancel")
-    fun cancel(@PathVariable id: Long): ResponseEntity<ReservationResponse> {
+    fun cancel(@PathVariable id: String): ResponseEntity<ReservationResponse> {
         return ResponseEntity.ok(reservationService.cancel(id))
     }
 }

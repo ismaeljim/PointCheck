@@ -20,8 +20,9 @@ import java.time.LocalDateTime
 )
 data class Reservation(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    @GeneratedValue(strategy = GenerationType.UUID) // Genera UUID automáticamente como String
+    @Column(name = "id", updatable = false, nullable = false)
+    val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)

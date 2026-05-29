@@ -14,6 +14,7 @@ class ReportController(
     private val reportService: ReportService
 ) {
 
+<<<<<<< Updated upstream
     @GetMapping("/summary/specialist/{userId}")
     fun getSummaryBySpecialist(@PathVariable userId: Long): ResponseEntity<ReportSummaryResponse> {
         return ResponseEntity.ok(reportService.getSummaryBySpecialist(userId))
@@ -57,5 +58,10 @@ class ReportController(
             .header("Content-Disposition", "attachment; filename=reporte_mensual.csv")
             .header("Content-Type", "text/csv; charset=UTF-8")
             .body(csv)
+=======
+    @GetMapping("/summary/specialist/{specialistId}")
+    fun getSummaryBySpecialist(@PathVariable specialistId: String): ResponseEntity<ReportSummaryResponse> {
+        return ResponseEntity.ok(reportService.getSummaryBySpecialist(specialistId))
+>>>>>>> Stashed changes
     }
 }

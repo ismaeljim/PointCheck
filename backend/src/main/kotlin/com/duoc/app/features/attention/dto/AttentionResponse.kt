@@ -4,10 +4,10 @@ import com.duoc.app.features.attention.model.AttentionStatus
 import java.time.LocalDateTime
 
 data class AttentionResponse(
-    val id: Long,
-    val reservationId: Long,
-    val clientId: Long,
-    val specialistId: Long,
+    val id: String?,
+    val reservationId: String?,
+    val clientId: String?,
+    val specialistId: String?,
     val startedAt: LocalDateTime,
     val finishedAt: LocalDateTime?,
     val durationMinutes: Int?,

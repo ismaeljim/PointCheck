@@ -16,10 +16,12 @@ import java.time.LocalDateTime
 )
 data class User(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
-    
+    @GeneratedValue(strategy = GenerationType.UUID) // Cambio a UUID
+    @Column(name = "id", updatable = false, nullable = false)
+    val id: String? = null,
+
     @Column(nullable = false)
+<<<<<<< Updated upstream
     var name: String,
     
     @Column(nullable = false)
@@ -40,9 +42,28 @@ data class User(
     @Column(nullable = false)
     var active: Boolean = true,
     
+=======
+    val name: String,
+
+    @Column(nullable = false)
+    val email: String,
+
+    @Column(nullable = false)
+    val password: String,
+
+    val phone: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    val role: UserRole = UserRole.CLIENT,
+
+    @Column(nullable = false)
+    val active: Boolean = true,
+
+>>>>>>> Stashed changes
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    
+
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
 )

@@ -50,7 +50,7 @@ class BillingService(
     }
 
     @Transactional
-    fun markAsPaid(id: Long, request: MarkAsPaidRequest): BillingRecordResponse {
+    fun markAsPaid(id: String, request: MarkAsPaidRequest): BillingRecordResponse {
         val billingRecord = billingRecordRepository.findById(id).orElseThrow {
             IllegalArgumentException("Registro de cobro no encontrado con ID: $id")
         }
@@ -68,7 +68,7 @@ class BillingService(
     }
 
     @Transactional
-    fun cancel(id: Long): BillingRecordResponse {
+    fun cancel(id: String): BillingRecordResponse {
         val billingRecord = billingRecordRepository.findById(id).orElseThrow {
             IllegalArgumentException("Registro de cobro no encontrado con ID: $id")
         }
@@ -81,16 +81,16 @@ class BillingService(
         return billingRecordRepository.save(updatedRecord).toResponse()
     }
 
-    fun getBySpecialist(specialistId: Long): List<BillingRecordResponse> {
+    fun getBySpecialist(specialistId: String): List<BillingRecordResponse> {
         return billingRecordRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
     }
 
-    fun getPendingBySpecialist(specialistId: Long): List<BillingRecordResponse> {
+    fun getPendingBySpecialist(specialistId: String): List<BillingRecordResponse> {
         return billingRecordRepository.findBySpecialist_IdAndStatus(specialistId, PaymentStatus.PENDING)
             .map { it.toResponse() }
     }
 
-    fun getTodayBySpecialist(specialistId: Long): List<BillingRecordResponse> {
+    fun getTodayBySpecialist(specialistId: String): List<BillingRecordResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
         return billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(specialistId, startOfDay, endOfDay)

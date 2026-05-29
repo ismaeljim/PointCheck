@@ -51,7 +51,7 @@ class AttentionService(
     }
 
     @Transactional
-    fun finish(attentionId: Long, request: FinishAttentionRequest): AttentionResponse {
+    fun finish(attentionId: String, request: FinishAttentionRequest): AttentionResponse {
         val attention = attentionRepository.findById(attentionId).orElseThrow {
             IllegalArgumentException("Atención no encontrada con ID: $attentionId")
         }
@@ -71,7 +71,7 @@ class AttentionService(
             updatedAt = LocalDateTime.now()
         )
 
-        val reservation = reservationRepository.findById(attention.reservation.id).orElseThrow {
+        val reservation = reservationRepository.findById(attention.reservation.id!!).orElseThrow {
             IllegalStateException("Reserva no encontrada para la atención: ${attention.id}")
         }
         
@@ -84,14 +84,14 @@ class AttentionService(
         return attentionRepository.save(updatedAttention).toResponse()
     }
 
-    fun getTodayBySpecialist(specialistId: Long): List<AttentionResponse> {
+    fun getTodayBySpecialist(specialistId: String): List<AttentionResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
         return attentionRepository.findBySpecialist_IdAndStartedAtBetween(specialistId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
-    fun getHistoryByClient(clientId: Long): List<AttentionResponse> {
+    fun getHistoryByClient(clientId: String): List<AttentionResponse> {
         return attentionRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 

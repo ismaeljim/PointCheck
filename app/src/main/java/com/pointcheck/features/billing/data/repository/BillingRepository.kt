@@ -13,7 +13,7 @@ class BillingRepository(private val api: ApiService) {
     }
 
     suspend fun markAsPaid(
-        id: Long,
+        id: String,
         paymentMethod: String,
         externalReference: String? = null,
         notes: String? = null
@@ -22,19 +22,19 @@ class BillingRepository(private val api: ApiService) {
         return handleApiCall { api.markBillingAsPaid(id, request) }
     }
 
-    suspend fun cancelBillingRecord(id: Long): Result<BillingRecordResponseDto> {
+    suspend fun cancelBillingRecord(id: String): Result<BillingRecordResponseDto> {
         return handleApiCall { api.cancelBillingRecord(id) }
     }
 
-    suspend fun getBillingBySpecialist(specialistId: Long): Result<List<BillingRecordResponseDto>> {
+    suspend fun getBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
         return handleApiCall { api.getBillingBySpecialist(specialistId) }
     }
 
-    suspend fun getPendingBillingBySpecialist(specialistId: Long): Result<List<BillingRecordResponseDto>> {
+    suspend fun getPendingBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
         return handleApiCall { api.getPendingBillingBySpecialist(specialistId) }
     }
 
-    suspend fun getTodayBillingBySpecialist(specialistId: Long): Result<List<BillingRecordResponseDto>> {
+    suspend fun getTodayBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
         return handleApiCall { api.getTodayBillingBySpecialist(specialistId) }
     }
 

@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.features.dashboard.data.dto.DailyMetricDto
 import com.pointcheck.features.dashboard.data.dto.WeeklySummaryDto
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,6 +167,21 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                         }
                     }
                 }
+            } else if (s.summary != null) {
+                // Caso alternativo: Resumen General si no hay datos semanales/mensuales aún
+                val report = s.summary!!
+                Spacer(Modifier.height(24.dp))
+                Text("Estadísticas de Atención", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(8.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatRow("Total Reservas", report.totalReservations.toString())
+                    StatRow("Atenciones Completadas", report.completedAttentions.toString())
+                    StatRow("Promedio Atención (min)", String.format(Locale.getDefault(), "%.1f", report.averageAttentionMinutes))
+                    StatRow("Cobros Realizados", report.paidBillingCount.toString())
+                    StatRow("Cobros Pendientes", report.pendingBillingCount.toString())
+                    StatRow("Pendiente de Cobro", "$${report.pendingAmount}")
+                }
             }
         }
     }
@@ -174,9 +190,8 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
 @Composable
 fun DateSelector(label: String, subLabel: String, onPrevious: () -> Unit, onNext: () -> Unit, isLoading: Boolean) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         IconButton(onClick = onPrevious, enabled = !isLoading) {
             Icon(Icons.Default.ChevronLeft, "Anterior")
@@ -192,6 +207,18 @@ fun DateSelector(label: String, subLabel: String, onPrevious: () -> Unit, onNext
         }
     }
 }
+
+@Composable
+fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+    }
+}
+
 
 @Composable
 fun DailyMetricItem(day: DailyMetricDto) {

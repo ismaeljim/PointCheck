@@ -4,6 +4,7 @@ package com.pointcheck.features.reservation.data.dto
  * DTO para recibir la información de una reserva desde el backend.
  */
 data class ReservationResponseDto(
+<<<<<<< Updated upstream
     val id: Long,
     val clientId: Long,
     val clientRut: String? = null,
@@ -17,6 +18,12 @@ data class ReservationResponseDto(
     val categoryIcon: String? = null,
     val categoryColor: String? = null,
     val isAtHome: Boolean = false,
+=======
+    val id: String,
+    val clientId: String,
+    val specialistId: String,
+    val serviceId: String?,
+>>>>>>> Stashed changes
     val reservationStart: String,
     val reservationEnd: String?,
     val status: String,

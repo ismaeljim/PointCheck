@@ -27,7 +27,7 @@ class UserController(
     }
 
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: Long): ResponseEntity<UserResponse> {
+    fun getById(@PathVariable id: String): ResponseEntity<UserResponse> {
         return try {
             ResponseEntity.ok(userService.getById(id))
         } catch (e: IllegalArgumentException) {

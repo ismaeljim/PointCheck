@@ -26,10 +26,10 @@ import androidx.navigation.NavController
 @Composable
 fun BillingScreen(
     nav: NavController,
-    reservationId: Long,
-    @Suppress("UNUSED_PARAMETER") clientId: Long,
-    @Suppress("UNUSED_PARAMETER") specialistId: Long,
-    attentionId: Long?,
+    reservationId: String,
+    @Suppress("UNUSED_PARAMETER") clientId: String,
+    @Suppress("UNUSED_PARAMETER") specialistId: String,
+    attentionId: String?,
     vm: BillingViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()

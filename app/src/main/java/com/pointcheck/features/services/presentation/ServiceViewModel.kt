@@ -83,7 +83,7 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun deleteService(id: Long) {
+    fun deleteService(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             repository.deleteService(id)

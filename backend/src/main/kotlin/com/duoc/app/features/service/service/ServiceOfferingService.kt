@@ -34,7 +34,7 @@ class ServiceOfferingService(
         return serviceOfferingRepository.save(serviceOffering).toResponse()
     }
 
-    fun getByProfessionalProfile(professionalProfileId: Long): List<ServiceOfferingResponse> {
+    fun getByProfessionalProfile(professionalProfileId: String): List<ServiceOfferingResponse> {
         return serviceOfferingRepository.findByProfessionalProfile_Id(professionalProfileId).map { it.toResponse() }
     }
 
@@ -42,7 +42,7 @@ class ServiceOfferingService(
         return serviceOfferingRepository.findByActiveTrue().map { it.toResponse() }
     }
 
-    fun deactivate(id: Long): ServiceOfferingResponse {
+    fun deactivate(id: String): ServiceOfferingResponse {
         val serviceOffering = serviceOfferingRepository.findById(id).orElseThrow {
             IllegalArgumentException("Servicio no encontrado con ID: $id")
         }

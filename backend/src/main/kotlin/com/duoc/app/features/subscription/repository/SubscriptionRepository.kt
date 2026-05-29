@@ -6,11 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface SubscriptionRepository : JpaRepository<Subscription, Long> {
-    fun findByProfessionalProfile_Id(professionalProfileId: Long): List<Subscription>
+interface SubscriptionRepository : JpaRepository<Subscription, String> {
+    fun findByProfessionalProfile_Id(professionalProfileId: String): List<Subscription>
 
     fun findByProfessionalProfile_IdAndStatus(
-        professionalProfileId: Long,
+        professionalProfileId: String,
         status: SubscriptionStatus
     ): List<Subscription>
 }

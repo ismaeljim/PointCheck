@@ -61,14 +61,14 @@ class ProfessionalProfileService(
         }
     }
 
-    fun getByUserId(userId: Long): ProfessionalProfileResponse {
+    fun getByUserId(userId: String): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId)
             ?: throw NoSuchElementException("Perfil profesional no encontrado para el usuario $userId")
         return profile.toResponse()
     }
 
     @Transactional
-    fun update(id: Long, request: ProfessionalProfileRequest): ProfessionalProfileResponse {
+    fun update(id: String, request: ProfessionalProfileRequest): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findById(id).orElseThrow {
             NoSuchElementException("Perfil profesional no encontrado con id $id")
         }
@@ -94,7 +94,7 @@ class ProfessionalProfileService(
     }
 
     @Transactional
-    fun deactivate(id: Long): ProfessionalProfileResponse {
+    fun deactivate(id: String): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findById(id).orElseThrow {
             NoSuchElementException("Perfil profesional no encontrado con id $id")
         }

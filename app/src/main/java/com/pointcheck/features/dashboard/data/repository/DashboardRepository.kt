@@ -5,27 +5,28 @@ import com.pointcheck.core.network.NetworkHandler
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.dto.WeeklyReportResponseDto
+import com.pointcheck.features.dashboard.data.dto.MonthlyReportResponseDto
 import retrofit2.Response
 
 class DashboardRepository(private val api: ApiService) {
 
-    suspend fun getDashboardMetrics(userId: Long, role: String): Result<DashboardMetricsDto> {
+    suspend fun getDashboardMetrics(userId: String, role: String): Result<DashboardMetricsDto> {
         return handleApiCall("Error al obtener métricas") { api.getDashboardMetrics(userId, role) }
     }
 
-    suspend fun getReportSummaryBySpecialist(specialistId: Long): Result<ReportSummaryResponseDto> {
+    suspend fun getReportSummaryBySpecialist(specialistId: String): Result<ReportSummaryResponseDto> {
         return handleApiCall("Error al obtener resumen de reporte") { api.getReportSummaryBySpecialist(specialistId) }
     }
 
-    suspend fun getWeeklyReport(userId: Long, weekOffset: Int): Result<WeeklyReportResponseDto> {
+    suspend fun getWeeklyReport(userId: String, weekOffset: Int): Result<WeeklyReportResponseDto> {
         return handleApiCall("Error al obtener reporte semanal") { api.getWeeklyReport(userId, weekOffset) }
     }
 
-    suspend fun getMonthlyReport(userId: Long, monthOffset: Int): Result<com.pointcheck.features.dashboard.data.dto.MonthlyReportResponseDto> {
+    suspend fun getMonthlyReport(userId: String, monthOffset: Int): Result<MonthlyReportResponseDto> {
         return handleApiCall("Error al obtener reporte mensual") { api.getMonthlyReport(userId, monthOffset) }
     }
 
-    suspend fun getClientDashboard(clientId: Long): Result<com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto> {
+    suspend fun getClientDashboard(clientId: String): Result<com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto> {
         return handleApiCall("Error al obtener dashboard de cliente") { api.getClientDashboard(clientId) }
     }
 
@@ -33,21 +34,21 @@ class DashboardRepository(private val api: ApiService) {
         return handleApiCall("Error al obtener clima") { api.getWeather(city) }
     }
 
-    suspend fun markNotificationAsRead(notificationId: Long): Result<Unit> {
+    suspend fun markNotificationAsRead(notificationId: String): Result<Unit> {
         return try {
             val response = api.markNotificationAsRead(notificationId)
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
                 NetworkHandler.handleResponse(response, "Error al marcar notificación")
-                Result.success(Unit) // Response body for markNotificationAsRead is probably empty/Unit
+                Result.success(Unit) 
             }
         } catch (e: Exception) {
             NetworkHandler.handleException(e)
         }
     }
 
-    suspend fun exportWeeklyReport(userId: Long, weekOffset: Int): Result<String> {
+    suspend fun exportWeeklyReport(userId: String, weekOffset: Int): Result<String> {
         return try {
             val response = api.exportWeeklyReport(userId, weekOffset)
             if (response.isSuccessful) {
@@ -61,7 +62,7 @@ class DashboardRepository(private val api: ApiService) {
         }
     }
 
-    suspend fun exportMonthlyReport(userId: Long, monthOffset: Int): Result<String> {
+    suspend fun exportMonthlyReport(userId: String, monthOffset: Int): Result<String> {
         return try {
             val response = api.exportMonthlyReport(userId, monthOffset)
             if (response.isSuccessful) {
@@ -81,7 +82,7 @@ class DashboardRepository(private val api: ApiService) {
         return handleApiCall("Error al obtener usuarios") { api.getAllUsers() }
     }
 
-    suspend fun toggleUserStatus(userId: Long): Result<com.pointcheck.features.auth.data.dto.UserResponseDto> {
+    suspend fun toggleUserStatus(userId: String): Result<com.pointcheck.features.auth.data.dto.UserResponseDto> {
         return handleApiCall("Error al cambiar estado de usuario") { api.toggleUserStatus(userId) }
     }
 
@@ -110,4 +111,3 @@ class DashboardRepository(private val api: ApiService) {
         }
     }
 }
-

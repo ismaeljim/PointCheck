@@ -14,7 +14,7 @@ class DashboardController(
 
     @GetMapping("/metrics/{userId}")
     fun getMetrics(
-        @PathVariable userId: Long,
+        @PathVariable userId: String,
         @RequestParam role: String
     ): ResponseEntity<DashboardMetricsResponse> {
         return ResponseEntity.ok(dashboardService.getMetrics(userId, role))

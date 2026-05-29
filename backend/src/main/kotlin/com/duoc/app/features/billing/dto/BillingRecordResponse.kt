@@ -6,11 +6,11 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 data class BillingRecordResponse(
-    val id: Long,
-    val reservationId: Long,
-    val attentionId: Long?,
-    val clientId: Long,
-    val specialistId: Long,
+    val id: String?,
+    val reservationId: String?,
+    val attentionId: String?,
+    val clientId: String?,
+    val specialistId: String?,
     val amount: BigDecimal,
     val currency: String,
     val paymentMethod: PaymentMethod?,

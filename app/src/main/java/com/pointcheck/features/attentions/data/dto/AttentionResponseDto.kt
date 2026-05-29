@@ -1,10 +1,10 @@
 package com.pointcheck.features.attentions.data.dto
 
 data class AttentionResponseDto(
-    val id: Long,
-    val reservationId: Long,
-    val clientId: Long,
-    val specialistId: Long,
+    val id: String,
+    val reservationId: String,
+    val clientId: String,
+    val specialistId: String,
     val startedAt: String,
     val finishedAt: String?,
     val durationMinutes: Int?,

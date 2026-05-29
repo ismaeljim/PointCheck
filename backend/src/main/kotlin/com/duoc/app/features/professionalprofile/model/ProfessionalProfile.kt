@@ -18,12 +18,13 @@ import java.time.LocalDateTime
 )
 data class ProfessionalProfile(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    @GeneratedValue(strategy = GenerationType.UUID) // Cambio a UUID
+    @Column(name = "id", updatable = false, nullable = false)
+    val id: String? = null, //
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY) // Es OneToOne con User
     @JoinColumn(name = "user_id", nullable = false, unique = true)
-    val user: User,
+    val user: User, // Automáticamente usará el ID String de User
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

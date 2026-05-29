@@ -17,7 +17,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class SubscriptionUiState(
-    val professionalProfileId: Long? = null,
+    val professionalProfileId: String? = null,
     val currentSubscription: SubscriptionResponseDto? = null,
     val isLoading: Boolean = false,
     val error: String? = null,

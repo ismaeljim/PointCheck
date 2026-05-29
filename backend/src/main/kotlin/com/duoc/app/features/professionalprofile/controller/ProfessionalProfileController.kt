@@ -26,20 +26,20 @@ class ProfessionalProfileController(
     }
 
     @GetMapping("/user/{userId}")
-    fun getByUserId(@PathVariable userId: Long): ResponseEntity<ProfessionalProfileResponse> {
+    fun getByUserId(@PathVariable userId: String): ResponseEntity<ProfessionalProfileResponse> {
         return ResponseEntity.ok(professionalProfileService.getByUserId(userId))
     }
 
     @PutMapping("/{id}")
     fun update(
-        @PathVariable id: Long,
+        @PathVariable id: String,
         @RequestBody request: ProfessionalProfileRequest
     ): ResponseEntity<ProfessionalProfileResponse> {
         return ResponseEntity.ok(professionalProfileService.update(id, request))
     }
 
     @PutMapping("/{id}/deactivate")
-    fun deactivate(@PathVariable id: Long): ResponseEntity<ProfessionalProfileResponse> {
+    fun deactivate(@PathVariable id: String): ResponseEntity<ProfessionalProfileResponse> {
         return ResponseEntity.ok(professionalProfileService.deactivate(id))
     }
 }

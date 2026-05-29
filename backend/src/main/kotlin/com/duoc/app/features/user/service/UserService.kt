@@ -13,7 +13,7 @@ class UserService(
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
-    fun getById(id: Long): UserResponse {
+    fun getById(id: String): UserResponse {
         val user = userRepository.findById(id).orElseThrow {
             IllegalArgumentException("Usuario no encontrado con ID: $id")
         }
