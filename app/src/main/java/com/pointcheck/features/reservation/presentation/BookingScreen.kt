@@ -1,6 +1,9 @@
 package com.pointcheck.features.reservation.presentation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -14,6 +17,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.AccessTime
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.layout.ContextualFlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,19 +31,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BookingScreen(
     nav: NavController, 
     snackbar: SnackbarHostState, 
-    preSelectedSpecialistId: Long? = null,
-    preSelectedCategoryId: Long? = null,
+    preSelectedSpecialistId: String? = null,
+    preSelectedCategoryId: String? = null,
     vm: ReservationViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
     val scope = rememberCoroutineScope()
     var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
     
     val isDayUnit = s.selectedService?.priceUnit == "DAY"
     
@@ -178,18 +182,30 @@ fun BookingScreen(
                 Text(if (s.reservationStartMillis == null) "Elegir fecha" else "Cambiar fecha")
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedButton(
-                onClick = { showTimePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = s.reservationStartMillis != null && !s.isLoading && !isDayUnit,
-                shape = MaterialTheme.shapes.medium,
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                Icon(Icons.Filled.AccessTime, null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (isDayUnit) "Bloque de día completo" else "Elegir hora")
+            if (s.reservationStartMillis != null && !isDayUnit) {
+                Spacer(Modifier.height(16.dp))
+                Text("Horarios Disponibles", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(8.dp))
+                
+                if (s.availableSlots.isEmpty()) {
+                    Text("No hay horarios disponibles para este día.", 
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = MaterialTheme.colorScheme.error)
+                } else {
+                    ContextualFlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        itemCount = s.availableSlots.size,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) { index ->
+                        val slot = s.availableSlots[index]
+                        FilterChip(
+                            selected = s.selectedSlot == slot,
+                            onClick = { vm.updateReservationTimeFromSlot(slot) },
+                            label = { Text(slot) }
+                        )
+                    }
+                }
             }
 
             s.reservationStartMillis?.let {
@@ -277,25 +293,6 @@ fun BookingScreen(
                     TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
                 }
             ) { DatePicker(state = datePickerState) }
-        }
-        if (showTimePicker) {
-            AlertDialog(
-                onDismissRequest = { showTimePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        vm.updateReservationTime(timePickerState.hour, timePickerState.minute)
-                        showTimePicker = false
-                    }) { Text("Confirmar") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showTimePicker = false }) { Text("Cancelar") }
-                },
-                text = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        TimePicker(state = timePickerState)
-                    }
-                }
-            )
         }
     }
 }

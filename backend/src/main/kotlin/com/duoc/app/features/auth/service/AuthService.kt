@@ -43,7 +43,7 @@ class AuthService(
 
         val savedUser = userRepository.save(user)
 
-        var assignedCategoryId: Long? = null
+        var assignedCategoryId: String? = null
 
         // Si es especialista, creamos su perfil automáticamente
         if (request.role == com.duoc.app.features.user.model.UserRole.SPECIALIST) {
@@ -81,14 +81,14 @@ class AuthService(
         }
 
         val categoryId = if (user.role == com.duoc.app.features.user.model.UserRole.SPECIALIST) {
-            professionalProfileRepository.findByUser_Id(user.id)?.category?.id
+            professionalProfileRepository.findByUser_Id(user.id!!)?.category?.id
         } else null
 
         return user.toResponse(categoryId)
     }
 
-    private fun User.toResponse(categoryId: Long? = null): UserResponse = UserResponse(
-        id = this.id,
+    private fun User.toResponse(categoryId: String? = null): UserResponse = UserResponse(
+        id = this.id!!,
         name = this.name,
         email = this.email,
         rut = this.rut,

@@ -17,7 +17,7 @@ interface CategoryApi {
     suspend fun getCategories(): List<CategoryDto>
 
     @GET("api/categories/{id}/templates")
-    suspend fun getTemplates(@Path("id") categoryId: Long): List<ServiceTemplateDto>
+    suspend fun getTemplates(@Path("id") categoryId: String): List<ServiceTemplateDto>
 }
 
 data class OnboardingState(
@@ -48,7 +48,7 @@ class CategoryViewModel : ViewModel() {
         }
     }
 
-    fun loadTemplates(categoryId: Long) {
+    fun loadTemplates(categoryId: String) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
             try {

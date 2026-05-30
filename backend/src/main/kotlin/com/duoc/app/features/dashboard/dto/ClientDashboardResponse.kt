@@ -1,7 +1,6 @@
 package com.duoc.app.features.dashboard.dto
 
 import com.duoc.app.features.reservation.dto.ReservationResponse
-import com.duoc.app.features.notification.model.Notification
 import java.time.LocalDateTime
 
 data class ClientDashboardResponse(
@@ -11,14 +10,14 @@ data class ClientDashboardResponse(
 )
 
 data class FavoriteSpecialistDto(
-    val specialistId: Long,
+    val specialistId: String,
     val name: String,
     val specialty: String?,
     val visitCount: Long
 )
 
 data class NotificationSummaryDto(
-    val id: Long,
+    val id: String,
     val title: String,
     val message: String,
     val type: String,

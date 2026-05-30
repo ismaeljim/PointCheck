@@ -693,8 +693,12 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
         Text("Accesos Directos Administrativos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         
-        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles", onShowUsers)
-        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas", onShowAudit)
+        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles") {
+            nav.navigate(Screen.AdminUsers.route)
+        }
+        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas") {
+            nav.navigate(Screen.AdminAudit.route)
+        }
         AdminActionButton("Reportes Financieros", Icons.Default.Payments, "Exportar balances globales", onShowFinance)
         AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
     }

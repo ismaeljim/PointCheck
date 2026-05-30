@@ -1,6 +1,7 @@
 package com.duoc.app.features.reservation.service
 
 import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
+import com.duoc.app.features.reservation.dto.AvailabilityResponse
 import com.duoc.app.features.reservation.dto.ReservationRequest
 import com.duoc.app.features.reservation.dto.ReservationResponse
 import com.duoc.app.features.reservation.model.Reservation
@@ -13,6 +14,8 @@ import com.duoc.app.features.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 @Service
 class ReservationService(
@@ -22,6 +25,43 @@ class ReservationService(
     private val professionalProfileRepository: ProfessionalProfileRepository,
     private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
+
+    fun getAvailability(specialistId: String, date: LocalDate): AvailabilityResponse {
+        val profile = professionalProfileRepository.findByUser_Id(specialistId)
+            ?: throw IllegalArgumentException("Perfil profesional no encontrado para el especialista.")
+
+        // Por ahora usamos horario por defecto 09:00 - 18:00 si no hay JSON configurado
+        // En una fase posterior se parsearía el workingHoursJson
+        val startTime = LocalTime.of(9, 0)
+        val endTime = LocalTime.of(18, 0)
+        val slotDuration = profile.defaultSessionDurationMinutes.toLong()
+
+        val allReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
+            specialistId,
+            date.atStartOfDay(),
+            date.atTime(LocalTime.MAX)
+        ).filter { it.status != ReservationStatus.CANCELLED }
+
+        val availableSlots = mutableListOf<LocalTime>()
+        var current = startTime
+
+        while (current.plusMinutes(slotDuration).isBefore(endTime) || current.plusMinutes(slotDuration).equals(endTime)) {
+            val slotStart = date.atTime(current)
+            val slotEnd = slotStart.plusMinutes(slotDuration)
+
+            val isOccupied = allReservations.any { res ->
+                // Traslape: (res.start < slotEnd) AND (res.end > slotStart)
+                res.reservationStart.isBefore(slotEnd) && (res.reservationEnd?.isAfter(slotStart) ?: true)
+            }
+
+            if (!isOccupied) {
+                availableSlots.add(current)
+            }
+            current = current.plusMinutes(slotDuration)
+        }
+
+        return AvailabilityResponse(specialistId, date, availableSlots)
+    }
 
     fun create(request: ReservationRequest): ReservationResponse {
         val client = userRepository.findById(request.clientId).orElseThrow {
@@ -143,10 +183,10 @@ class ReservationService(
     private fun Reservation.toResponse(): ReservationResponse {
         val profProfile = this.service?.professionalProfile
         return ReservationResponse(
-            id = this.id,
-            clientId = this.client.id,
+            id = this.id!!,
+            clientId = this.client.id!!,
             clientRut = this.client.rut,
-            specialistId = this.specialist.id,
+            specialistId = this.specialist.id!!,
             specialistName = this.specialist.name,
             specialistRut = this.specialist.rut,
             city = profProfile?.city,

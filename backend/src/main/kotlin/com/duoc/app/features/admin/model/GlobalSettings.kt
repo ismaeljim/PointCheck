@@ -6,8 +6,8 @@ import java.time.LocalDateTime
 @Entity
 @Table(name = "global_settings")
 data class GlobalSettings(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @Id
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     @Column(name = "config_key", unique = true, nullable = false)
     val key: String,

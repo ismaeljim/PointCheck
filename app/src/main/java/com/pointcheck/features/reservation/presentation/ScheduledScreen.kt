@@ -36,7 +36,10 @@ fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) 
     var userRole by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        vm.loadMyReservations()
+        val userId = prefs.userId.first()
+        if (userId != null) {
+            vm.loadMyReservations(userId)
+        }
         userRole = prefs.role.first()
     }
 

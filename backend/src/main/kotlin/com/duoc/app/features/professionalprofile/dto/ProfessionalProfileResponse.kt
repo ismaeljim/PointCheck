@@ -3,14 +3,9 @@ package com.duoc.app.features.professionalprofile.dto
 import java.time.LocalDateTime
 
 data class ProfessionalProfileResponse(
-<<<<<<< Updated upstream
-    val id: Long,
-    val userId: Long,
-    val categoryId: Long?,
-=======
-    val id: String?,
-    val userId: String?,
->>>>>>> Stashed changes
+    val id: String,
+    val userId: String,
+    val categoryId: String?,
     val displayName: String,
     val businessName: String?,
     val specialty: String?,

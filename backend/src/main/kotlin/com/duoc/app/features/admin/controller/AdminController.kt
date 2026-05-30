@@ -16,7 +16,7 @@ class AdminController(private val adminService: AdminService) {
     fun getAllUsers(): ResponseEntity<List<User>> = ResponseEntity.ok(adminService.getAllUsers())
 
     @PatchMapping("/users/{id}/toggle-status")
-    fun toggleUserStatus(@PathVariable id: Long, principal: Principal): ResponseEntity<User> = 
+    fun toggleUserStatus(@PathVariable id: String, principal: Principal): ResponseEntity<User> =
         ResponseEntity.ok(adminService.toggleUserStatus(id, principal.name))
 
     @GetMapping("/reports/financial")

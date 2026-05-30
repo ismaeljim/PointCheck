@@ -11,5 +11,5 @@ data class RegisterRequest(
     val role: UserRole = UserRole.CLIENT,
     val city: String? = null,
     val address: String? = null,
-    val categoryId: Long? = null
+    val categoryId: String? = null
 )

@@ -27,7 +27,7 @@ data class RegisterUiState(
     val role: String = "CLIENT",
     val city: String = "",
     val address: String = "",
-    val categoryId: Long? = null,
+    val categoryId: String? = null,
     val selectedServices: List<ServiceOfferingDto> = emptyList(),
     val avatarUri: String? = null,
     val isValid: Boolean = false,
@@ -42,6 +42,14 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(RegisterUiState())
     val state: StateFlow<RegisterUiState> = _state
 
+    init {
+        viewModelScope.launch {
+            prefs.role.collect { role ->
+                _state.update { it.copy(role = role ?: "CLIENT") }
+            }
+        }
+    }
+
     fun onValueChange(field: String, value: String) {
         val s = _state.value
         val n = when (field) {
@@ -54,7 +62,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
             "role" -> s.copy(role = value)
             "city" -> s.copy(city = value)
             "address" -> s.copy(address = value)
-            "categoryId" -> s.copy(categoryId = value.toLongOrNull())
+            "categoryId" -> s.copy(categoryId = value)
             else -> s
         }
         _state.value = n.copy(isValid = validate(n), error = null)

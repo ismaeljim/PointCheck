@@ -23,7 +23,7 @@ class AdminService(
     fun getAllUsers(): List<User> = userRepository.findAll()
 
     @Transactional
-    fun toggleUserStatus(userId: Long, adminEmail: String): User {
+    fun toggleUserStatus(userId: String, adminEmail: String): User {
         val user = userRepository.findById(userId).orElseThrow { RuntimeException("User not found") }
         user.active = !user.active
         val savedUser = userRepository.save(user)
@@ -32,7 +32,7 @@ class AdminService(
             action = if (savedUser.active) "ACTIVATE_USER" else "DEACTIVATE_USER",
             performedBy = adminEmail,
             targetType = "USER",
-            targetId = userId.toString(),
+            targetId = userId,
             details = "User ${user.email} status toggled to ${savedUser.active}"
         ))
         

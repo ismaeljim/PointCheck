@@ -1,45 +1,61 @@
--- 1. INSERTAR CATEGORÍAS
-INSERT INTO categories (id, name, icon_key, color_hex, created_at) VALUES
-(1, 'Barbería', 'content_cut', '#FFB74D', NOW()),
-(2, 'Salud', 'medical_services', '#81C784', NOW()),
-(3, 'Deporte', 'sports_soccer', '#64B5F6', NOW()),
-(4, 'Estética', 'face', '#F06292', NOW()),
-(5, 'Bienestar', 'self_improvement', '#BA68C8', NOW()),
-(6, 'Hogar', 'home_repair_service', '#A1887F', NOW());
+-- ==========================================================
+-- SEED DATA COMPLETO PARA PRESENTACIÓN (UUID EDITION)
+-- ==========================================================
 
--- 2. INSERTAR USUARIOS (ADMIN, SPECIALISTS, CLIENTS)
+-- 1. CATEGORÍAS
+INSERT INTO categories (id, name, icon_key, color_hex, active, created_at) VALUES
+('cat-001-barber', 'Barbería', 'content_cut', '#FFB74D', 1, NOW()),
+('cat-002-health', 'Salud', 'medical_services', '#81C784', 1, NOW()),
+('cat-003-sports', 'Deporte', 'sports_soccer', '#64B5F6', 1, NOW()),
+('cat-004-beauty', 'Estética', 'face', '#F06292', 1, NOW());
+
+-- 2. USUARIOS
 INSERT INTO users (id, name, email, password, rut, phone, role, active, created_at) VALUES
-(1, 'Admin PointCheck', 'admin@pointcheck.cl', '123456', '9.999.999-9', '+56900000000', 'ADMIN', 1, NOW()),
-(2, 'Franco el Barbero', 'franco@barber.cl', '123456', '18.111.111-1', '+56911111111', 'SPECIALIST', 1, NOW()),
-(3, 'Dra. Maria Paz', 'maria@salud.cl', '123456', '15.222.222-2', '+56922222222', 'SPECIALIST', 1, NOW()),
-(4, 'Ismael Jimenez', 'ismael@gmail.com', '123456', '20.333.333-3', '+56933333333', 'CLIENT', 1, NOW()),
-(5, 'Carla Rojas', 'carla@yahoo.cl', '123456', '21.444.444-4', '+56944444444', 'CLIENT', 1, NOW());
+('u-adm-001', 'Admin PointCheck', 'admin@pointcheck.cl', '123456', '9.999.999-9', '+56900000000', 'ADMIN', 1, NOW()),
+('u-spec-001', 'Franco el Barbero', 'franco@barber.cl', '123456', '18.111.111-1', '+56911111111', 'SPECIALIST', 1, NOW()),
+('u-spec-002', 'Dra. Maria Paz', 'maria@salud.cl', '123456', '15.222.222-2', '+56922222222', 'SPECIALIST', 1, NOW()),
+('u-cli-001', 'Ismael Jimenez', 'ismael@gmail.com', '123456', '20.333.333-3', '+56933333333', 'CLIENT', 1, NOW()),
+('u-cli-002', 'Carla Rojas', 'carla@yahoo.cl', '123456', '21.444.444-4', '+56944444444', 'CLIENT', 1, NOW());
 
 -- 3. PERFILES PROFESIONALES
 INSERT INTO professional_profiles (id, user_id, category_id, display_name, business_name, specialty, description, address, city, country, default_session_duration_minutes, active, created_at) VALUES
-(1, 2, 1, 'Franco Studio', 'Franco Barber Co.', 'Barbero Master', 'Cortes clásicos y modernos con los mejores productos.', 'Av. Providencia 1234', 'Santiago', 'Chile', 45, 1, NOW()),
-(2, 3, 2, 'Dra. Maria Paz', 'Centro Kinesiológico', 'Kinesióloga Deportiva', 'Rehabilitación avanzada para atletas de alto rendimiento.', 'Apoquindo 4500, Of 402', 'Las Condes', 'Chile', 60, 1, NOW());
+('prof-001', 'u-spec-001', 'cat-001-barber', 'Franco Studio', 'Franco Barber Co.', 'Barbero Master', 'Cortes clásicos y modernos.', 'Av. Providencia 1234', 'Santiago', 'Chile', 45, 1, NOW()),
+('prof-002', 'u-spec-002', 'cat-002-health', 'Dra. Maria Paz', 'Centro Kinesiológico', 'Kinesióloga Deportiva', 'Rehabilitación avanzada.', 'Apoquindo 4500', 'Las Condes', 'Chile', 60, 1, NOW());
 
--- 4. SERVICIOS PARA LOS ESPECIALISTAS
+-- 4. SUSCRIPCIONES (Para que los especialistas tengan acceso total)
+INSERT INTO subscriptions (id, professional_profile_id, plan_name, status, start_date, end_date, created_at) VALUES
+('sub-001', 'prof-001', 'PREMIUM_MONTHLY', 'ACTIVE', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 1 MONTH), NOW()),
+('sub-002', 'prof-002', 'BASIC_FREE', 'ACTIVE', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 1 YEAR), NOW());
+
+-- 5. SERVICIOS
 INSERT INTO services (id, professional_profile_id, name, description, price, duration_minutes, price_unit, is_at_home, active, created_at) VALUES
-(1, 1, 'Corte de Cabello', 'Corte profesional con lavado incluido', 12000.00, 30, 'SESSION', false, 1, NOW()),
-(2, 1, 'Perfilado de Barba', 'Perfilado con toalla caliente y navaja', 8000.00, 20, 'SESSION', false, 1, NOW()),
-(3, 2, 'Sesión Kinesiología', 'Evaluación y tratamiento kinésico', 35000.00, 60, 'SESSION', true, 1, NOW());
+('ser-001', 'prof-001', 'Corte de Cabello', 'Corte profesional', 15000.00, 30, 'SESSION', 0, 1, NOW()),
+('ser-002', 'prof-001', 'Afeitado Premium', 'Toalla caliente', 10000.00, 20, 'SESSION', 0, 1, NOW()),
+('ser-003', 'prof-002', 'Evaluación Kine', 'Sesión inicial', 45000.00, 60, 'SESSION', 1, 1, NOW());
 
--- 5. RESERVAS DE PRUEBA (Para que el Especialista y Admin vean datos)
-INSERT INTO reservations (client_id, specialist_id, service_id, reservation_start, reservation_end, status, created_at) VALUES
-(4, 2, 1, DATE_SUB(NOW(), INTERVAL 1 HOUR), NOW(), 'CONFIRMED', NOW()),
-(5, 2, 2, NOW(), DATE_ADD(NOW(), INTERVAL 30 MINUTE), 'PENDING', NOW()),
-(4, 2, 1, DATE_ADD(NOW(), INTERVAL 5 HOUR), DATE_ADD(NOW(), INTERVAL 6 HOUR), 'CONFIRMED', NOW()),
-(4, 3, 3, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 23 HOUR), 'COMPLETED', NOW());
+-- 6. PLANTILLAS DE SERVICIO (Para el Admin o creación rápida)
+INSERT INTO service_templates (id, category_id, name, default_price, default_duration, active) VALUES
+('temp-001', 'cat-001-barber', 'Corte Simple', 12000.00, 30, 1),
+('temp-002', 'cat-002-health', 'Consulta Médica', 35000.00, 20, 1);
 
--- 6. CONFIGURACIONES GLOBALES
-INSERT INTO global_settings (config_key, config_value, description, updated_at) VALUES
-('MAINTENANCE_MODE', 'false', 'Activa la pantalla de mantenimiento para todos los usuarios', NOW()),
-('MIN_RESERVATION_LEAD_TIME_HOURS', '2', 'Horas mínimas de anticipación para reservar', NOW()),
-('CURRENCY_CODE', 'CLP', 'Moneda principal del sistema', NOW());
+-- 7. RESERVAS
+INSERT INTO reservations (id, client_id, specialist_id, service_id, reservation_start, reservation_end, status, created_at) VALUES
+('res-comp-001', 'u-cli-001', 'u-spec-001', 'ser-001', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 47 HOUR), 'COMPLETED', NOW()),
+('res-conf-002', 'u-cli-002', 'u-spec-001', 'ser-002', DATE_ADD(NOW(), INTERVAL 2 HOUR), DATE_ADD(NOW(), INTERVAL 150 MINUTE), 'CONFIRMED', NOW()),
+('res-pend-003', 'u-cli-001', 'u-spec-002', 'ser-003', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 25 HOUR), 'PENDING', NOW());
 
--- 7. LOGS DE AUDITORÍA INICIALES
-INSERT INTO audit_logs (action, performed_by, target_type, target_id, details, timestamp) VALUES
-('SYSTEM_STARTUP', 'system', 'SYSTEM', '0', 'Servidor iniciado correctamente y base de datos sembrada', NOW()),
-('MIGRATION', 'admin@pointcheck.cl', 'DATABASE', 'V1', 'Migración de esquema 2.0 completada', NOW());
+-- 8. ATENCIONES
+INSERT INTO attentions (id, reservation_id, client_id, specialist_id, started_at, finished_at, duration_minutes, status, observations, created_at) VALUES
+('att-001', 'res-comp-001', 'u-cli-001', 'u-spec-001', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 47 HOUR), 45, 'FINISHED', 'Corte de cabello ejecutado sin problemas.', NOW());
+
+-- 9. FACTURACIÓN (Dashboard Data)
+INSERT INTO billing_records (id, reservation_id, attention_id, client_id, specialist_id, amount, currency, status, paid_at, created_at) VALUES
+('bill-001', 'res-comp-001', 'att-001', 'u-cli-001', 'u-spec-001', 15000.00, 'CLP', 'PAID', DATE_SUB(NOW(), INTERVAL 2 DAY), NOW());
+
+-- 10. CONFIGURACIONES Y LOGS
+INSERT INTO global_settings (id, config_key, config_value, description, updated_at) VALUES
+('gs-1', 'MAINTENANCE_MODE', 'false', 'Modo mantenimiento', NOW()),
+('gs-2', 'CURRENCY_CODE', 'CLP', 'Moneda local', NOW());
+
+INSERT INTO audit_logs (id, action, performed_by, target_type, target_id, details, timestamp) VALUES
+('log-001', 'SYSTEM_INIT', 'system', 'DB', 'INIT', 'Datos de prueba UUID cargados para demo', NOW());

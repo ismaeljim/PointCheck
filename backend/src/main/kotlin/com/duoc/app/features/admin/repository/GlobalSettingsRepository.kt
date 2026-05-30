@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository
 import java.util.Optional
 
 @Repository
-interface GlobalSettingsRepository : JpaRepository<GlobalSettings, Long> {
+interface GlobalSettingsRepository : JpaRepository<GlobalSettings, String> {
     fun findByKey(key: String): Optional<GlobalSettings>
 }

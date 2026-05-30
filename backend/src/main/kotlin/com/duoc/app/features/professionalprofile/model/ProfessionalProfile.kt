@@ -52,6 +52,21 @@ data class ProfessionalProfile(
     val country: String? = null,
 
     @Column(nullable = false)
+    var isVerified: Boolean = false,
+
+    @Column(nullable = false)
+    var rating: Float = 0.0f,
+
+    @Column(name = "latitude")
+    var latitude: Double? = null,
+
+    @Column(name = "longitude")
+    var longitude: Double? = null,
+
+    @Column(name = "working_hours_json", columnDefinition = "TEXT")
+    var workingHoursJson: String? = null,
+
+    @Column(nullable = false)
     val defaultSessionDurationMinutes: Int = 60,
 
     @Column(nullable = false)

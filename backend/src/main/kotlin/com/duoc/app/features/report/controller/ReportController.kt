@@ -14,15 +14,14 @@ class ReportController(
     private val reportService: ReportService
 ) {
 
-<<<<<<< Updated upstream
     @GetMapping("/summary/specialist/{userId}")
-    fun getSummaryBySpecialist(@PathVariable userId: Long): ResponseEntity<ReportSummaryResponse> {
+    fun getSummaryBySpecialist(@PathVariable userId: String): ResponseEntity<ReportSummaryResponse> {
         return ResponseEntity.ok(reportService.getSummaryBySpecialist(userId))
     }
 
     @GetMapping("/weekly/{userId}")
     fun getWeeklyReport(
-        @PathVariable userId: Long,
+        @PathVariable userId: String,
         @RequestParam(defaultValue = "0") weekOffset: Long
     ): ResponseEntity<WeeklyReportResponse> {
         return ResponseEntity.ok(reportService.getWeeklyReport(userId, weekOffset))
@@ -30,7 +29,7 @@ class ReportController(
 
     @GetMapping("/monthly/{userId}")
     fun getMonthlyReport(
-        @PathVariable userId: Long,
+        @PathVariable userId: String,
         @RequestParam(defaultValue = "0") monthOffset: Long
     ): ResponseEntity<MonthlyReportResponse> {
         return ResponseEntity.ok(reportService.getMonthlyReport(userId, monthOffset))
@@ -38,7 +37,7 @@ class ReportController(
 
     @GetMapping("/export/weekly/{userId}")
     fun exportWeekly(
-        @PathVariable userId: Long,
+        @PathVariable userId: String,
         @RequestParam(defaultValue = "0") weekOffset: Long
     ): ResponseEntity<String> {
         val csv = reportService.exportWeeklyCSV(userId, weekOffset)
@@ -50,7 +49,7 @@ class ReportController(
 
     @GetMapping("/export/monthly/{userId}")
     fun exportMonthly(
-        @PathVariable userId: Long,
+        @PathVariable userId: String,
         @RequestParam(defaultValue = "0") monthOffset: Long
     ): ResponseEntity<String> {
         val csv = reportService.exportMonthlyCSV(userId, monthOffset)
@@ -58,10 +57,5 @@ class ReportController(
             .header("Content-Disposition", "attachment; filename=reporte_mensual.csv")
             .header("Content-Type", "text/csv; charset=UTF-8")
             .body(csv)
-=======
-    @GetMapping("/summary/specialist/{specialistId}")
-    fun getSummaryBySpecialist(@PathVariable specialistId: String): ResponseEntity<ReportSummaryResponse> {
-        return ResponseEntity.ok(reportService.getSummaryBySpecialist(specialistId))
->>>>>>> Stashed changes
     }
 }

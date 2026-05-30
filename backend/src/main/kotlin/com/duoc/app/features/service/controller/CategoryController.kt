@@ -19,7 +19,7 @@ class CategoryController(
     }
 
     @GetMapping("/{id}/templates")
-    fun getTemplatesByCategory(@PathVariable id: Long): ResponseEntity<List<ServiceTemplateResponse>> {
+    fun getTemplatesByCategory(@PathVariable id: String): ResponseEntity<List<ServiceTemplateResponse>> {
         return ResponseEntity.ok(categoryService.getTemplatesByCategory(id))
     }
 }

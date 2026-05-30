@@ -132,7 +132,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun toggleUserStatus(userId: Long) {
+    fun toggleUserStatus(userId: String) {
         viewModelScope.launch {
             repository.toggleUserStatus(userId)
                 .onSuccess { loadAdminData() } // Recargar lista
@@ -163,7 +163,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun markAsRead(notificationId: Long) {
+    fun markAsRead(notificationId: String) {
         viewModelScope.launch {
             repository.markNotificationAsRead(notificationId)
                 .onSuccess {

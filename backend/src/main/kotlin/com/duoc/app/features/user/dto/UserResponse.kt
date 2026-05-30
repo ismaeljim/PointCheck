@@ -10,5 +10,5 @@ data class UserResponse(
     val phone: String,
     val role: UserRole,
     val active: Boolean,
-    val categoryId: Long? = null
+    val categoryId: String? = null
 )

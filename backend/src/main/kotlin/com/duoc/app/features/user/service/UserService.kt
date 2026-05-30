@@ -17,17 +17,17 @@ class UserService(
         val user = userRepository.findById(id).orElseThrow {
             IllegalArgumentException("Usuario no encontrado con ID: $id")
         }
-        val categoryId = professionalProfileRepository.findByUser_Id(user.id)?.category?.id
+        val categoryId = professionalProfileRepository.findByUser_Id(user.id!!)?.category?.id
         return user.toResponse(categoryId)
     }
 
     fun getByEmail(email: String): UserResponse {
         val user = userRepository.findByEmail(email) ?: throw IllegalArgumentException("Usuario no encontrado con email: $email")
-        val categoryId = professionalProfileRepository.findByUser_Id(user.id)?.category?.id
+        val categoryId = professionalProfileRepository.findByUser_Id(user.id!!)?.category?.id
         return user.toResponse(categoryId)
     }
 
-    fun getSpecialistsByCategory(categoryId: Long): List<UserResponse> {
+    fun getSpecialistsByCategory(categoryId: String): List<UserResponse> {
         return professionalProfileRepository.findByCategoryIdAndActiveTrue(categoryId)
             .map { it.user.toResponse(categoryId) }
     }
@@ -35,13 +35,13 @@ class UserService(
     fun getSpecialists(): List<UserResponse> {
         return userRepository.findByRole(UserRole.SPECIALIST)
             .map { user ->
-                val categoryId = professionalProfileRepository.findByUser_Id(user.id)?.category?.id
+                val categoryId = professionalProfileRepository.findByUser_Id(user.id!!)?.category?.id
                 user.toResponse(categoryId)
             }
     }
 
-    private fun User.toResponse(categoryId: Long? = null): UserResponse = UserResponse(
-        id = this.id,
+    private fun User.toResponse(categoryId: String? = null): UserResponse = UserResponse(
+        id = this.id!!,
         name = this.name,
         email = this.email,
         rut = this.rut,

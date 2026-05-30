@@ -6,8 +6,8 @@ import java.time.LocalDateTime
 @Entity
 @Table(name = "audit_logs")
 data class AuditLog(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @Id
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     @Column(nullable = false)
     val action: String,

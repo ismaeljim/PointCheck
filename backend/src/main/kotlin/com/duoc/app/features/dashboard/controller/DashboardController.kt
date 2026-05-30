@@ -21,7 +21,7 @@ class DashboardController(
     }
 
     @GetMapping("/client/{userId}")
-    fun getClientDashboard(@PathVariable userId: Long): ResponseEntity<com.duoc.app.features.dashboard.dto.ClientDashboardResponse> {
+    fun getClientDashboard(@PathVariable userId: String): ResponseEntity<com.duoc.app.features.dashboard.dto.ClientDashboardResponse> {
         return ResponseEntity.ok(dashboardService.getClientDashboard(userId))
     }
 }

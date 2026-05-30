@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface ServiceTemplateRepository : JpaRepository<ServiceTemplate, Long> {
-    fun findByCategory_IdAndActiveTrue(categoryId: Long): List<ServiceTemplate>
+interface ServiceTemplateRepository : JpaRepository<ServiceTemplate, String> {
+    fun findByCategory_IdAndActiveTrue(categoryId: String): List<ServiceTemplate>
 }

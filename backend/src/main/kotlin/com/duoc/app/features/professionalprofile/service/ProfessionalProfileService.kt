@@ -53,7 +53,7 @@ class ProfessionalProfileService(
         return professionalProfileRepository.save(profile).toResponse()
     }
 
-    fun getActive(categoryId: Long? = null): List<ProfessionalProfileResponse> {
+    fun getActive(categoryId: String? = null): List<ProfessionalProfileResponse> {
         return if (categoryId != null) {
             professionalProfileRepository.findByCategoryIdAndActiveTrue(categoryId).map { it.toResponse() }
         } else {
@@ -109,8 +109,8 @@ class ProfessionalProfileService(
 
     private fun ProfessionalProfile.toResponse(): ProfessionalProfileResponse {
         return ProfessionalProfileResponse(
-            id = this.id,
-            userId = this.user.id,
+            id = this.id!!,
+            userId = this.user.id!!,
             categoryId = this.category?.id,
             displayName = this.displayName,
             businessName = this.businessName,

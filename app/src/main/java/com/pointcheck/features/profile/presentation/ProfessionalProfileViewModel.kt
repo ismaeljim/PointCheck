@@ -66,14 +66,16 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
     }
 
     fun saveProfile(
-        categoryId: Long?,
+        categoryId: String?,
         displayName: String,
         businessName: String,
         specialty: String,
         description: String,
         address: String,
         city: String,
-        duration: Int
+        duration: Int,
+        latitude: Double? = null,
+        longitude: Double? = null
     ) {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
@@ -88,7 +90,9 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                 description = description,
                 address = address,
                 city = city,
-                defaultSessionDurationMinutes = duration
+                defaultSessionDurationMinutes = duration,
+                latitude = latitude,
+                longitude = longitude
             )
 
             val currentProfile = _state.value.profile

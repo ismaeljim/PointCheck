@@ -20,13 +20,13 @@ import com.pointcheck.features.auth.presentation.UserViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceConfigurationScreen(
-    categoryId: Long,
+    categoryId: String,
     nav: NavController,
     authVm: UserViewModel,
     vm: CategoryViewModel = viewModel()
 ) {
     val state by vm.state.collectAsState()
-    val selectedServices = remember { mutableStateMapOf<Long, ServiceOfferingDto>() }
+    val selectedServices = remember { mutableStateMapOf<String, ServiceOfferingDto>() }
 
     LaunchedEffect(categoryId) {
         vm.loadTemplates(categoryId)

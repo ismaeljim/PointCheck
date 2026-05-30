@@ -24,22 +24,14 @@ class ReportService(
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
-<<<<<<< Updated upstream
-    fun getSummaryBySpecialist(userId: Long): ReportSummaryResponse {
+    fun getSummaryBySpecialist(userId: String): ReportSummaryResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId) 
             ?: return ReportSummaryResponse()
         
-        val specialistId = profile.id
+        val specialistId = profile.id!!
         val now = LocalDateTime.now()
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN)
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX)
-=======
-    fun getSummaryBySpecialist(specialistId: String): ReportSummaryResponse {
-        // Reservas
-        val allReservations = reservationRepository.findBySpecialist_Id(specialistId)
-        val today = LocalDate.now()
-        val todayReservations = allReservations.filter { it.reservationStart.toLocalDate() == today }
->>>>>>> Stashed changes
 
         val monthReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistId, monthStart, monthEnd)
         val today = LocalDate.now()
@@ -70,18 +62,18 @@ class ReportService(
             todayReservations = todayReservations.size,
             completedAttentions = finishedAttentions.size,
             averageAttentionMinutes = avgMinutes,
-            totalCharged = totalCharged.toDouble(),
-            pendingAmount = pendingAmount.toDouble(),
+            totalCharged = totalCharged,
+            pendingAmount = pendingAmount,
             paidBillingCount = paidBilling.size,
             pendingBillingCount = pendingBilling.size
         )
     }
 
-    fun getWeeklyReport(userId: Long, weekOffset: Long = 0): WeeklyReportResponse {
+    fun getWeeklyReport(userId: String, weekOffset: Long = 0): WeeklyReportResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId)
             ?: return WeeklyReportResponse(0, 0, 0, 0, 0.0, emptyList())
         
-        val specialistId = profile.id
+        val specialistId = profile.id!!
         val now = LocalDate.now().minusWeeks(weekOffset)
         val weekFields = WeekFields.of(Locale.getDefault())
         val firstDayOfWeek = now.with(weekFields.dayOfWeek(), 1L)
@@ -114,17 +106,17 @@ class ReportService(
             weekNumber = now.get(weekFields.weekOfYear()),
             year = now.year,
             totalReservations = reservations.size,
-            completedAttentions = reservations.count { it.status?.name == "COMPLETED" || it.status?.name == "FINISHED" },
+            completedAttentions = reservations.count { it.status.name == "COMPLETED" || it.status.name == "FINISHED" },
             totalRevenue = dailyMetrics.sumOf { it.revenue },
             dailyBreakdown = dailyMetrics
         )
     }
 
-    fun getMonthlyReport(userId: Long, monthOffset: Long = 0): MonthlyReportResponse {
+    fun getMonthlyReport(userId: String, monthOffset: Long = 0): MonthlyReportResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId)
             ?: return MonthlyReportResponse("N/A", 0, 0, 0, 0.0, emptyList())
         
-        val specialistId = profile.id
+        val specialistId = profile.id!!
         val now = LocalDate.now().minusMonths(monthOffset)
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay()
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX)
@@ -156,7 +148,6 @@ class ReportService(
             ))
             
             current = weekEnd.plusDays(1)
-            // Si nos pasamos del mes, terminamos el desglose
             if (current.month != now.month && current.isAfter(monthEnd.toLocalDate())) break
         }
 
@@ -164,13 +155,13 @@ class ReportService(
             monthName = now.month.name,
             year = now.year,
             totalReservations = reservations.size,
-            completedAttentions = reservations.count { it.status?.name == "COMPLETED" || it.status?.name == "FINISHED" },
+            completedAttentions = reservations.count { it.status.name == "COMPLETED" || it.status.name == "FINISHED" },
             totalRevenue = weeklySummaries.sumOf { it.revenue },
             weeklyBreakdown = weeklySummaries
         )
     }
 
-    fun exportWeeklyCSV(userId: Long, weekOffset: Long): String {
+    fun exportWeeklyCSV(userId: String, weekOffset: Long): String {
         val report = getWeeklyReport(userId, weekOffset)
         val sb = StringBuilder()
         sb.append("Reporte Semanal;Semana ${report.weekNumber};${report.year}\n")
@@ -183,7 +174,7 @@ class ReportService(
         return sb.toString()
     }
 
-    fun exportMonthlyCSV(userId: Long, monthOffset: Long): String {
+    fun exportMonthlyCSV(userId: String, monthOffset: Long): String {
         val report = getMonthlyReport(userId, monthOffset)
         val sb = StringBuilder()
         sb.append("Reporte Mensual;${report.monthName};${report.year}\n")

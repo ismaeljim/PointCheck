@@ -27,21 +27,16 @@ class AttentionRepository(private val api: ApiService) {
         }
     }
 
-<<<<<<< Updated upstream
-    suspend fun getTodayAttentionsBySpecialist(specialistId: Long): Result<List<AttentionResponseDto>> {
-        return handleApiCall("Error al obtener atenciones de hoy") { api.getTodayAttentionsBySpecialist(specialistId) }
-    }
-
-    suspend fun getAttentionHistoryByClient(clientId: Long): Result<List<AttentionResponseDto>> {
-        return handleApiCall("Error al obtener historial de atenciones") { api.getAttentionHistoryByClient(clientId) }
-=======
     suspend fun getTodayAttentionsBySpecialist(specialistId: String): Result<List<AttentionResponseDto>> {
-        return handleApiCall { api.getTodayAttentionsBySpecialist(specialistId) }
+        return handleApiCall("Error al obtener atenciones de hoy") { 
+            api.getTodayAttentionsBySpecialist(specialistId) 
+        }
     }
 
     suspend fun getAttentionHistoryByClient(clientId: String): Result<List<AttentionResponseDto>> {
-        return handleApiCall { api.getAttentionHistoryByClient(clientId) }
->>>>>>> Stashed changes
+        return handleApiCall("Error al obtener historial de atenciones") { 
+            api.getAttentionHistoryByClient(clientId) 
+        }
     }
 
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {
@@ -53,4 +48,4 @@ class AttentionRepository(private val api: ApiService) {
         }
     }
 }
-
+// Repositorio corregido y limpio de conflictos de Git.

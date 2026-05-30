@@ -8,6 +8,8 @@ import com.duoc.app.features.attention.model.AttentionStatus
 import com.duoc.app.features.attention.repository.AttentionRepository
 import com.duoc.app.features.reservation.model.ReservationStatus
 import com.duoc.app.features.reservation.repository.ReservationRepository
+import com.duoc.app.features.billing.dto.BillingRecordRequest
+import com.duoc.app.features.billing.service.BillingService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -17,7 +19,8 @@ import java.time.LocalDateTime
 @Service
 class AttentionService(
     private val attentionRepository: AttentionRepository,
-    private val reservationRepository: ReservationRepository
+    private val reservationRepository: ReservationRepository,
+    private val billingService: BillingService
 ) {
 
     @Transactional
@@ -81,7 +84,24 @@ class AttentionService(
         )
         reservationRepository.save(updatedReservation)
 
-        return attentionRepository.save(updatedAttention).toResponse()
+        val savedAttention = attentionRepository.save(updatedAttention)
+
+        // Generar registro de cobro automáticamente si hay un servicio asociado con precio
+        reservation.service?.let { service ->
+            val price = service.price
+            if (price != null) {
+                billingService.create(
+                    BillingRecordRequest(
+                        reservationId = reservation.id!!,
+                        attentionId = savedAttention.id,
+                        amount = price,
+                        notes = "Generado automáticamente al finalizar la atención"
+                    )
+                )
+            }
+        }
+
+        return savedAttention.toResponse()
     }
 
     fun getTodayBySpecialist(specialistId: String): List<AttentionResponse> {

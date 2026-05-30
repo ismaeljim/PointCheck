@@ -12,9 +12,6 @@ interface ProfessionalProfileRepository : JpaRepository<ProfessionalProfile, Str
     fun existsByUser_Id(userId: String): Boolean
 
     fun findByActiveTrue(): List<ProfessionalProfile>
-<<<<<<< Updated upstream
-    fun findByCategoryIdAndActiveTrue(categoryId: Long): List<ProfessionalProfile>
+
+    fun findByCategoryIdAndActiveTrue(categoryId: String): List<ProfessionalProfile>
 }
-=======
-}
->>>>>>> Stashed changes

@@ -20,7 +20,7 @@ class ProfessionalProfileController(
 
     @GetMapping
     fun getActive(
-        @RequestParam(required = false) categoryId: Long?
+        @RequestParam(required = false) categoryId: String?
     ): ResponseEntity<List<ProfessionalProfileResponse>> {
         return ResponseEntity.ok(professionalProfileService.getActive(categoryId))
     }

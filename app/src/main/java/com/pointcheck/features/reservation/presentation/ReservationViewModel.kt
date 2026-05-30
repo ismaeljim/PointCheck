@@ -5,15 +5,20 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
-import com.pointcheck.features.reservation.data.dto.*
-import com.pointcheck.features.reservation.data.repository.ReservationRepository
-import com.pointcheck.features.services.data.dto.ServiceResponseDto
-import com.pointcheck.features.profile.data.dto.ProfessionalProfileResponseDto
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
-import kotlinx.coroutines.flow.*
+import com.pointcheck.features.reservation.data.dto.ReservationRequestDto
+import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
+import com.pointcheck.features.services.data.dto.ServiceResponseDto
+import com.pointcheck.features.reservation.data.dto.SpecialistResponseDto
+import com.pointcheck.features.reservation.data.repository.ReservationRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Locale
 
 data class BookingUiState(
     val professionals: List<SpecialistResponseDto> = emptyList(),
@@ -22,6 +27,8 @@ data class BookingUiState(
     val selectedService: ServiceResponseDto? = null,
     val weather: WeatherResponseDto? = null,
     val reservationStartMillis: Long? = null,
+    val availableSlots: List<String> = emptyList(),
+    val selectedSlot: String? = null,
     val notes: String = "",
     val isLoading: Boolean = false,
     val isValid: Boolean = false,
@@ -29,10 +36,9 @@ data class BookingUiState(
     val successMessage: String? = null
 )
 
-class ReservationViewModel(application: Application) : AndroidViewModel(application) {
-
+class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = ReservationRepository(ApiClient.instance)
-    private val prefs = UserPreferences(application)
+    private val prefs = UserPreferences(app)
 
     private val _state = MutableStateFlow(BookingUiState())
     val state: StateFlow<BookingUiState> = _state
@@ -41,119 +47,112 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     val reservations: StateFlow<List<ReservationResponseDto>> = _reservations
 
     init {
-        loadMyReservations()
+        loadProfessionals()
     }
 
-    fun loadProfessionals(categoryId: Long? = null) {
+    fun loadProfessionals(categoryId: String? = null) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = true) }
             repository.getActiveProfiles(categoryId)
-                .onSuccess { list -> 
-                    _state.update { it.copy(professionals = list, isLoading = false) } 
+                .onSuccess { list ->
+                    _state.update { it.copy(professionals = list, isLoading = false) }
                 }
-                .onFailure { e -> 
-                    _state.update { it.copy(error = e.message, isLoading = false) } 
+                .onFailure { e ->
+                    _state.update { it.copy(error = e.message, isLoading = false) }
                 }
         }
     }
 
-    fun selectProfessional(profile: SpecialistResponseDto) {
+    fun selectProfessional(professional: SpecialistResponseDto) {
         _state.update { it.copy(
-            selectedProfessional = profile, 
-            selectedService = null, 
-            services = emptyList(),
-            weather = null,
-            isValid = false
+            selectedProfessional = professional,
+            selectedService = null,
+            availableSlots = emptyList(),
+            selectedSlot = null
         ) }
-        loadServicesForProfessional(profile.id)
+        loadServicesForProfessional(professional.id)
+        loadWeather(professional.city)
     }
 
-<<<<<<< Updated upstream
-    fun selectProfessionalById(id: Long, categoryId: Long? = null) {
+    fun selectProfessionalById(id: String, categoryId: String? = null) {
         viewModelScope.launch {
-            // Asegurarse de que los profesionales estén cargados para esa categoría
-            loadProfessionals(categoryId)
-            
-            // Esperar a que se carguen (en un caso real usaríamos un Flow o State, 
-            // aquí simplificamos buscando en la lista actualizada)
-            val prof = _state.value.professionals.find { it.id == id }
-            if (prof != null) {
-                selectProfessional(prof)
-            }
+            _state.update { it.copy(isLoading = true) }
+            repository.getActiveProfiles(categoryId)
+                .onSuccess { list ->
+                    val found = list.find { it.id == id }
+                    if (found != null) {
+                        selectProfessional(found)
+                    }
+                    _state.update { it.copy(isLoading = false) }
+                }
         }
     }
 
     private fun loadWeather(city: String?) {
-        if (city.isNullOrBlank()) return
+        if (city == null) return
         viewModelScope.launch {
             repository.getWeather(city)
-                .onSuccess { weather ->
-                    _state.update { it.copy(weather = weather) }
-                }
+                .onSuccess { w -> _state.update { it.copy(weather = w) } }
         }
     }
 
-    private fun loadServicesForProfessional(profileId: Long) {
-=======
-    private fun loadServicesForProfessional(profileId: String) {
->>>>>>> Stashed changes
+    private fun loadServicesForProfessional(professionalProfileId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            repository.getServices(profileId)
-                .onSuccess { list -> 
-                    _state.update { it.copy(services = list, isLoading = false) } 
-                }
-                .onFailure { e -> 
-                    _state.update { it.copy(error = e.message, isLoading = false) } 
+            repository.getServices(professionalProfileId)
+                .onSuccess { list ->
+                    _state.update { it.copy(services = list) }
                 }
         }
     }
 
     fun selectService(service: ServiceResponseDto) {
-        _state.update { s -> 
-            val newState = s.copy(selectedService = service)
-            newState.copy(isValid = validate(newState))
-        }
+        _state.update { s -> s.copy(selectedService = service).let { it.copy(isValid = validate(it)) } }
+        loadAvailabilityIfPossible()
     }
 
     fun setReservationDateTime(millis: Long) {
-        _state.update { s ->
-            // Usar la zona horaria local para el cálculo de "ahora"
-            val now = Calendar.getInstance(TimeZone.getDefault())
-            val calendar = Calendar.getInstance(TimeZone.getDefault())
-            calendar.timeInMillis = millis
-            
-            if (calendar.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
-                calendar.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
-                
-                // Si es hoy, ponemos la hora actual + 1
-                calendar.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY) + 1)
-                calendar.set(Calendar.MINUTE, 0)
-            } else {
-                calendar.set(Calendar.HOUR_OF_DAY, 9)
-                calendar.set(Calendar.MINUTE, 0)
-            }
-
-            val newState = s.copy(reservationStartMillis = calendar.timeInMillis)
-            newState.copy(isValid = validate(newState))
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = millis
+        // Por defecto a las 9:00 AM si no hay slot
+        cal.set(Calendar.HOUR_OF_DAY, 9)
+        cal.set(Calendar.MINUTE, 0)
+        
+        _state.update { s -> 
+            s.copy(reservationStartMillis = cal.timeInMillis, selectedSlot = null)
+                .let { it.copy(isValid = validate(it)) } 
         }
-        // Trigger weather lookup when date is selected
-        _state.value.selectedProfessional?.city?.let { city ->
-            loadWeather(city)
+        loadAvailabilityIfPossible()
+    }
+
+    private fun loadAvailabilityIfPossible() {
+        val s = _state.value
+        if (s.selectedProfessional != null && s.reservationStartMillis != null) {
+            val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(s.reservationStartMillis)
+            viewModelScope.launch {
+                repository.getAvailability(s.selectedProfessional.id, dateStr)
+                    .onSuccess { resp ->
+                        _state.update { it.copy(availableSlots = resp.availableSlots) }
+                    }
+            }
         }
     }
 
-    fun updateReservationTime(hour: Int, minute: Int) {
-        _state.update { s ->
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = s.reservationStartMillis ?: System.currentTimeMillis()
-            calendar.set(Calendar.HOUR_OF_DAY, hour)
-            calendar.set(Calendar.MINUTE, minute)
-            calendar.set(Calendar.SECOND, 0)
-            
-            val newState = s.copy(reservationStartMillis = calendar.timeInMillis)
-            newState.copy(isValid = validate(newState))
+    fun updateReservationTimeFromSlot(slot: String) {
+        val s = _state.value
+        val currentMillis = s.reservationStartMillis ?: return
+        
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = currentMillis
+        val parts = slot.split(":")
+        if (parts.size == 2) {
+            cal.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
+            cal.set(Calendar.MINUTE, parts[1].toInt())
         }
+        
+        _state.update { it.copy(
+            reservationStartMillis = cal.timeInMillis,
+            selectedSlot = slot
+        ).let { it.copy(isValid = validate(it)) } }
     }
 
     fun setNotes(notes: String) {
@@ -161,77 +160,49 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun validate(s: BookingUiState): Boolean {
-        return s.selectedProfessional != null && 
-               s.selectedService != null && 
+        return s.selectedProfessional != null &&
+               s.selectedService != null &&
                s.reservationStartMillis != null &&
-               s.reservationStartMillis > System.currentTimeMillis()
+               s.selectedSlot != null
     }
 
-    fun loadMyReservations(type: String = "all") {
+    fun loadMyReservations(userId: String) {
         viewModelScope.launch {
-            val userId = prefs.userId.first() ?: return@launch
-            val role = prefs.role.first() ?: "CLIENT"
-
-            _state.update { it.copy(isLoading = true, error = null) }
-
-            val result = if (role == "SPECIALIST" || role == "PROFESSIONAL") {
-                val profileId = prefs.professionalProfileId.first()
-                if (profileId != null) {
-                    repository.getReservationsBySpecialist(profileId)
-                } else {
-                    Result.success(emptyList())
+            _state.update { it.copy(isLoading = true) }
+            repository.getReservationsByClient(userId)
+                .onSuccess { list ->
+                    _reservations.value = list
+                    _state.update { it.copy(isLoading = false) }
                 }
-            } else {
-                when (type) {
-                    "upcoming" -> repository.getUpcomingReservationsByClient(userId)
-                    else -> repository.getReservationsByClient(userId)
+                .onFailure { e ->
+                    _state.update { it.copy(error = e.message, isLoading = false) }
                 }
-            }
-
-            result.onSuccess { list ->
-                _reservations.value = list.filter { it.status != "CANCELLED" }
-                _state.update { it.copy(isLoading = false) }
-            }.onFailure { e ->
-                _state.update { it.copy(error = e.message, isLoading = false) }
-            }
         }
     }
 
-    fun createReservation(onSuccess: () -> Unit) {
+    fun createReservation(onDone: () -> Unit) {
         val s = _state.value
-        if (!s.isValid) return
+        if (!validate(s)) return
 
         viewModelScope.launch {
-            val clientId = prefs.userId.first() ?: return@launch
             _state.update { it.copy(isLoading = true) }
-
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = s.reservationStartMillis!!
+            val userId = prefs.userId.first() ?: return@launch
             
-            // Usamos un formato que el backend entienda sin ambigüedades de zona horaria
-            // y nos aseguramos de usar la fecha que el usuario seleccionó
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
-            val isoStart = sdf.format(calendar.time)
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val startStr = sdf.format(s.reservationStartMillis)
             
-            val duration = s.selectedService?.durationMinutes ?: 60
-            val endCalendar = calendar.clone() as Calendar
-            endCalendar.add(Calendar.MINUTE, duration)
-            val isoEnd = sdf.format(endCalendar.time)
-
             val request = ReservationRequestDto(
-                clientId = clientId,
-                specialistId = s.selectedProfessional!!.userId,
+                clientId = userId,
+                specialistId = s.selectedProfessional!!.id,
                 serviceId = s.selectedService!!.id,
-                reservationStart = isoStart,
-                reservationEnd = isoEnd,
-                notes = s.notes.ifBlank { null }
+                reservationStart = startStr,
+                notes = s.notes
             )
 
             repository.createReservation(request)
                 .onSuccess {
                     _state.update { it.copy(isLoading = false, successMessage = "Reserva creada con éxito") }
-                    loadMyReservations()
-                    onSuccess()
+                    onDone()
                 }
                 .onFailure { e ->
                     _state.update { it.copy(isLoading = false, error = e.message) }
@@ -239,16 +210,12 @@ class ReservationViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun cancelReservation(id: String) {
+    fun cancelReservation(reservationId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            repository.cancelReservation(id)
+            repository.cancelReservation(reservationId)
                 .onSuccess {
-                    _state.update { it.copy(successMessage = "Reserva cancelada") }
-                    loadMyReservations()
-                }
-                .onFailure { e ->
-                    _state.update { it.copy(error = e.message, isLoading = false) }
+                    val userId = prefs.userId.first()
+                    if (userId != null) loadMyReservations(userId)
                 }
         }
     }

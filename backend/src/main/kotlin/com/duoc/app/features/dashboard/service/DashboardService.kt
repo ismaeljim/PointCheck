@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.math.BigDecimal
 
 import com.duoc.app.features.dashboard.dto.ReportSummaryResponse
 
@@ -23,50 +24,38 @@ class DashboardService(
     private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
 
-<<<<<<< Updated upstream
-    fun getReportSummary(userId: Long): ReportSummaryResponse {
-        println("\n" + "#".repeat(60))
-        println("!!! [DASHBOARD] LLAMADA RECIBIDA PARA USUARIO ID: $userId")
-        
+    fun getReportSummary(userId: String): com.duoc.app.features.report.dto.ReportSummaryResponse {
         val allReservations = reservationRepository.findBySpecialist_Id(userId)
         val today = LocalDate.now()
         
-        println("!!! [DASHBOARD] FECHA ACTUAL SERVIDOR: $today")
-        println("!!! [DASHBOARD] TOTAL RESERVAS ENCONTRADAS EN DB: ${allReservations.size}")
-
-        // Filtro infalible por día (ignora horas)
         val todayReservations = allReservations.filter { 
-            val match = it.reservationStart.toLocalDate().isEqual(today)
-            if (match) println("!!! [DASHBOARD] MATCH HOY -> Cita ID: ${it.id} Hora: ${it.reservationStart}")
-            match
+            it.reservationStart.toLocalDate().isEqual(today)
         }
         
-        println("!!! [DASHBOARD] RESULTADO FINAL -> Hoy: ${todayReservations.size} | Total: ${allReservations.size}")
-        println("#".repeat(60) + "\n")
-
         val attentions = attentionRepository.findBySpecialist_Id(userId)
         val billing = billingRecordRepository.findBySpecialist_Id(userId)
 
-        return ReportSummaryResponse(
+        return com.duoc.app.features.report.dto.ReportSummaryResponse(
             totalReservations = allReservations.size,
             todayReservations = todayReservations.size,
             completedAttentions = attentions.size,
             averageAttentionMinutes = if (attentions.isNotEmpty()) {
                 attentions.mapNotNull { it.durationMinutes }.average().let { if (it.isNaN()) 0.0 else it }
             } else 0.0,
-            totalCharged = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() },
-            pendingAmount = billing.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() },
+            totalCharged = billing.filter { it.status == PaymentStatus.PAID }.map { it.amount }
+                .fold(BigDecimal.ZERO, BigDecimal::add),
+            pendingAmount = billing.filter { it.status == PaymentStatus.PENDING }.map { it.amount }
+                .fold(BigDecimal.ZERO, BigDecimal::add),
             paidBillingCount = billing.count { it.status == PaymentStatus.PAID },
             pendingBillingCount = billing.count { it.status == PaymentStatus.PENDING }
         )
     }
 
-    fun getMetrics(userId: Long, role: String): DashboardMetricsResponse {
+    fun getMetrics(userId: String, role: String): DashboardMetricsResponse {
         val now = LocalDateTime.now()
         
         return when {
             role.equals("ADMIN", ignoreCase = true) -> {
-                // Métricas globales para el Administrador
                 val totalReservations = reservationRepository.count()
                 val totalClients = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.CLIENT)
                 val totalSpecialists = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.SPECIALIST)
@@ -74,7 +63,7 @@ class DashboardService(
 
                 DashboardMetricsResponse(
                     appointmentsToday = totalReservations.toInt(),
-                    totalAttentionsPerformed = totalClients.toInt(), // Reutilizamos campos para el Admin
+                    totalAttentionsPerformed = totalClients.toInt(),
                     averageDurationMinutes = totalSpecialists.toDouble(),
                     paidBillingAmount = totalRevenue,
                     subscriptionStatus = "ADMIN_MODE"
@@ -87,97 +76,51 @@ class DashboardService(
                 DashboardMetricsResponse(
                     upcomingReservationsCount = upcoming.size,
                     recentReservationsCount = all.size,
-                    lastReservationStatus = all.maxByOrNull { it.updatedAt!! }?.status?.name
+                    lastReservationStatus = all.maxByOrNull { it.updatedAt ?: it.createdAt }?.status?.name
                 )
             }
             else -> {
-                val today = LocalDate.now()
-                val allReservations = reservationRepository.findBySpecialist_Id(userId)
-                val todayReservations = allReservations.filter { 
-                    it.reservationStart.toLocalDate().isEqual(today) 
-                }
+                val profile = profileRepository.findByUser_Id(userId)
+                if (profile == null) return DashboardMetricsResponse()
+
+                val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
+                val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
+
+                val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
+                    userId, todayStart, todayEnd
+                )
                 
                 val attentions = attentionRepository.findBySpecialist_Id(userId)
                 val billing = billingRecordRepository.findBySpecialist_Id(userId)
 
                 DashboardMetricsResponse(
                     appointmentsToday = todayReservations.size,
-                    totalAttentionsPerformed = allReservations.size,
+                    totalAttentionsPerformed = attentions.size,
                     averageDurationMinutes = if (attentions.isNotEmpty()) {
                         attentions.mapNotNull { it.durationMinutes }.average().let { if (it.isNaN()) 0.0 else it }
                     } else 0.0,
                     pendingBillingAmount = billing.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() },
                     paidBillingAmount = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() },
-                    subscriptionStatus = "ACTIVE",
-                    subscriptionPlan = "Premium Plan"
+                    subscriptionStatus = "ACTIVE"
                 )
             }
-=======
-    fun getMetrics(userId: String, role: String): DashboardMetricsResponse {
-        val now = LocalDateTime.now()
-
-        return if (role.equals("CLIENT", ignoreCase = true)) {
-            // Consultas para Clientes usando String ID
-            val upcoming = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
-            val all = reservationRepository.findByClient_Id(userId)
-
-            DashboardMetricsResponse(
-                upcomingReservationsCount = upcoming.size,
-                recentReservationsCount = all.size,
-                // Corrección: Usamos el operador Elvis para comparar contra createdAt si updatedAt es nulo
-                lastReservationStatus = all.maxByOrNull { it.updatedAt ?: it.createdAt }?.status?.name
-            )
-        } else {
-            // Consultas para Especialistas
-            val profile = profileRepository.findByUser_Id(userId)
-            if (profile == null) return DashboardMetricsResponse()
-
-            val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
-            val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
-
-            val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-                profile.id, todayStart, todayEnd
-            )
-
-            // 1. Primero obtenemos la lista de atenciones
-            val attentions = attentionRepository.findBySpecialist_Id(profile.id)
-
-            // 2. Luego calculamos el promedio filtrando nulos para que no falle .average()
-            val averageDuration = if (attentions.isNotEmpty()) {
-                attentions.mapNotNull { it.durationMinutes }.average()
-            } else 0.0
-
-            val pendingBilling = billingRecordRepository.findBySpecialist_IdAndStatus(profile.id, PaymentStatus.PENDING)
-            val paidBilling = billingRecordRepository.findBySpecialist_IdAndStatus(profile.id, PaymentStatus.PAID)
-
-            DashboardMetricsResponse(
-                appointmentsToday = todayReservations.size,
-                totalAttentionsPerformed = attentions.size,
-                averageDurationMinutes = averageDuration,
-                pendingBillingAmount = pendingBilling.sumOf { it.amount.toDouble() },
-                paidBillingAmount = paidBilling.sumOf { it.amount.toDouble() },
-                subscriptionStatus = "ACTIVE" // Placeholder
-            )
->>>>>>> Stashed changes
         }
     }
 
-    fun getClientDashboard(userId: Long): com.duoc.app.features.dashboard.dto.ClientDashboardResponse {
+    fun getClientDashboard(userId: String): com.duoc.app.features.dashboard.dto.ClientDashboardResponse {
         val now = LocalDateTime.now()
         
-        // 1. Próxima cita
         val nextAppointment = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
             .filter { it.status != com.duoc.app.features.reservation.model.ReservationStatus.CANCELLED }
             .minByOrNull { it.reservationStart }
             ?.toResponse()
 
-        // 2. Especialistas favoritos (basado en conteo de citas)
         val favoriteSpecialists = reservationRepository.findByClient_Id(userId)
             .groupBy { it.specialist }
             .map { (specialist, reservations) ->
-                val profile = profileRepository.findByUser_Id(specialist.id)
+                val profile = profileRepository.findByUser_Id(specialist.id!!)
                 com.duoc.app.features.dashboard.dto.FavoriteSpecialistDto(
-                    specialistId = specialist.id,
+                    specialistId = specialist.id!!,
                     name = specialist.name,
                     specialty = profile?.specialty,
                     visitCount = reservations.size.toLong()
@@ -186,11 +129,10 @@ class DashboardService(
             .sortedByDescending { it.visitCount }
             .take(3)
 
-        // 3. Notificaciones recientes
         val recentNotifications = notificationService.getRecentNotifications(userId, 3)
             .map { 
                 com.duoc.app.features.dashboard.dto.NotificationSummaryDto(
-                    id = it.id,
+                    id = it.id!!,
                     title = it.title,
                     message = it.message,
                     type = it.type.name,
@@ -206,14 +148,13 @@ class DashboardService(
         )
     }
 
-    // Helper extension to convert Reservation to ReservationResponse
     private fun com.duoc.app.features.reservation.model.Reservation.toResponse(): com.duoc.app.features.reservation.dto.ReservationResponse {
         val profProfile = this.service?.professionalProfile
         return com.duoc.app.features.reservation.dto.ReservationResponse(
-            id = this.id,
-            clientId = this.client.id,
+            id = this.id!!,
+            clientId = this.client.id!!,
             clientRut = this.client.rut,
-            specialistId = this.specialist.id,
+            specialistId = this.specialist.id!!,
             specialistName = this.specialist.name,
             specialistRut = this.specialist.rut,
             city = profProfile?.city,

@@ -13,12 +13,12 @@ data class RegisterRequestDto(
     val role: String = "CLIENT",
     val city: String? = null,
     val address: String? = null,
-    val categoryId: Long? = null,
+    val categoryId: String? = null,
     val services: List<ServiceOfferingDto>? = null
 )
 
 data class ServiceOfferingDto(
-    val templateId: Long,
+    val templateId: String,
     val price: Double,
     val unit: String
 )

@@ -24,12 +24,12 @@ class NotificationService(
         return notificationRepository.save(notification)
     }
 
-    fun getRecentNotifications(userId: Long, limit: Int = 3): List<Notification> {
-        return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId, PageRequest.of(0, limit))
+    fun getRecentNotifications(userId: String, limit: Int = 3): List<Notification> {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, limit))
     }
 
     @Transactional
-    fun markAsRead(notificationId: Long) {
+    fun markAsRead(notificationId: String) {
         notificationRepository.findById(notificationId).ifPresent {
             it.isRead = true
             notificationRepository.save(it)

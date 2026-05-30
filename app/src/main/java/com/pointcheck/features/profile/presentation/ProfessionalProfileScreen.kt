@@ -11,12 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
+import com.pointcheck.core.location.LocationViewModel
 import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
 
@@ -24,9 +27,11 @@ import com.pointcheck.core.presentation.components.AppTextField
 @Composable
 fun ProfessionalProfileScreen(
     nav: NavController,
-    vm: ProfessionalProfileViewModel = viewModel()
+    vm: ProfessionalProfileViewModel = viewModel(),
+    locationVm: LocationViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
+    val locState by locationVm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     
@@ -37,8 +42,11 @@ fun ProfessionalProfileScreen(
     var address by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("30") }
-    var selectedCategoryId by remember { mutableStateOf<Long?>(null) }
+    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var expandedCategory by remember { mutableStateOf(false) }
+    
+    var latitude by remember { mutableStateOf<Double?>(null) }
+    var longitude by remember { mutableStateOf<Double?>(null) }
 
     // Auditoría de UI: Mostrar mensajes emergentes para éxito o error
     LaunchedEffect(s.error) {
@@ -66,6 +74,8 @@ fun ProfessionalProfileScreen(
             city = it.city ?: ""
             duration = (it.defaultSessionDurationMinutes ?: 30).toString()
             selectedCategoryId = it.categoryId
+            latitude = it.latitude
+            longitude = it.longitude
         }
     }
 
@@ -222,13 +232,41 @@ fun ProfessionalProfileScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Ubicación", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
-                        AppTextField(
-                            value = address,
-                            onValueChange = { address = it },
-                            label = "Dirección de atención",
-                            leadingIcon = Icons.Default.Place,
-                            enabled = s.isEditing
-                        )
+                        Box {
+                            AppTextField(
+                                value = address,
+                                onValueChange = { 
+                                    address = it
+                                    locationVm.getAddressSuggestions(it)
+                                },
+                                label = "Dirección de atención",
+                                leadingIcon = Icons.Default.Place,
+                                enabled = s.isEditing
+                            )
+
+                            if (locState.addressSuggestions.isNotEmpty() && s.isEditing) {
+                                DropdownMenu(
+                                    expanded = true,
+                                    onDismissRequest = { },
+                                    properties = PopupProperties(focusable = false),
+                                    modifier = Modifier.fillMaxWidth(0.9f)
+                                ) {
+                                    locState.addressSuggestions.forEach { suggestion ->
+                                        val fullAddress = suggestion.getAddressLine(0)
+                                        DropdownMenuItem(
+                                            text = { Text(fullAddress, style = MaterialTheme.typography.bodySmall) },
+                                            onClick = {
+                                                address = fullAddress
+                                                city = suggestion.locality ?: city
+                                                latitude = suggestion.latitude
+                                                longitude = suggestion.longitude
+                                                locationVm.clearSuggestions()
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         AppTextField(
                             value = city,
@@ -237,6 +275,36 @@ fun ProfessionalProfileScreen(
                             leadingIcon = Icons.Default.LocationCity,
                             enabled = s.isEditing
                         )
+
+                        if (s.isEditing) {
+                            OutlinedButton(
+                                onClick = {
+                                    locationVm.getCurrentLocation { lat, lng ->
+                                        latitude = lat
+                                        longitude = lng
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !locState.isLocating,
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                if (locState.isLocating) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.MyLocation, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Usar mi ubicación actual (GPS)")
+                                }
+                            }
+                            
+                            if (latitude != null && longitude != null) {
+                                Text(
+                                    "Coordenadas: ${"%.5f".format(latitude)}, ${"%.5f".format(longitude)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -255,7 +323,18 @@ fun ProfessionalProfileScreen(
                     AppButton(
                         text = "Guardar Perfil Profesional",
                         onClick = {
-                            vm.saveProfile(selectedCategoryId, displayName, businessName, specialty, description, address, city, duration.toIntOrNull() ?: 30)
+                            vm.saveProfile(
+                                selectedCategoryId,
+                                displayName,
+                                businessName,
+                                specialty,
+                                description,
+                                address,
+                                city,
+                                duration.toIntOrNull() ?: 30,
+                                latitude,
+                                longitude
+                            )
                         },
                         isLoading = s.isLoading,
                         enabled = displayName.isNotBlank() && specialty.isNotBlank() && selectedCategoryId != null

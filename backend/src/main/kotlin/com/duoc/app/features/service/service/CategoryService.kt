@@ -18,7 +18,7 @@ class CategoryService(
         return categoryRepository.findByActiveTrue().map { it.toResponse() }
     }
 
-    fun getTemplatesByCategory(categoryId: Long): List<ServiceTemplateResponse> {
+    fun getTemplatesByCategory(categoryId: String): List<ServiceTemplateResponse> {
         return serviceTemplateRepository.findByCategory_IdAndActiveTrue(categoryId).map { it.toResponse() }
     }
 

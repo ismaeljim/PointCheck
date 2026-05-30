@@ -1,26 +1,18 @@
--- Limpieza de tablas para evitar conflictos con llaves foráneas
+-- 1. LIMPIEZA TOTAL (Evita errores de BeanCreationException)
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS audit_logs;
-DROP TABLE IF EXISTS global_settings;
-DROP TABLE IF EXISTS billing_records;
-DROP TABLE IF EXISTS attentions;
-DROP TABLE IF EXISTS reservations;
-DROP TABLE IF EXISTS services;
-DROP TABLE IF EXISTS service_templates;
-DROP TABLE IF EXISTS professional_profiles;
-DROP TABLE IF EXISTS categories;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS subscriptions, billing_records, attentions, reservations, services, service_templates, professional_profiles, categories, users, audit_logs, global_settings;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Tabla de Usuarios (Sincronizada con UserRole.kt)
+-- 2. ESTRUCTURA DE TABLAS
+
+-- Tabla de Usuarios
 CREATE TABLE users (
-    id BIGINT NOT NULL AUTO_INCREMENT,
+    id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     rut VARCHAR(12) NOT NULL,
-    phone VARCHAR(255) NULL,
+    phone VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'CLIENT',
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME(6) NOT NULL,
@@ -32,7 +24,7 @@ CREATE TABLE users (
 
 -- Tabla de Categorías
 CREATE TABLE categories (
-    id BIGINT NOT NULL AUTO_INCREMENT,
+    id VARCHAR(36) NOT NULL,
     name VARCHAR(100) NOT NULL,
     icon_key VARCHAR(100) NOT NULL,
     color_hex VARCHAR(7) NOT NULL,
@@ -44,9 +36,9 @@ CREATE TABLE categories (
 
 -- Perfiles Profesionales
 CREATE TABLE professional_profiles (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    category_id BIGINT NULL,
+    id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    category_id VARCHAR(36) NULL,
     display_name VARCHAR(150) NOT NULL,
     business_name VARCHAR(150) NULL,
     specialty VARCHAR(100) NULL,
@@ -54,6 +46,11 @@ CREATE TABLE professional_profiles (
     address VARCHAR(255) NULL,
     city VARCHAR(100) NULL,
     country VARCHAR(100) NULL,
+    latitude DOUBLE NULL,
+    longitude DOUBLE NULL,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    rating FLOAT NOT NULL DEFAULT 0.0,
+    working_hours_json TEXT NULL,
     default_session_duration_minutes INT NOT NULL DEFAULT 60,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME(6) NOT NULL,
@@ -66,8 +63,8 @@ CREATE TABLE professional_profiles (
 
 -- Servicios
 CREATE TABLE services (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    professional_profile_id BIGINT NOT NULL,
+    id VARCHAR(36) NOT NULL,
+    professional_profile_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description VARCHAR(500) NULL,
     price DECIMAL(10,2) NULL,
@@ -83,10 +80,10 @@ CREATE TABLE services (
 
 -- Reservas
 CREATE TABLE reservations (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    client_id BIGINT NOT NULL,
-    specialist_id BIGINT NOT NULL,
-    service_id BIGINT NULL,
+    id VARCHAR(36) NOT NULL,
+    client_id VARCHAR(36) NOT NULL,
+    specialist_id VARCHAR(36) NOT NULL,
+    service_id VARCHAR(36) NULL,
     reservation_start DATETIME(6) NOT NULL,
     reservation_end DATETIME(6) NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
@@ -101,7 +98,7 @@ CREATE TABLE reservations (
 
 -- Logs de Auditoría
 CREATE TABLE audit_logs (
-    id BIGINT NOT NULL AUTO_INCREMENT,
+    id VARCHAR(36) NOT NULL,
     action VARCHAR(100) NOT NULL,
     performed_by VARCHAR(255) NOT NULL,
     target_type VARCHAR(50) NOT NULL,
@@ -113,7 +110,7 @@ CREATE TABLE audit_logs (
 
 -- Configuraciones Globales
 CREATE TABLE global_settings (
-    id BIGINT NOT NULL AUTO_INCREMENT,
+    id VARCHAR(36) NOT NULL,
     config_key VARCHAR(100) NOT NULL,
     config_value VARCHAR(255) NOT NULL,
     description VARCHAR(255) NULL,
@@ -124,10 +121,10 @@ CREATE TABLE global_settings (
 
 -- Atenciones
 CREATE TABLE attentions (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    reservation_id BIGINT NOT NULL,
-    client_id BIGINT NOT NULL,
-    specialist_id BIGINT NOT NULL,
+    id VARCHAR(36) NOT NULL,
+    reservation_id VARCHAR(36) NOT NULL,
+    client_id VARCHAR(36) NOT NULL,
+    specialist_id VARCHAR(36) NOT NULL,
     started_at DATETIME(6) NOT NULL,
     finished_at DATETIME(6) NULL,
     duration_minutes INT NULL,
@@ -144,11 +141,11 @@ CREATE TABLE attentions (
 
 -- Registros de Facturación
 CREATE TABLE billing_records (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    reservation_id BIGINT NOT NULL,
-    attention_id BIGINT NULL,
-    client_id BIGINT NOT NULL,
-    specialist_id BIGINT NOT NULL,
+    id VARCHAR(36) NOT NULL,
+    reservation_id VARCHAR(36) NOT NULL,
+    attention_id VARCHAR(36) NULL,
+    client_id VARCHAR(36) NOT NULL,
+    specialist_id VARCHAR(36) NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'CLP',
     payment_method VARCHAR(50) NULL,
@@ -165,10 +162,22 @@ CREATE TABLE billing_records (
     CONSTRAINT fk_bill_spec FOREIGN KEY (specialist_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
+-- Tabla de Plantillas de Servicios
+CREATE TABLE service_templates (
+    id VARCHAR(36) NOT NULL,
+    category_id VARCHAR(36) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    default_price DECIMAL(10,2) NULL,
+    default_duration INT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_templates_category FOREIGN KEY (category_id) REFERENCES categories(id)
+) ENGINE=InnoDB;
+
 -- Suscripciones
 CREATE TABLE subscriptions (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    professional_profile_id BIGINT NOT NULL,
+    id VARCHAR(36) NOT NULL,
+    professional_profile_id VARCHAR(36) NOT NULL,
     plan_name VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     start_date DATE NOT NULL,

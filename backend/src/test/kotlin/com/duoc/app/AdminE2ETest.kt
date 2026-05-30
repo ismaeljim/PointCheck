@@ -86,6 +86,7 @@ class AdminE2ETest {
                 name = "Test User",
                 password = "password",
                 rut = "12345678-9",
+                phone = "+56912345678",
                 role = UserRole.CLIENT,
                 active = true
             )

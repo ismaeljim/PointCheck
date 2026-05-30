@@ -16,5 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PointCheck"
 
-// Solo incluimos la App aquí para que Android Studio no se pelee con el Backend
 include(":app")
+include(":backend")

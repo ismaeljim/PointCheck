@@ -11,8 +11,8 @@ enum class NotificationType {
 @Entity
 @Table(name = "notifications")
 class Notification(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    @Id
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

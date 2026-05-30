@@ -4,6 +4,7 @@ import com.duoc.app.features.admin.repository.AuditLogRepository
 import com.duoc.app.features.admin.repository.GlobalSettingsRepository
 import com.duoc.app.features.attention.repository.AttentionRepository
 import com.duoc.app.features.billing.repository.BillingRecordRepository
+import com.duoc.app.features.notification.repository.NotificationRepository
 import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
 import com.duoc.app.features.reservation.repository.ReservationRepository
 import com.duoc.app.features.service.repository.CategoryRepository
@@ -58,11 +59,15 @@ class UserControllerTest {
     @Autowired
     private lateinit var settingsRepository: GlobalSettingsRepository
 
+    @Autowired
+    private lateinit var notificationRepository: NotificationRepository
+
     @BeforeEach
     fun setup() {
         // Limpieza en orden inverso de dependencias para evitar violaciones de FK
         billingRecordRepository.deleteAll()
         attentionRepository.deleteAll()
+        notificationRepository.deleteAll()
         reservationRepository.deleteAll()
         serviceOfferingRepository.deleteAll()
         professionalProfileRepository.deleteAll()
@@ -77,6 +82,7 @@ class UserControllerTest {
                 name = "Usuario Test",
                 password = "1234",
                 rut = "11111111-1",
+                phone = "+56911111111",
                 role = UserRole.CLIENT
             )
         )

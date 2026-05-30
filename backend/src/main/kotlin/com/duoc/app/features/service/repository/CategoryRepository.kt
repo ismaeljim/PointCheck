@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface CategoryRepository : JpaRepository<Category, Long> {
+interface CategoryRepository : JpaRepository<Category, String> {
     fun findByActiveTrue(): List<Category>
 }

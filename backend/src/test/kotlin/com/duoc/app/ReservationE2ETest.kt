@@ -26,8 +26,11 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.get
 import java.time.LocalDateTime
 
+import org.springframework.test.context.ActiveProfiles
+
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class ReservationE2ETest @Autowired constructor(
     private val mockMvc: MockMvc,
     private val userRepository: UserRepository,
@@ -63,6 +66,7 @@ class ReservationE2ETest @Autowired constructor(
                 email = "cliente@specialist.com",
                 password = "password",
                 rut = "22222222-2",
+                phone = "+56911111111",
                 role = UserRole.SPECIALIST
             )
         )
@@ -74,6 +78,7 @@ class ReservationE2ETest @Autowired constructor(
                 email = "provee@specialist.com",
                 password = "password",
                 rut = "33333333-3",
+                phone = "+56922222222",
                 role = UserRole.SPECIALIST
             )
         )
@@ -101,8 +106,8 @@ class ReservationE2ETest @Autowired constructor(
     fun `Un especialista puede agendar una cita con otro especialista como cliente`() {
         val reservationStart = LocalDateTime.now().plusDays(1).withNano(0)
         val request = ReservationRequest(
-            clientId = specialistAsClient.id,
-            specialistId = specialistAsProvider.id,
+            clientId = specialistAsClient.id.toString(),
+            specialistId = specialistAsProvider.id.toString(),
             serviceId = service.id,
             reservationStart = reservationStart,
             notes = "Test de flujo especialista-como-cliente"

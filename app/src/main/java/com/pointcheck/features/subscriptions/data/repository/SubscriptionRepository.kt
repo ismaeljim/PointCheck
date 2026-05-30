@@ -20,13 +20,8 @@ class SubscriptionRepository(private val api: ApiService) {
         return handleApiCall("Error al crear suscripción") { api.createSubscription(request) }
     }
 
-<<<<<<< Updated upstream
-    suspend fun cancelSubscription(id: Long): Result<SubscriptionResponseDto> {
-        return handleApiCall("Error al cancelar suscripción") { api.cancelSubscription(id) }
-=======
     suspend fun cancelSubscription(id: String): Result<SubscriptionResponseDto> {
-        return handleApiCall { api.cancelSubscription(id) }
->>>>>>> Stashed changes
+        return handleApiCall("Error al cancelar suscripción") { api.cancelSubscription(id) }
     }
 
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {
@@ -42,4 +37,3 @@ class SubscriptionRepository(private val api: ApiService) {
         }
     }
 }
-

@@ -9,14 +9,14 @@ data class ClientDashboardResponseDto(
 )
 
 data class FavoriteSpecialistDto(
-    val specialistId: Long,
+    val specialistId: String,
     val name: String,
     val specialty: String?,
     val visitCount: Long
 )
 
 data class NotificationSummaryDto(
-    val id: Long,
+    val id: String,
     val title: String,
     val message: String,
     val type: String,

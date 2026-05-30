@@ -22,11 +22,13 @@ import com.pointcheck.features.services.presentation.ServiceListScreen
 import com.pointcheck.features.attentions.presentation.AttentionScreen
 import com.pointcheck.features.billing.presentation.BillingScreen
 import com.pointcheck.features.subscriptions.presentation.SubscriptionScreen
-<<<<<<< Updated upstream
 import com.pointcheck.features.onboarding.presentation.CategorySelectionScreen
 import com.pointcheck.features.onboarding.presentation.ServiceConfigurationScreen
-import com.pointcheck.features.onboarding.presentation.CategoryViewModel
+import com.pointcheck.features.admin.presentation.UserManagementScreen
+import com.pointcheck.features.admin.presentation.AuditLogScreen
+import com.pointcheck.features.admin.presentation.AdminViewModel
 import com.pointcheck.features.auth.presentation.UserViewModel
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.prefs.UserPreferences
 import androidx.compose.runtime.LaunchedEffect
@@ -36,8 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.first
-=======
->>>>>>> Stashed changes
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -45,7 +45,7 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
     object Booking : Screen("booking?specialistId={specialistId}&categoryId={categoryId}") {
-        fun createRoute(specialistId: Long? = null, categoryId: Long? = null) = 
+        fun createRoute(specialistId: String? = null, categoryId: String? = null) =
             "booking?" + 
             (specialistId?.let { "specialistId=$it" } ?: "") +
             (if (specialistId != null && categoryId != null) "&" else "") +
@@ -70,6 +70,8 @@ sealed class Screen(val route: String) {
         fun createRoute(type: String) = "appointment_history/$type"
     }
     object WeeklyReport : Screen("weekly_report")
+    object AdminUsers : Screen("admin_users")
+    object AdminAudit : Screen("admin_audit")
 }
 
 @Composable
@@ -81,7 +83,7 @@ fun AppNavigation(snackbar: SnackbarHostState) {
 
         composable(Screen.Splash.route) { SplashScreen(nav) }
         composable(Screen.Login.route) { LoginScreen(nav) }
-<<<<<<< Updated upstream
+        composable(Screen.Dashboard.route) { DashboardScreen(nav) }
         composable(Screen.Register.route) { RegisterScreen(nav, authVm) }
         
         composable("category_selection") {
@@ -90,11 +92,12 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         
         composable(
             "service_configuration/{categoryId}",
-            arguments = listOf(navArgument("categoryId") { type = NavType.LongType })
+            arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val catId = backStackEntry.arguments?.getLong("categoryId") ?: 0L
+            val catId = backStackEntry.arguments?.getString("categoryId") ?: ""
             ServiceConfigurationScreen(catId, nav, authVm)
         }
+        
         composable(
             route = Screen.Booking.route,
             arguments = listOf(
@@ -104,21 +107,17 @@ fun AppNavigation(snackbar: SnackbarHostState) {
                     defaultValue = null
                 },
                 navArgument("categoryId") {
-                    type = NavType.StringType
+                    type = NavType.StringType // Category ID typically Long but passed as string in query params
                     nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
-            val specId = backStackEntry.arguments?.getString("specialistId")?.toLongOrNull()
-            val catId = backStackEntry.arguments?.getString("categoryId")?.toLongOrNull()
+            val specId = backStackEntry.arguments?.getString("specialistId")
+            val catId = backStackEntry.arguments?.getString("categoryId")
             BookingScreen(nav, snackbar, specId, catId)
         }
-=======
-        composable(Screen.Dashboard.route) { DashboardScreen(nav) }
-        composable(Screen.Register.route) { RegisterScreen(nav) }
-        composable(Screen.Booking.route) { BookingScreen(nav, snackbar) }
->>>>>>> Stashed changes
+
         composable(Screen.Scheduled.route) { ScheduledScreen(nav) }
         composable(Screen.Profile.route) { ProfileScreen(nav) }
         composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
@@ -158,7 +157,7 @@ fun AppNavigation(snackbar: SnackbarHostState) {
             val attId = backStackEntry.arguments?.getString("attId")
             BillingScreen(nav, resId, cliId, specId, attId)
         }
-<<<<<<< Updated upstream
+
         composable(
             route = Screen.ServiceDetail.route,
             arguments = listOf(navArgument("serviceName") { type = NavType.StringType })
@@ -176,7 +175,27 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         composable(Screen.WeeklyReport.route) {
             WeeklyReportScreen(nav)
         }
-=======
->>>>>>> Stashed changes
+
+        // --- Admin Routes ---
+        composable(Screen.AdminUsers.route) {
+            val userRole = authVm.state.collectAsState().value.role
+            if (userRole == "ADMIN") {
+                UserManagementScreen(onBack = { nav.popBackStack() })
+            } else {
+                nav.navigate(Screen.Dashboard.route) {
+                    popUpTo(Screen.AdminUsers.route) { inclusive = true }
+                }
+            }
+        }
+        composable(Screen.AdminAudit.route) {
+            val userRole = authVm.state.collectAsState().value.role
+            if (userRole == "ADMIN") {
+                AuditLogScreen(onBack = { nav.popBackStack() })
+            } else {
+                nav.navigate(Screen.Dashboard.route) {
+                    popUpTo(Screen.AdminAudit.route) { inclusive = true }
+                }
+            }
+        }
     }
 }

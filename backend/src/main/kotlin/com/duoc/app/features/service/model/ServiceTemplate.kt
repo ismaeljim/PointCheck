@@ -7,8 +7,7 @@ import java.math.BigDecimal
 @Table(name = "service_templates")
 data class ServiceTemplate(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)

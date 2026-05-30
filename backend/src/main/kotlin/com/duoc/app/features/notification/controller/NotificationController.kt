@@ -12,7 +12,7 @@ class NotificationController(
 ) {
 
     @PutMapping("/{id}/read")
-    fun markAsRead(@PathVariable id: Long): ResponseEntity<Unit> {
+    fun markAsRead(@PathVariable id: String): ResponseEntity<Unit> {
         notificationService.markAsRead(id)
         return ResponseEntity.ok().build()
     }

@@ -68,6 +68,12 @@ interface ApiService {
     @PUT("api/reservations/{id}/cancel")
     suspend fun cancelReservation(@Path("id") id: String): Response<ReservationResponseDto>
 
+    @GET("api/reservations/availability")
+    suspend fun getAvailability(
+        @Query("specialistId") specialistId: String,
+        @Query("date") date: String
+    ): Response<AvailabilityResponseDto>
+
     // --- Professional Profile Endpoints ---
 
     @GET("api/professional-profiles/user/{userId}")
@@ -86,7 +92,7 @@ interface ApiService {
 
     @GET("api/professional-profiles")
     suspend fun getActiveProfessionalProfiles(
-        @Query("categoryId") categoryId: Long? = null
+        @Query("categoryId") categoryId: String? = null
     ): Response<List<SpecialistResponseDto>>
 
     @GET("api/services/professional-profile/{professionalProfileId}")
