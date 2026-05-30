@@ -1,12 +1,15 @@
 package com.pointcheck.features.reservation.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,11 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextOverflow
+import com.pointcheck.core.presentation.components.HeaderIcon
+import com.pointcheck.core.presentation.components.SectionHeader
 import com.pointcheck.core.utils.CategoryIdentityMapper
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import java.text.SimpleDateFormat
@@ -53,46 +53,64 @@ fun AppointmentHistoryScreen(
         else -> "Historial de Citas"
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // --- HEADER ---
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HeaderIcon(Icons.AutoMirrored.Filled.ArrowBack) { nav.popBackStack() }
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            }
         }
-    ) { pad ->
-        Box(modifier = Modifier.padding(pad).fillMaxSize()) {
-            if (s.isLoading && s.appointments.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (s.appointments.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(Icons.Default.Info, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
-                    Spacer(Modifier.height(16.dp))
-                    Text("No hay citas para mostrar", color = Color.Gray)
-                    if (s.error != null) {
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = { vm.loadAppointments(type) }) {
-                            Text("Reintentar")
-                        }
+
+        // --- CONTENT ---
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-20).dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                if (s.isLoading && s.appointments.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(s.appointments) { appointment ->
-                        AppointmentItem(appointment)
+                } else if (s.appointments.isEmpty()) {
+                    EmptyHistoryState()
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item { SectionHeader("Listado de actividad") }
+                        
+                        items(s.appointments) { appointment ->
+                            AppointmentHistoryItem(appointment)
+                        }
+                        item { Spacer(Modifier.height(80.dp)) }
                     }
                 }
             }
@@ -101,7 +119,7 @@ fun AppointmentHistoryScreen(
 }
 
 @Composable
-fun AppointmentItem(res: ReservationResponseDto) {
+fun AppointmentHistoryItem(res: ReservationResponseDto) {
     val formattedDate = try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
         val outputFormat = SimpleDateFormat("dd 'de' MMM, HH:mm", Locale.getDefault())
@@ -116,124 +134,111 @@ fun AppointmentItem(res: ReservationResponseDto) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, catColor.copy(alpha = 0.5f)),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icono de Categoría
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(catColor.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
+            // Icono Circular
+            Surface(
+                modifier = Modifier.size(52.dp),
+                shape = CircleShape,
+                color = catColor.copy(alpha = 0.1f)
             ) {
-                Icon(
-                    imageVector = catIcon,
-                    contentDescription = null,
-                    tint = catColor,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = catIcon,
+                        contentDescription = null,
+                        tint = catColor,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
 
             Spacer(Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = res.serviceName ?: "Servicio",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    if (res.isAtHome) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                            shape = MaterialTheme.shapes.extraSmall
-                        ) {
-                            Text(
-                                "A domicilio",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-                }
-
                 Text(
-                    text = res.specialistName ?: "Sin nombre",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = res.serviceName ?: "Servicio",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = res.specialistName ?: "Profesional",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
                 )
                 
-                // Mostrar RUT para formalidad
-                res.specialistRut?.let {
-                    Text(
-                        text = "RUT: $it",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CalendarToday, 
-                        null, 
-                        modifier = Modifier.size(14.dp), 
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Outlined.CalendarToday, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text = formattedDate,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
             }
 
-            Spacer(Modifier.width(8.dp))
-
-            // Status Badge
+            // Status Badge Vertical
             Surface(
-                color = when (res.status) {
-                    "PENDING" -> Color(0xFFFFF3E0)
+                color = when (res.status.uppercase()) {
                     "COMPLETED" -> Color(0xFFE8F5E9)
                     "CANCELLED" -> Color(0xFFFFEBEE)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
+                    else -> Color(0xFFFFF3E0)
                 },
-                shape = MaterialTheme.shapes.small
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
-                    text = when(res.status) {
-                        "PENDING" -> "Pendiente"
-                        "COMPLETED" -> "Completada"
-                        "CANCELLED" -> "Cancelada"
-                        else -> res.status
+                    text = when(res.status.uppercase()) {
+                        "COMPLETED" -> "Listo"
+                        "CANCELLED" -> "Cancelado"
+                        else -> "Pendiente"
                     },
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = when (res.status) {
-                        "PENDING" -> Color(0xFFE65100)
-                        "COMPLETED" -> Color(0xFF1B5E20)
-                        "CANCELLED" -> Color(0xFFB71C1C)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = when (res.status.uppercase()) {
+                        "COMPLETED" -> Color(0xFF2E7D32)
+                        "CANCELLED" -> Color(0xFFC62828)
+                        else -> Color(0xFFEF6C00)
                     }
                 )
             }
         }
+    }
+}
+
+@Composable
+fun EmptyHistoryState() {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Outlined.History,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.outlineVariant
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Sin actividad reciente",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            "Tus citas pasadas y canceladas aparecerán en esta sección.",
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
     }
 }

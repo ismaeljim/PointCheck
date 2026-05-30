@@ -1,35 +1,31 @@
 package com.pointcheck.features.reservation.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.AccessTime
+import coil.compose.AsyncImage
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.HeaderIcon
+import com.pointcheck.core.presentation.components.SectionHeader
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.foundation.layout.ContextualFlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Work
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -47,22 +43,8 @@ fun BookingScreen(
     val isDayUnit = s.selectedService?.priceUnit == "DAY"
     
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis(),
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                // Bloquea días anteriores a hoy (comparando solo la fecha, sin hora)
-                val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                return utcTimeMillis >= calendar.timeInMillis
-            }
-        }
+        initialSelectedDateMillis = System.currentTimeMillis()
     )
-    val timePickerState = rememberTimePickerState()
-
-    val scrollState = rememberScrollState()
 
     var professionalExpanded by remember { mutableStateOf(false) }
     var serviceExpanded by remember { mutableStateOf(false) }
@@ -90,193 +72,233 @@ fun BookingScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Agendar Cita") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
-            )
-        }
-    ) { pad ->
-        Column(
-            Modifier
-                .padding(pad)
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // --- HEADER ---
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Text("Paso 1: Selección", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    SelectorField(
-                        label = "Profesional",
-                        value = s.selectedProfessional?.name ?: "Seleccionar especialista",
-                        icon = Icons.Default.Person,
-                        onClick = { professionalExpanded = true },
-                        enabled = !s.isLoading
-                    )
-
-                    DropdownMenu(
-                        expanded = professionalExpanded && !s.isLoading,
-                        onDismissRequest = { professionalExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        s.professionals.forEach { prof ->
-                            DropdownMenuItem(
-                                text = { Text("${prof.name} - ${prof.specialty ?: "General"}") },
-                                onClick = {
-                                    vm.selectProfessional(prof)
-                                    professionalExpanded = false
-                                }
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    SelectorField(
-                        label = "Servicio",
-                        value = s.selectedService?.name ?: "Seleccionar servicio",
-                        icon = Icons.Default.Work,
-                        enabled = s.selectedProfessional != null && !s.isLoading,
-                        onClick = { serviceExpanded = true }
-                    )
-
-                    DropdownMenu(
-                        expanded = serviceExpanded && !s.isLoading,
-                        onDismissRequest = { serviceExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        s.services.forEach { serv ->
-                            DropdownMenuItem(
-                                text = { Text("${serv.name} ($${serv.price})") },
-                                onClick = {
-                                    vm.selectService(serv)
-                                    serviceExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            Text("Paso 2: Fecha y Hora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = { showDatePicker = true },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = s.selectedService != null && !s.isLoading,
-                shape = MaterialTheme.shapes.medium,
-                contentPadding = PaddingValues(16.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.CalendarMonth, null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (s.reservationStartMillis == null) "Elegir fecha" else "Cambiar fecha")
+                HeaderIcon(Icons.AutoMirrored.Filled.ArrowBack) { nav.popBackStack() }
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    "Agendar Cita",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
             }
+        }
 
-            if (s.reservationStartMillis != null && !isDayUnit) {
-                Spacer(Modifier.height(16.dp))
-                Text("Horarios Disponibles", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
-                
-                if (s.availableSlots.isEmpty()) {
-                    Text("No hay horarios disponibles para este día.", 
-                        style = MaterialTheme.typography.bodySmall, 
-                        color = MaterialTheme.colorScheme.error)
-                } else {
-                    ContextualFlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        itemCount = s.availableSlots.size,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) { index ->
-                        val slot = s.availableSlots[index]
-                        FilterChip(
-                            selected = s.selectedSlot == slot,
-                            onClick = { vm.updateReservationTimeFromSlot(slot) },
-                            label = { Text(slot) }
-                        )
-                    }
-                }
-            }
-
-            s.reservationStartMillis?.let {
-                val pattern = if (isDayUnit) "EEEE d 'de' MMMM" else "EEEE d 'de' MMMM, HH:mm"
-                val formattedDate = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(it))
-                Card(
-                    modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        // --- CONTENT ---
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-20).dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp)
                 ) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CalendarMonth, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Spacer(Modifier.width(12.dp))
-                        Text(formattedDate, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                    }
-                }
+                    SectionHeader("Detalles del servicio")
 
-                // Weather component integrated as per Prompt 5
-                s.weather?.let { w ->
                     Card(
-                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Pronóstico para el día", style = MaterialTheme.typography.labelMedium)
-                                Text("${w.main.temp.toInt()}°C - ${w.weather.firstOrNull()?.description?.replaceFirstChar { it.uppercase() } ?: ""}", 
-                                    style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Column(Modifier.padding(20.dp)) {
+                            SelectorField(
+                                label = "Profesional",
+                                value = s.selectedProfessional?.name ?: "Seleccionar especialista",
+                                icon = Icons.Outlined.Person,
+                                onClick = { professionalExpanded = true },
+                                enabled = !s.isLoading
+                            )
+
+                            DropdownMenu(
+                                expanded = professionalExpanded && !s.isLoading,
+                                onDismissRequest = { professionalExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.85f).background(Color.White)
+                            ) {
+                                s.professionals.forEach { prof ->
+                                    DropdownMenuItem(
+                                        text = { Text("${prof.name} - ${prof.specialty ?: "General"}") },
+                                        onClick = {
+                                            vm.selectProfessional(prof)
+                                            professionalExpanded = false
+                                        }
+                                    )
+                                }
                             }
-                            w.weather.firstOrNull()?.icon?.let { icon ->
-                                AsyncImage(
-                                    model = "https://openweathermap.org/img/wn/$icon@2x.png",
-                                    contentDescription = "Weather Icon",
-                                    modifier = Modifier.size(48.dp)
+
+                            Spacer(Modifier.height(16.dp))
+
+                            SelectorField(
+                                label = "Servicio",
+                                value = s.selectedService?.name ?: "Seleccionar servicio",
+                                icon = Icons.Outlined.WorkOutline,
+                                enabled = s.selectedProfessional != null && !s.isLoading,
+                                onClick = { serviceExpanded = true }
+                            )
+
+                            DropdownMenu(
+                                expanded = serviceExpanded && !s.isLoading,
+                                onDismissRequest = { serviceExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.85f).background(Color.White)
+                            ) {
+                                s.services.forEach { serv ->
+                                    DropdownMenuItem(
+                                        text = { Text("${serv.name} ($${serv.price})") },
+                                        onClick = {
+                                            vm.selectService(serv)
+                                            serviceExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                    SectionHeader("Fecha y Hora")
+
+                    OutlinedButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = s.selectedService != null && !s.isLoading,
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (s.reservationStartMillis == null) "Seleccionar Fecha" else "Cambiar Fecha")
+                    }
+
+                    if (s.reservationStartMillis != null && !isDayUnit) {
+                        Spacer(Modifier.height(24.dp))
+                        Text("Horarios Disponibles", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Spacer(Modifier.height(8.dp))
+                        
+                        if (s.availableSlots.isEmpty()) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "No hay horarios disponibles para hoy.",
+                                    modifier = Modifier.padding(12.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        } else {
+                            ContextualFlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                itemCount = s.availableSlots.size,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) { index ->
+                                val slot = s.availableSlots[index]
+                                FilterChip(
+                                    selected = s.selectedSlot == slot,
+                                    onClick = { vm.updateReservationTimeFromSlot(slot) },
+                                    label = { Text(slot) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                                        selectedLabelColor = Color.White
+                                    )
                                 )
                             }
                         }
                     }
-                }
-            }
 
-            Spacer(Modifier.height(24.dp))
-            Text("Paso 3: Notas Adicionales", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
+                    s.reservationStartMillis?.let {
+                        val pattern = if (isDayUnit) "EEEE d 'de' MMMM" else "EEEE d 'de' MMMM, HH:mm"
+                        val formattedDate = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(it))
+                        
+                        Card(
+                            modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f))
+                        ) {
+                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.EventAvailable, null, tint = MaterialTheme.colorScheme.secondary)
+                                Spacer(Modifier.width(12.dp))
+                                Text(formattedDate, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                            }
+                        }
 
-            OutlinedTextField(
-                value = s.notes,
-                onValueChange = { vm.setNotes(it) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Instrucciones especiales, síntomas, etc.") },
-                minLines = 3,
-                maxLines = 5,
-                shape = MaterialTheme.shapes.medium,
-                enabled = !s.isLoading
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            Button(
-                onClick = {
-                    vm.createReservation {
-                        // success handled by LaunchedEffect
+                        s.weather?.let { w ->
+                            Card(
+                                modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    AsyncImage(
+                                        model = "https://openweathermap.org/img/wn/${w.weather.firstOrNull()?.icon}@2x.png",
+                                        contentDescription = null,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                    Column {
+                                        Text("Pronóstico del clima", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                        Text("${w.main.temp.toInt()}°C - ${w.weather.firstOrNull()?.description}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
                     }
-                },
-                enabled = s.isValid && !s.isLoading,
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                else Text("Confirmar Reserva", fontSize = 16.sp)
+
+                    Spacer(Modifier.height(24.dp))
+                    SectionHeader("Notas opcionales")
+
+                    OutlinedTextField(
+                        value = s.notes,
+                        onValueChange = { vm.setNotes(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("¿Alguna instrucción especial?") },
+                        minLines = 3,
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !s.isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    )
+
+                    Spacer(Modifier.height(40.dp))
+
+                    AppButton(
+                        text = "Confirmar Reserva",
+                        onClick = { vm.createReservation {} },
+                        enabled = s.isValid && !s.isLoading,
+                        isLoading = s.isLoading
+                    )
+                    
+                    Spacer(Modifier.height(100.dp))
+                }
             }
         }
 
@@ -300,17 +322,27 @@ fun BookingScreen(
 @Composable
 fun SelectorField(label: String, value: String, icon: ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(4.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Spacer(Modifier.height(6.dp))
+        Surface(
+            onClick = onClick,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(icon, null) },
-            trailingIcon = { IconButton(onClick = onClick, enabled = enabled) { Icon(Icons.Default.ArrowDropDown, null) } },
-            shape = MaterialTheme.shapes.medium
-        )
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                }
+                Icon(Icons.Default.ArrowDropDown, null, tint = Color.Gray)
+            }
+        }
     }
 }

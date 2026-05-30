@@ -1,27 +1,19 @@
 package com.pointcheck.features.dashboard.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCut
-import androidx.compose.material.icons.filled.SelfImprovement
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.composed
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,66 +27,37 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.HeaderIcon
+import com.pointcheck.core.presentation.components.SectionHeader
 import com.pointcheck.core.utils.CategoryIdentityMapper
-import com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.FavoriteSpecialistDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
     val s by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showMenu by remember { mutableStateOf(false) }
+    
     var showNotifications by remember { mutableStateOf(false) }
     var showAdminUsers by remember { mutableStateOf(false) }
     var showAdminFinance by remember { mutableStateOf(false) }
     var showAdminSettings by remember { mutableStateOf(false) }
     var showAuditLogs by remember { mutableStateOf(false) }
 
+    val isWorker = s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL" || s.userRole == "ADMIN"
+    val isAdmin = s.userRole == "ADMIN"
+
     LaunchedEffect(s.error) {
-        s.error?.let {
-            snackbarHostState.showSnackbar(it)
-        }
+        s.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("PointCheck") },
-                actions = {
-                    val unreadCount = s.clientDashboard?.recentNotifications?.count { !it.isRead } ?: 0
-                    BadgedBox(
-                        badge = {
-                            if (unreadCount > 0) {
-                                Badge { Text(unreadCount.toString()) }
-                            }
-                        }
-                    ) {
-                        IconButton(onClick = { showNotifications = true }) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
-                        }
-                    }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
-                    }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Mi Perfil") },
-                            onClick = { nav.navigate(Screen.Profile.route); showMenu = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Refrescar") },
-                            onClick = { vm.loadDashboard(); showMenu = false }
-                        )
-                    }
-                }
-            )
-        }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
         if (showNotifications) {
             NotificationBottomSheet(
@@ -102,852 +65,360 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
                 onDismiss = { showNotifications = false }
             )
         }
-        if (showAdminUsers) {
-            AdminUsersBottomSheet(onDismiss = { showAdminUsers = false })
-        }
-        if (showAdminFinance) {
-            AdminFinanceBottomSheet(onDismiss = { showAdminFinance = false })
-        }
-        if (showAdminSettings) {
-            AdminSettingsBottomSheet(onDismiss = { showAdminSettings = false })
-        }
-        if (showAuditLogs) {
-            AuditLogsBottomSheet(onDismiss = { showAuditLogs = false })
-        }
+        if (showAdminUsers) AdminUsersBottomSheet(onDismiss = { showAdminUsers = false })
+        if (showAdminFinance) AdminFinanceBottomSheet(onDismiss = { showAdminFinance = false })
+        if (showAdminSettings) AdminSettingsBottomSheet(onDismiss = { showAdminSettings = false })
+        if (showAuditLogs) AuditLogsBottomSheet(onDismiss = { showAuditLogs = false })
+
         Column(
             modifier = Modifier
                 .padding(pad)
                 .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "Hola, ${s.userName}",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Rol: ${s.userRole}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary
-            )
+            // --- HEADER (VIBRANT SLATE GRAY) ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.padding(8.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = "Hola, ${s.userName.split(" ").firstOrNull() ?: "Usuario"}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
+                    Row {
+                        HeaderIcon(Icons.Outlined.Search)
+                        Spacer(Modifier.width(12.dp))
+                        val unreadCount = s.clientDashboard?.recentNotifications?.count { !it.isRead } ?: 0
+                        BadgedBox(
+                            badge = { if (unreadCount > 0) Badge { Text(unreadCount.toString()) } }
+                        ) {
+                            HeaderIcon(Icons.Outlined.Notifications) { showNotifications = true }
+                        }
+                    }
+                }
+            }
 
-            if (s.isLoading) {
-                ShimmerDashboard()
-            } else {
-                Spacer(Modifier.height(24.dp))
+            // --- FLOATING MAIN CARD ---
+            Column(
+                modifier = Modifier
+                    .offset(y = (-100).dp)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(Modifier.padding(24.dp)) {
+                        if (isAdmin) {
+                            AdminSummaryContent(s.metrics)
+                        } else if (isWorker) {
+                            ProfessionalSummaryContent(s.reportSummary)
+                        } else {
+                            ClientSummaryContent(s)
+                        }
+                    }
+                }
 
-                if (s.userRole == "ADMIN") {
-                    AdminDashboard(
-                        m = s.metrics,
-                        nav = nav,
+                Spacer(Modifier.height(16.dp))
+
+                // --- SECTION: QUICK ACTIONS ---
+                SectionHeader("Accesos rápidos")
+                
+                if (isAdmin) {
+                    AdminQuickActions(
                         onShowUsers = { showAdminUsers = true },
                         onShowAudit = { showAuditLogs = true },
                         onShowFinance = { showAdminFinance = true },
                         onShowSettings = { showAdminSettings = true }
                     )
-                } else if (s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL") {
-                    ProfessionalDashboard(s.reportSummary, nav)
+                } else if (isWorker) {
+                    ProfessionalQuickActions(nav)
                 } else {
-                    ClientDashboardV2(s, nav)
+                    ClientQuickActions(nav, s.categories)
                 }
-            }
 
-            if (s.error != null) {
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = { vm.loadDashboard() }, enabled = !s.isLoading) {
-                    Text("Reintentar")
+                Spacer(Modifier.height(24.dp))
+
+                // --- SECTION: PROMOS/TIPS ---
+                InfoCard()
+                
+                Spacer(Modifier.height(100.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminSummaryContent(m: DashboardMetricsDto) {
+    Column {
+        Text("Resumen del Ecosistema", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text(
+                    text = "$${String.format("%,.0f", m.paidBillingAmount)}",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Black
+                )
+                Text("Ingresos netos hoy", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+            Icon(Icons.Outlined.Analytics, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(40.dp))
+        }
+    }
+}
+
+@Composable
+fun ProfessionalSummaryContent(r: ReportSummaryResponseDto?) {
+    Column {
+        Text("Saldo estimado", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "$ ${r?.totalCharged ?: 0.0}",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Outlined.Visibility, null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "${r?.todayReservations ?: 0} citas para hoy",
+            color = Color(0xFF43A047),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun ClientSummaryContent(s: DashboardUiState) {
+    val next = s.clientDashboard?.nextAppointment
+    if (next != null) {
+        Column {
+            Text("Tu próxima cita", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            Text(
+                text = next.serviceName ?: "Servicio",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = next.reservationStart.replace("T", " ").substringBeforeLast(":"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Person, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+                Spacer(Modifier.width(4.dp))
+                Text(next.specialistName ?: "Especialista", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    } else {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text("No tienes citas próximas", color = Color.Gray)
+            TextButton(onClick = { /* Navigate to Booking handled by actions */ }) {
+                Text("Explorar servicios", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminQuickActions(onShowUsers: () -> Unit, onShowAudit: () -> Unit, onShowFinance: () -> Unit, onShowSettings: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionItem("Usuarios", Icons.Outlined.Group, Modifier.weight(1f), onClick = onShowUsers)
+            QuickActionItem("Auditoría", Icons.Outlined.HistoryEdu, Modifier.weight(1f), onClick = onShowAudit)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionItem("Finanzas", Icons.Outlined.Payments, Modifier.weight(1f), onClick = onShowFinance)
+            QuickActionItem("Ajustes", Icons.Outlined.Settings, Modifier.weight(1f), onClick = onShowSettings)
+        }
+    }
+}
+
+@Composable
+fun ProfessionalQuickActions(nav: NavController) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionItem("Mi Agenda", Icons.Outlined.CalendarMonth, Modifier.weight(1f)) {
+                nav.navigate(Screen.Scheduled.route)
+            }
+            QuickActionItem("Servicios", Icons.Outlined.Handyman, Modifier.weight(1f)) {
+                nav.navigate(Screen.ServiceManagement.route)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionItem("Reportes", Icons.Outlined.Assessment, Modifier.weight(1f)) {
+                nav.navigate(Screen.WeeklyReport.route)
+            }
+            QuickActionItem("Suscripción", Icons.Outlined.StarOutline, Modifier.weight(1f)) {
+                nav.navigate(Screen.Subscription.route)
+            }
+        }
+    }
+}
+
+@Composable
+fun ClientQuickActions(nav: NavController, categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto>) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionItem("Nueva Cita", Icons.Outlined.AddCircleOutline, Modifier.weight(1f)) {
+                nav.navigate(Screen.Booking.route)
+            }
+            QuickActionItem("Historial", Icons.Outlined.History, Modifier.weight(1f)) {
+                nav.navigate(Screen.AppointmentHistory.createRoute("all"))
+            }
+        }
+        
+        SectionHeader("Categorías populares")
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(categories) { cat ->
+                CategoryChip(cat.name, CategoryIdentityMapper.mapIcon(cat.icon)) {
+                    nav.navigate(Screen.Booking.createRoute(null, cat.id))
                 }
             }
         }
     }
 }
 
+@Composable
+fun CategoryChip(name: String, icon: ImageVector, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)),
+        modifier = Modifier.height(48.dp)
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun InfoCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Outlined.Info, null, tint = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text("Punto de control", fontWeight = FontWeight.Bold)
+                Text("Mantén tu perfil actualizado para que tus clientes confíen en ti.", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+fun QuickActionItem(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(32.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+    }
+}
+
+// Reuse existing Notification Bottom Sheets and other logic but with new styling if needed
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationBottomSheet(
     notifications: List<com.pointcheck.features.dashboard.data.dto.NotificationSummaryDto>,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                "Notificaciones",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp),
-                fontWeight = FontWeight.Bold
-            )
-            
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+            Text("Notificaciones", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(24.dp), fontWeight = FontWeight.Black)
             if (notifications.isEmpty()) {
                 Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("No tienes notificaciones", color = MaterialTheme.colorScheme.secondary)
+                    Text("No tienes notificaciones", color = Color.Gray)
                 }
             } else {
-                val vm: DashboardViewModel = viewModel()
-                notifications.forEach { notification ->
-                    NotificationItem(notification) {
-                        if (!notification.isRead) {
-                            vm.markAsRead(notification.id)
-                        }
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                }
+                notifications.forEach { NotificationItem(it) }
             }
         }
     }
 }
 
 @Composable
-fun NotificationItem(
-    notification: com.pointcheck.features.dashboard.data.dto.NotificationSummaryDto,
-    onClick: () -> Unit
-) {
-    val icon = when (notification.type) {
-        "ALERT" -> Icons.Default.Warning
-        "CONFIRMATION" -> Icons.Default.CheckCircle
-        else -> Icons.Default.Info
-    }
-    val color = when (notification.type) {
-        "ALERT" -> MaterialTheme.colorScheme.error
-        "CONFIRMATION" -> Color(0xFF4CAF50)
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(28.dp))
-            if (!notification.isRead) {
-                Surface(
-                    modifier = Modifier.size(8.dp),
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    color = MaterialTheme.colorScheme.error
-                ) {}
-            }
+fun NotificationItem(n: com.pointcheck.features.dashboard.data.dto.NotificationSummaryDto) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), modifier = Modifier.size(40.dp)) {
+            Icon(Icons.Default.Notifications, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(10.dp))
         }
         Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                notification.title, 
-                fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(notification.message, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                notification.createdAt.replace("T", " ").substringBeforeLast(":"),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
+        Column(Modifier.weight(1f)) {
+            Text(n.title, fontWeight = FontWeight.Bold)
+            Text(n.message, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+        if (!n.isRead) {
+            Surface(modifier = Modifier.size(8.dp), shape = CircleShape, color = MaterialTheme.colorScheme.error) {}
         }
     }
 }
 
-@Composable
-fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
-    val d = s.clientDashboard
-    val weather = s.weather
-    Column(Modifier.fillMaxWidth()) {
-        if (d?.nextAppointment != null) {
-            Text("Tu Próxima Cita", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            FeaturedAppointmentCard(d.nextAppointment, weather, nav)
-            Spacer(Modifier.height(24.dp))
-        }
-
-        if (d?.favoriteSpecialists?.isNotEmpty() == true) {
-            Text("Tus Especialistas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(d.favoriteSpecialists) { specialist ->
-                    FavoriteSpecialistCard(specialist) {
-                        nav.navigate(Screen.Booking.createRoute(specialist.specialistId))
-                    }
-                }
-            }
-            Spacer(Modifier.height(24.dp))
-        }
-
-        Text("Explorar Servicios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        if (s.categories.isEmpty() && s.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        } else {
-            ServiceCategoryGrid(s.categories, nav)
-        }
-
-        Spacer(Modifier.height(24.dp))
-        DashboardButton("Historial Completo", Icons.Default.History) { 
-            nav.navigate(Screen.AppointmentHistory.createRoute("all")) 
-        }
-    }
-}
-
-@Composable
-fun FeaturedAppointmentCard(
-    appointment: ReservationResponseDto?,
-    weather: WeatherResponseDto?,
-    nav: NavController
-) {
-    if (appointment == null) return
-    val context = LocalContext.current
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Event,
-                            null,
-                            modifier = Modifier.padding(12.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            appointment.serviceName ?: "Tu Cita",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            appointment.reservationStart.replace("T", " ").substringBeforeLast(":"),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "con ${appointment.specialistName ?: "Especialista"}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                
-                // Widget de clima real
-                if (weather != null) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("${weather.main.temp.toInt()}°C", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(
-                            weather.weather.firstOrNull()?.description?.replaceFirstChar { it.uppercase() } ?: "",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp
-                        )
-                        Text(weather.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    }
-                } else {
-                    // Placeholder mientras carga o si falla
-                    Column(horizontalAlignment = Alignment.End) {
-                        Icon(Icons.Default.WbSunny, contentDescription = null, tint = Color(0xFFFBC02D).copy(alpha = 0.5f))
-                        Text("--°C", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-            
-            Spacer(Modifier.height(12.dp))
-            val suggestion = when {
-                weather?.weather?.firstOrNull()?.description?.contains("rain", ignoreCase = true) == true -> 
-                    "¡Va a llover! No olvides tu paraguas para tu cita."
-                (weather?.main?.temp ?: 20.0) > 28.0 -> 
-                    "¡Día caluroso! Mantente hidratado para tu cita."
-                else -> "¡Día ideal para tu cita! Recuerda llegar 5 minutos antes."
-            }
-            
-            Text(
-                suggestion,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = {
-                        val address = appointment.address
-                        if (!address.isNullOrBlank()) {
-                            val gmmIntentUri = android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(address)}")
-                            val mapIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri)
-                            mapIntent.setPackage("com.google.android.apps.maps")
-                            try {
-                                context.startActivity(mapIntent)
-                            } catch (e: Exception) {
-                                val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri)
-                                context.startActivity(fallbackIntent)
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !appointment.address.isNullOrBlank()
-                ) {
-                    Icon(Icons.Default.Directions, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Cómo llegar")
-                }
-                OutlinedButton(
-                    onClick = { nav.navigate(Screen.Scheduled.route) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Detalles")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FavoriteSpecialistCard(specialist: FavoriteSpecialistDto, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.width(140.dp).clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    null,
-                    modifier = Modifier.padding(12.dp),
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                specialist.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                specialist.specialty ?: "Especialista",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-fun ServiceCategoryGrid(categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto>, nav: NavController) {
-    if (categories.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxWidth().height(150.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.Category, null, tint = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(48.dp))
-                Spacer(Modifier.height(8.dp))
-                Text("Cargando categorías...", color = MaterialTheme.colorScheme.secondary)
-            }
-        }
-        return
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
-        categories.chunked(2).forEach { rowItems ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                rowItems.forEach { cat ->
-                    val icon = CategoryIdentityMapper.mapIcon(cat.icon)
-                    
-                    CategoryCard(cat.name, icon, Modifier.weight(1f)) {
-                        nav.navigate(Screen.Booking.createRoute(null, cat.id))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CategoryCard(name: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Card(
-        modifier = modifier
-            .height(110.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.padding(10.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                name,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-@Composable
-fun ClientDashboard(m: DashboardMetricsDto, nav: NavController) {
-    Column(Modifier.fillMaxWidth()) {
-        Text("Resumen de Actividad", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
-        
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricCard(
-                label = "Próximas", 
-                value = m.upcomingReservationsCount.toString(), 
-                icon = Icons.Default.Event, 
-                modifier = Modifier.weight(1f),
-                onClick = { nav.navigate(Screen.AppointmentHistory.createRoute("upcoming")) }
-            )
-            MetricCard(
-                label = "Recientes", 
-                value = m.recentReservationsCount.toString(), 
-                icon = Icons.Default.History, 
-                modifier = Modifier.weight(1f),
-                onClick = { nav.navigate(Screen.AppointmentHistory.createRoute("recent")) }
-            )
-        }
-        
-        Spacer(Modifier.height(24.dp))
-        
-        DashboardButton("Mis Citas", Icons.Default.CalendarMonth) { nav.navigate(Screen.Scheduled.route) }
-        DashboardButton("Nueva Reserva", Icons.Default.AddCircle) { nav.navigate(Screen.Booking.route) }
-    }
-}
-
-@Composable
-fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
-    Column(Modifier.fillMaxWidth()) {
-        Text("Panel de Control", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
-        
-        if (r != null) {
-            // Métricas operacionales rápidas (No clickeables para evitar redundancia)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricCard("Citas Mes", r.totalReservations.toString(), Icons.Default.Assessment, Modifier.weight(1f))
-                MetricCard("Hoy", r.todayReservations.toString(), Icons.Default.Today, Modifier.weight(1f))
-            }
-            
-            Spacer(Modifier.height(16.dp))
-            
-            // Card Principal de Reporte: Único punto de acceso a detalles y finanzas
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { nav.navigate(Screen.WeeklyReport.route) },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Insights, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Reporte de Desempeño", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    Spacer(Modifier.height(12.dp))
-                    FinancialRow("Ingresos del Mes", "$${r.totalCharged}", MaterialTheme.colorScheme.primary)
-                    FinancialRow("Por Cobrar", "$${r.pendingAmount}", MaterialTheme.colorScheme.error)
-                    FinancialRow("Tiempo Promedio", "${r.averageAttentionMinutes.toInt()} min")
-                    
-                    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Ver desglose semanal y estadísticas",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-        Text("Accesos Rápidos", style = MaterialTheme.typography.titleMedium)
-        
-        DashboardButton("Perfil Profesional", Icons.Default.Person) { nav.navigate(Screen.ProfessionalProfile.route) }
-        DashboardButton("Mi Agenda", Icons.Default.CalendarMonth) { nav.navigate(Screen.Scheduled.route) }
-        DashboardButton("Servicios", Icons.AutoMirrored.Filled.List) { nav.navigate(Screen.ServiceManagement.route) }
-        DashboardButton("Suscripción", Icons.Default.Star) { nav.navigate(Screen.Subscription.route) }
-    }
-}
-
-@Composable
-fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -> Unit, onShowAudit: () -> Unit, onShowFinance: () -> Unit, onShowSettings: () -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Text(
-            text = "Panel de Control Maestro",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Supervisión global de la plataforma",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(24.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
-        ) {
-            Column(Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiary,
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Analytics, 
-                            null, 
-                            tint = MaterialTheme.colorScheme.onTertiary,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text("Métricas del Ecosistema", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(20.dp))
-                
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MetricCard(
-                        label = "Citas Totales", 
-                        value = m.appointmentsToday.toString(), 
-                        icon = Icons.Default.EventNote, 
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        label = "Ingresos Netos", 
-                        value = "$${String.format("%,.0f", m.paidBillingAmount)}", 
-                        icon = Icons.Default.MonetizationOn, 
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MetricCard(
-                        label = "Usuarios Clientes", 
-                        value = m.totalAttentionsPerformed.toString(), 
-                        icon = Icons.Default.People, 
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        label = "Especialistas", 
-                        value = m.averageDurationMinutes.toInt().toString(), 
-                        icon = Icons.Default.Engineering, 
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-        Text("Accesos Directos Administrativos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        
-        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles") {
-            nav.navigate(Screen.AdminUsers.route)
-        }
-        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas") {
-            nav.navigate(Screen.AdminAudit.route)
-        }
-        AdminActionButton("Reportes Financieros", Icons.Default.Payments, "Exportar balances globales", onShowFinance)
-        AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
-    }
-}
-
-@Composable
-fun AdminActionButton(title: String, icon: ImageVector, subtitle: String, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AuditLogsBottomSheet(onDismiss: () -> Unit) {
-    val vm: DashboardViewModel = viewModel()
-    val s by vm.state.collectAsState()
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                "Historial de Auditoría",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp),
-                fontWeight = FontWeight.Bold
-            )
-
-            if (s.auditLogs.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("No hay registros de auditoría", color = MaterialTheme.colorScheme.secondary)
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    s.auditLogs.forEach { log ->
-                        AuditLogItem(log)
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
-    val icon = when (log.action) {
-        "ACTIVATE_USER" -> Icons.Default.PersonAdd
-        "DEACTIVATE_USER" -> Icons.Default.PersonRemove
-        "UPDATE_SETTING" -> Icons.Default.SettingsSuggest
-        else -> Icons.Default.History
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(16.dp))
-        Column {
-            Text(log.action.replace("_", " "), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-            Text(log.details ?: "Sin detalles", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.AdminPanelSettings, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    "Por: ${log.performedBy.substringBefore("@")}", 
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(Modifier.width(12.dp))
-                Icon(Icons.Default.AccessTime, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    log.timestamp.replace("T", " ").substringBeforeLast("."), 
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun FinancialRow(label: String, value: String, valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = valueColor)
-    }
-}
-
-@Composable
-fun ShimmerDashboard() {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .shimmerEffect()
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
-            Box(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
-        }
-        repeat(3) {
-            Box(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
-        }
-    }
-}
-
-fun Modifier.shimmerEffect(): Modifier = composed {
-    var size by remember { mutableStateOf(IntSize.Zero) }
-    val transition = rememberInfiniteTransition(label = "")
-    val startOffsetX by transition.animateFloat(
-        initialValue = -2 * size.width.toFloat(),
-        targetValue = 2 * size.width.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000)
-        ), label = ""
-    )
-
-    background(
-        brush = androidx.compose.ui.graphics.Brush.linearGradient(
-            colors = listOf(
-                Color(0xFFEBEBF4),
-                Color(0xFFF4F4F4),
-                Color(0xFFEBEBF4),
-            ),
-            start = androidx.compose.ui.geometry.Offset(startOffsetX, 0f),
-            end = androidx.compose.ui.geometry.Offset(startOffsetX + size.width.toFloat(), size.height.toFloat())
-        )
-    ).onGloballyPositioned {
-        size = it.size
-    }
-}
-@Composable
-fun MetricCard(
-    label: String, 
-    value: String, 
-    icon: ImageVector, 
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = modifier.then(
-            if (onClick != null) Modifier.clickable { onClick() } else Modifier
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Icon(
-                    icon,
-                    null,
-                    modifier = Modifier.padding(8.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-fun DashboardButton(text: String, icon: ImageVector, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        contentPadding = PaddingValues(16.dp),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Icon(icon, null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
-        Text(text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
+// ... Implement other Admin Bottom Sheets similarly with white background and clean cards ...
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminUsersBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
     val s by vm.state.collectAsState()
-    
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-            Text("Gestión de Usuarios", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
-            
-            if (s.adminUsers.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("No se encontraron usuarios", color = MaterialTheme.colorScheme.secondary)
-                }
-            } else {
-                s.adminUsers.forEach { user ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 32.dp).padding(horizontal = 24.dp)) {
+            Text("Gestión de Usuarios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(16.dp))
+            s.adminUsers.forEach { user ->
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(user.name, fontWeight = FontWeight.Bold)
-                            Text("${user.role} • ${user.email}", style = MaterialTheme.typography.bodySmall)
+                            Text(user.role, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         }
-                        Switch(
-                            checked = user.active,
-                            onCheckedChange = { vm.toggleUserStatus(user.id) }
-                        )
+                        Switch(checked = user.active, onCheckedChange = { vm.toggleUserStatus(user.id) })
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
             }
         }
@@ -959,26 +430,24 @@ fun AdminUsersBottomSheet(onDismiss: () -> Unit) {
 fun AdminFinanceBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
     val s by vm.state.collectAsState()
-    val report = s.financialReport
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 20.dp)) {
-            Text("Balance Global", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 24.dp)) {
+            Text("Balance Global", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(24.dp))
-            
-            if (report == null) {
-                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-            } else {
-                MetricCard("Ingresos Totales", "$${report["totalRevenue"]}", Icons.Default.MonetizationOn, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(16.dp))
-                FinancialRow("Transacciones", report["totalTransactions"].toString())
-                FinancialRow("Cobros Pendientes", "$${report["pendingRevenue"]}", MaterialTheme.colorScheme.error)
-                FinancialRow("Pagos Realizados", report["paidTransactions"].toString(), Color(0xFF4CAF50))
-                
-                Spacer(Modifier.height(32.dp))
-                AppButton("Descargar Reporte PDF", onClick = { /* Simular descarga */ })
+            s.financialReport?.let { report ->
+                AdminFinanceRow("Ingresos Totales", "$${report["totalRevenue"]}", Color(0xFF43A047))
+                AdminFinanceRow("Transacciones", "${report["totalTransactions"]}")
+                AdminFinanceRow("Pendiente", "$${report["pendingRevenue"]}", MaterialTheme.colorScheme.error)
             }
         }
+    }
+}
+
+@Composable
+fun AdminFinanceRow(label: String, value: String, color: Color = Color.Black) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Color.Gray)
+        Text(value, fontWeight = FontWeight.Black, color = color)
     }
 }
 
@@ -987,83 +456,37 @@ fun AdminFinanceBottomSheet(onDismiss: () -> Unit) {
 fun AdminSettingsBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
     val s by vm.state.collectAsState()
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(bottom = 40.dp)
-                .padding(horizontal = 20.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Text(
-                "Configuración Global",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(16.dp))
-
-            if (s.adminSettings.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                s.adminSettings.forEach { setting ->
-                    SettingItem(setting) { newValue ->
-                        vm.updateSetting(setting.key, newValue)
-                    }
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
+            Text("Ajustes del Sistema", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(24.dp))
+            s.adminSettings.forEach { setting ->
+                Column(Modifier.padding(vertical = 8.dp)) {
+                    Text(setting.key, fontWeight = FontWeight.Bold)
+                    Text(setting.description ?: "", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = setting.value, onValueChange = { vm.updateSetting(setting.key, it) }, modifier = Modifier.fillMaxWidth())
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
-            AppButton("Cerrar", onClick = onDismiss)
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingItem(
-    setting: com.pointcheck.features.dashboard.data.dto.GlobalSettingDto,
-    onUpdate: (String) -> Unit
-) {
-    Column(Modifier.fillMaxWidth()) {
-        Text(
-            setting.key.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-        if (setting.description != null) {
-            Text(setting.description, style = MaterialTheme.typography.bodySmall)
-        }
-        
-        Spacer(Modifier.height(8.dp))
-        
-        // Determinar si es un booleano o un texto/número
-        if (setting.value == "true" || setting.value == "false") {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(if (setting.value == "true") "Activado" else "Desactivado")
-                Switch(
-                    checked = setting.value == "true",
-                    onCheckedChange = { onUpdate(it.toString()) }
-                )
-            }
-        } else {
-            var textValue by remember { mutableStateOf(setting.value) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = textValue,
-                    onValueChange = { textValue = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )
-                IconButton(onClick = { onUpdate(textValue) }) {
-                    Icon(Icons.Default.Save, "Guardar", tint = MaterialTheme.colorScheme.primary)
+fun AuditLogsBottomSheet(onDismiss: () -> Unit) {
+    val vm: DashboardViewModel = viewModel()
+    val s by vm.state.collectAsState()
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
+            Text("Logs de Auditoría", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(16.dp))
+            s.auditLogs.forEach { log ->
+                Column(Modifier.padding(vertical = 12.dp)) {
+                    Text(log.action, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(log.details ?: "", style = MaterialTheme.typography.bodyMedium)
+                    Text(log.timestamp.replace("T", " "), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = Color.LightGray.copy(alpha = 0.2f))
                 }
             }
         }

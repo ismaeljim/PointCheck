@@ -5,20 +5,29 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
-// Paleta de colores para el modo claro
 private val LightColors = lightColorScheme(
-    primary = MetallicBlue,
+    primary = MP_SlateGray,
     onPrimary = White,
-    background = LightBackground,
-    surface = White
+    secondary = MP_Indigo,
+    onSecondary = White,
+    tertiary = MP_IndigoLight,
+    background = MP_Background,
+    surface = MP_Surface,
+    onSurface = Black,
+    surfaceVariant = MP_SurfaceVariant,
+    onSurfaceVariant = GrayText,
+    error = MP_Error,
+    outline = MP_SlateGrayLight.copy(alpha = 0.5f)
 )
 
-// Paleta de colores para el modo oscuro
 private val DarkColors = darkColorScheme(
-    primary = MetallicBlue,
+    primary = MP_SlateGrayLight,
     onPrimary = White,
-    background = DarkBackground,
-    surface = DarkBackground
+    secondary = MP_IndigoLight,
+    onSecondary = White,
+    background = MP_SlateGrayDark,
+    surface = MP_SlateGrayDark,
+    onSurface = White
 )
 
 @Composable
