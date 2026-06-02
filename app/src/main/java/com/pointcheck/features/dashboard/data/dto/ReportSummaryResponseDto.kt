@@ -9,5 +9,6 @@ data class ReportSummaryResponseDto(
     val totalCharged: Double,
     val pendingAmount: Double,
     val paidBillingCount: Int,
-    val pendingBillingCount: Int
+    val pendingBillingCount: Int,
+    val specialty: String? = null
 )

@@ -1,5 +1,9 @@
 package com.duoc.app.core.util
 
+/**
+ * Utilidades para la gestión de RUT chileno.
+ * Incluye lógica de formateo y validación mediante el algoritmo de Módulo 11.
+ */
 object RutUtils {
 
     /**

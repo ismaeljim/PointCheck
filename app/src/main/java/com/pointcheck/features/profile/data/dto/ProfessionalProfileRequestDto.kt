@@ -15,5 +15,6 @@ data class ProfessionalProfileRequestDto(
     val country: String? = "Chile",
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val defaultSessionDurationMinutes: Int = 30
+    val defaultSessionDurationMinutes: Int = 30,
+    val workingHoursJson: String? = null
 )

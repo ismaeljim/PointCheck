@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,13 +50,9 @@ fun ServiceDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Detalle: $serviceName") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Detalle: $serviceName",
+                onBack = { nav.popBackStack() }
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -101,12 +99,11 @@ fun ServiceDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Button(
+                    AppButton(
+                        text = "Volver",
                         onClick = { nav.popBackStack() },
                         enabled = !state.isLoading
-                    ) {
-                        Text("Volver")
-                    }
+                    )
                 }
             }
         }

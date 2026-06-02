@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
@@ -15,13 +17,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.dashboard.data.dto.DailyMetricDto
 import com.pointcheck.features.dashboard.data.dto.WeeklySummaryDto
+import com.pointcheck.features.services.data.dto.ServiceResponseDto
+import androidx.compose.foundation.lazy.LazyRow
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,13 +66,9 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(if (s.period == ReportPeriod.WEEKLY) "Reporte Semanal" else "Reporte Mensual") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                },
+            AppTopBar(
+                title = if (s.period == ReportPeriod.WEEKLY) "Reporte Semanal" else "Reporte Mensual",
+                onBack = { nav.popBackStack() },
                 actions = {
                     IconButton(onClick = { vm.exportReport() }, enabled = !s.isLoading) {
                         Icon(Icons.Default.Download, "Descargar")
@@ -95,6 +100,16 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                 )
             }
 
+            // Filtro de Servicios
+            if (s.services.isNotEmpty()) {
+                ServiceFilterRow(
+                    services = s.services,
+                    selectedServiceId = s.selectedServiceId,
+                    onServiceSelected = { vm.setServiceFilter(it) }
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
             // Selector de Fecha (Semana o Mes)
             DateSelector(
                 label = if (s.period == ReportPeriod.WEEKLY) "Semana ${s.report?.weekNumber ?: ""}" else "${s.monthlyReport?.monthName ?: ""} ${s.monthlyReport?.year ?: ""}",
@@ -109,32 +124,59 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
             }
 
             val totalRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.totalRevenue else s.monthlyReport?.totalRevenue
+            val prevRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.previousPeriodRevenue else s.monthlyReport?.previousPeriodRevenue
+            val totalHours = if (s.period == ReportPeriod.WEEKLY) s.report?.totalHoursWorked else s.monthlyReport?.totalHoursWorked
             
             if (totalRevenue != null) {
                 Spacer(Modifier.height(16.dp))
                 
-                // Resumen
+                // Resumen Principal
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Ingresos Totales", style = MaterialTheme.typography.labelLarge)
-                            Text("$${totalRevenue}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Ingresos Totales", style = MaterialTheme.typography.labelLarge)
+                                Text("$${totalRevenue}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            val growth = if (prevRevenue != null && prevRevenue > 0) {
+                                ((totalRevenue - prevRevenue) / prevRevenue) * 100
+                            } else 0.0
+
+                            TrendIndicator(growth)
                         }
-                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+                        
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f))
+                        
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                            val maxRevenueDay = s.report?.dailyBreakdown?.maxByOrNull { it.revenue }
+                            val maxRevenueWeek = s.monthlyReport?.weeklyBreakdown?.maxByOrNull { it.revenue }
+
+                            StatMiniItem(
+                                icon = Icons.Default.CalendarToday,
+                                label = "Día más fuerte",
+                                value = maxRevenueDay?.dayOfWeek ?: maxRevenueWeek?.dateRange ?: "N/A"
+                            )
+                            StatMiniItem(
+                                icon = Icons.Default.AccessTime,
+                                label = "Horas totales",
+                                value = String.format(Locale.getDefault(), "%.1f h", totalHours ?: 0.0)
+                            )
+                        }
                     }
                 }
 
                 Spacer(Modifier.height(24.dp))
                 
-                // Gráfico Visual Simple
-                Text("Tendencia de Ingresos", style = MaterialTheme.typography.titleMedium)
+                // Gráfico de Tendencia (Line Chart)
+                Text("Tendencia de Ingresos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
                 val chartData = if (s.period == ReportPeriod.WEEKLY) {
                     s.report?.dailyBreakdown?.map { it.revenue.toFloat() } ?: emptyList()
@@ -143,9 +185,9 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                 }
                 
                 if (chartData.isNotEmpty()) {
-                    SimpleBarChart(
+                    TrendLineChart(
                         data = chartData,
-                        modifier = Modifier.fillMaxWidth().height(150.dp).padding(vertical = 8.dp)
+                        modifier = Modifier.fillMaxWidth().height(180.dp).padding(vertical = 8.dp)
                     )
                 }
 
@@ -168,7 +210,6 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                     }
                 }
             } else if (s.summary != null) {
-                // Caso alternativo: Resumen General si no hay datos semanales/mensuales aún
                 val report = s.summary!!
                 Spacer(Modifier.height(24.dp))
                 Text("Estadísticas de Atención", style = MaterialTheme.typography.titleLarge)
@@ -183,6 +224,107 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                     StatRow("Pendiente de Cobro", "$${report.pendingAmount}")
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun TrendIndicator(growth: Double) {
+    val isPositive = growth >= 0
+    val color = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+    val icon = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown
+    
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = String.format(Locale.getDefault(), "%+.1f%%", growth),
+            color = color,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun StatMiniItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun TrendLineChart(data: List<Float>, modifier: Modifier = Modifier) {
+    val maxVal = (data.maxOrNull() ?: 0f).coerceAtLeast(1f)
+    val color = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+
+    Box(
+        modifier = modifier
+            .background(surfaceColor, MaterialTheme.shapes.medium)
+            .padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val spacing = width / (data.size - 1).coerceAtLeast(1)
+
+            val points = data.mapIndexed { index, value ->
+                val x = index * spacing
+                val y = height - (value / maxVal) * height
+                androidx.compose.ui.geometry.Offset(x, y)
+            }
+
+            val path = Path().apply {
+                if (points.isNotEmpty()) {
+                    moveTo(points.first().x, points.first().y)
+                    for (i in 1 until points.size) {
+                        lineTo(points[i].x, points[i].y)
+                    }
+                }
+            }
+
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Draw points
+            points.forEach { point ->
+                drawCircle(color = color, radius = 4.dp.toPx(), center = point)
+                drawCircle(color = Color.White, radius = 2.dp.toPx(), center = point)
+            }
+        }
+    }
+}
+
+@Composable
+fun ServiceFilterRow(
+    services: List<ServiceResponseDto>,
+    selectedServiceId: String?,
+    onServiceSelected: (String?) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp)
+    ) {
+        item {
+            FilterChip(
+                selected = selectedServiceId == null,
+                onClick = { onServiceSelected(null) },
+                label = { Text("Todos") }
+            )
+        }
+        items(services) { service ->
+            FilterChip(
+                selected = selectedServiceId == service.id,
+                onClick = { onServiceSelected(service.id) },
+                label = { Text(service.name) }
+            )
         }
     }
 }
@@ -238,35 +380,6 @@ fun DailyMetricItem(day: DailyMetricDto) {
             Column(horizontalAlignment = Alignment.End) {
                 Text("$${day.revenue}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text("${day.reservationsCount} citas", style = MaterialTheme.typography.labelSmall)
-            }
-        }
-    }
-}
-
-@Composable
-fun SimpleBarChart(data: List<Float>, modifier: Modifier = Modifier) {
-    val maxVal = (data.maxOrNull() ?: 0f).coerceAtLeast(1f)
-    val barColor = MaterialTheme.colorScheme.primary
-    
-    Box(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium)
-            .padding(16.dp)
-    ) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-            val spaceBetweenBars = 12.dp.toPx()
-            val barWidth = (size.width - (data.size - 1) * spaceBetweenBars) / data.size
-            
-            data.forEachIndexed { index, value ->
-                val barHeight = (value / maxVal) * size.height
-                drawRect(
-                    color = barColor,
-                    topLeft = androidx.compose.ui.geometry.Offset(
-                        x = index * (barWidth + spaceBetweenBars),
-                        y = size.height - barHeight
-                    ),
-                    size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
-                )
             }
         }
     }

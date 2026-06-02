@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.auth.presentation.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,7 +32,12 @@ fun CategorySelectionScreen(
     val state by vm.state.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("¿Cuál es tu especialidad?") }) }
+        topBar = { 
+            AppTopBar(
+                title = "¿Cuál es tu especialidad?",
+                onBack = { nav.popBackStack() }
+            ) 
+        }
     ) { padding ->
         if (state.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

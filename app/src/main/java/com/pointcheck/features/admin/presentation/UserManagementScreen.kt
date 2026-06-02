@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.auth.data.dto.UserResponseDto
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,13 +30,9 @@ fun UserManagementScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Gestión de Usuarios") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        // Icono de volver
-                    }
-                }
+            AppTopBar(
+                title = "Gestión de Usuarios",
+                onBack = onBack
             )
         }
     ) { padding ->
@@ -44,12 +42,11 @@ fun UserManagementScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            OutlinedTextField(
+            AppTextField(
                 value = state.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar por nombre, email o RUT") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+                label = "Buscar por nombre, email o RUT",
+                leadingIcon = Icons.Default.Search
             )
 
             Spacer(modifier = Modifier.height(16.dp))

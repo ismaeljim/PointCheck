@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.auth.presentation.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,13 +37,9 @@ fun ServiceConfigurationScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Configura tus Servicios") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                }
+            AppTopBar(
+                title = "Configura tus Servicios",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { padding ->
@@ -75,7 +74,8 @@ fun ServiceConfigurationScreen(
                     }
                 }
 
-                Button(
+                AppButton(
+                    text = "Finalizar Registro",
                     onClick = {
                         authVm.onServicesSelected(selectedServices.values.toList())
                         authVm.save {
@@ -85,13 +85,8 @@ fun ServiceConfigurationScreen(
                         }
                     },
                     enabled = selectedServices.isNotEmpty(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(56.dp)
-                ) {
-                    Text("Finalizar Registro")
-                }
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }
@@ -131,13 +126,12 @@ fun ServiceTemplateItem(
                 Text(template.description, style = MaterialTheme.typography.bodySmall)
             }
 
-            OutlinedTextField(
+            AppTextField(
                 value = price,
                 onValueChange = { price = it },
-                label = { Text("Precio") },
+                label = "Precio",
                 modifier = Modifier.width(100.dp),
-                suffix = { Text(if (template.unit == "SESSION") "Ses" else "Hr") },
-                singleLine = true,
+                trailingIcon = { Text(if (template.unit == "SESSION") "Ses" else "Hr", modifier = Modifier.padding(end = 8.dp), style = MaterialTheme.typography.bodySmall) },
                 enabled = enabled
             )
         }

@@ -21,6 +21,7 @@ data class BillingUiState(
     val externalReference: String = "",
     val notes: String = "",
     val isLoading: Boolean = false,
+    val showPaymentModal: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
 )
@@ -124,4 +125,8 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearError() = _state.update { it.copy(error = null) }
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
+
+    fun setShowPaymentModal(show: Boolean) {
+        _state.update { it.copy(showPaymentModal = show) }
+    }
 }

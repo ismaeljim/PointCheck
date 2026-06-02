@@ -20,10 +20,11 @@ class AttentionRepository(private val api: ApiService) {
 
     suspend fun finishAttention(
         attentionId: String,
-        observations: String? = null
+        observations: String? = null,
+        durationMinutes: Int? = null
     ): Result<AttentionResponseDto> {
         return handleApiCall("Error al finalizar atención") { 
-            api.finishAttention(attentionId, FinishAttentionRequestDto(observations)) 
+            api.finishAttention(attentionId, FinishAttentionRequestDto(observations, durationMinutes))
         }
     }
 

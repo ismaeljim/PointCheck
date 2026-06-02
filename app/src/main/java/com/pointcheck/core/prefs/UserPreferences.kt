@@ -21,10 +21,19 @@ object UserPrefsKeys {
     val SUBSCRIPTION_STATUS = stringPreferencesKey("subscription_status")
 }
 
+/**
+ * Gestión de preferencias de usuario mediante DataStore.
+ * Almacena de forma persistente y segura (en el contexto de la App) los datos de sesión,
+ * roles y el estado de la suscripción.
+ * 
+ * AUDITORÍA:
+ * - Se utiliza DataStore en lugar de SharedPreferences para mayor robustez y soporte de Flows.
+ * - Centraliza todas las claves de preferencia en el objeto UserPrefsKeys.
+ */
 class UserPreferences(private val context: Context) {
 
     /**
-     * Guarda la sesión completa del usuario obtenida del backend.
+     * Guarda la sesión completa del usuario obtenida del backend tras un login o registro exitoso.
      */
     suspend fun saveSession(
         userId: String,
@@ -96,7 +105,7 @@ class UserPreferences(private val context: Context) {
     val isLogged: Flow<Boolean> = context.dataStore.data.map { it[UserPrefsKeys.LOGGED] ?: false }
 
     /**
-     * Limpia toda la sesión y preferencias del usuario.
+     * Limpia toda la sesión y preferencias del usuario (utilizado en Logout).
      */
     suspend fun clear() {
         context.dataStore.edit {

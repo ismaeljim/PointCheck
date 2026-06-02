@@ -3,9 +3,14 @@ package com.duoc.app.features.user.model
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
+/**
+ * Entidad que representa a un usuario en el sistema.
+ * Soporta autenticación y diferenciación de roles (CLIENT/SPECIALIST).
+ */
 @Entity
 @Table(
     name = "users",
+    // AUDITORÍA: Los índices ayudan en búsquedas frecuentes por rol y estado de actividad.
     indexes = [
         Index(name = "idx_users_role", columnList = "role"),
         Index(name = "idx_users_active", columnList = "active")

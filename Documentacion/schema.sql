@@ -1,6 +1,9 @@
-DROP DATABASE IF EXISTS pointcheck_db;
+-- Script de Limpieza (Opcional para desarrollo)
+-- SET FOREIGN_KEY_CHECKS = 0;
+-- DROP TABLE IF EXISTS subscriptions, billing_records, attentions, reservations, services, service_templates, professional_profiles, categories, users;
+-- SET FOREIGN_KEY_CHECKS = 1;
 
-CREATE DATABASE pointcheck_db
+CREATE DATABASE IF NOT EXISTS pointcheck_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
@@ -175,6 +178,7 @@ CREATE TABLE reservations (
     reservation_start DATETIME(6) NOT NULL,
     reservation_end DATETIME(6) NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    payment_method VARCHAR(50) NULL,
     notes VARCHAR(1000) NULL,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NULL,

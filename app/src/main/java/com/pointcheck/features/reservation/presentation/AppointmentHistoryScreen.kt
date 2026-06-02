@@ -21,6 +21,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.core.utils.CategoryIdentityMapper
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import java.text.SimpleDateFormat
@@ -56,13 +58,9 @@ fun AppointmentHistoryScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
+            AppTopBar(
+                title = title,
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -80,9 +78,10 @@ fun AppointmentHistoryScreen(
                     Text("No hay citas para mostrar", color = Color.Gray)
                     if (s.error != null) {
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { vm.loadAppointments(type) }) {
-                            Text("Reintentar")
-                        }
+                        AppButton(
+                            text = "Reintentar",
+                            onClick = { vm.loadAppointments(type) }
+                        )
                     }
                 }
             } else {

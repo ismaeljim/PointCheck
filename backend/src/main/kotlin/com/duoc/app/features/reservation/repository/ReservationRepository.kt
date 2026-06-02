@@ -28,7 +28,7 @@ interface ReservationRepository : JpaRepository<Reservation, String> {
         now: LocalDateTime
     ): List<Reservation>
 
-    fun existsBySpecialist_IdAndReservationStartLessThanEqualAndReservationEndGreaterThanEqual(
+    fun existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThan(
         specialistId: String,
         end: LocalDateTime,
         start: LocalDateTime

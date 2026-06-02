@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.SelfImprovement
 import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.AppOutlinedButton
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.draw.clip
@@ -43,6 +45,12 @@ import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 
+/**
+ * AUDITORÍA: Orquestador principal de la interfaz de usuario.
+ * Implementa un Dashboard polimórfico basado en roles (ADMIN, SPECIALIST, CLIENT).
+ * Hallazgo: Uso extensivo de BottomSheets para acciones administrativas agiliza la navegación
+ * pero incrementa la complejidad del estado en un solo archivo.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
@@ -64,8 +72,8 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("PointCheck") },
+            AppTopBar(
+                title = "PointCheck",
                 actions = {
                     val unreadCount = s.clientDashboard?.recentNotifications?.count { !it.isRead } ?: 0
                     BadgedBox(
@@ -122,13 +130,15 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val isSpecialist = s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL"
+            
             Text(
-                text = "Hola, ${s.userName}",
+                text = if (isSpecialist) "Bienvenido, ${s.userName}" else "Hola, ${s.userName}",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Rol: ${s.userRole}",
+                text = if (isSpecialist) (s.reportSummary?.specialty ?: s.userRole) else "Rol: ${s.userRole}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -156,9 +166,7 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
 
             if (s.error != null) {
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { vm.loadDashboard() }, enabled = !s.isLoading) {
-                    Text("Reintentar")
-                }
+                AppButton(text = "Reintentar", onClick = { vm.loadDashboard() }, enabled = !s.isLoading)
             }
         }
     }
@@ -288,12 +296,20 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
         }
 
         Spacer(Modifier.height(24.dp))
-        DashboardButton("Historial Completo", Icons.Default.History) { 
-            nav.navigate(Screen.AppointmentHistory.createRoute("all")) 
-        }
+        AppOutlinedButton(
+            text = "Historial Completo",
+            icon = Icons.Default.History,
+            onClick = { nav.navigate(Screen.AppointmentHistory.createRoute("all")) }
+        )
     }
 }
 
+/**
+ * AUDITORÍA: Integración de servicios externos (Clima y Mapas).
+ * - Clima: Se consume dinámicamente según la ciudad de la cita próxima.
+ * - Mapas: Uso de Intent implícito con esquema 'geo:' para interoperabilidad con Google Maps/Waze.
+ * Brecha: No hay manejo de permisos de ubicación en este nivel si la ciudad no viene en el DTO.
+ */
 @Composable
 fun FeaturedAppointmentCard(
     appointment: ReservationResponseDto?,
@@ -383,7 +399,8 @@ fun FeaturedAppointmentCard(
 
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
+                AppButton(
+                    text = "Cómo llegar",
                     onClick = {
                         val address = appointment.address
                         if (!address.isNullOrBlank()) {
@@ -400,17 +417,12 @@ fun FeaturedAppointmentCard(
                     },
                     modifier = Modifier.weight(1f),
                     enabled = !appointment.address.isNullOrBlank()
-                ) {
-                    Icon(Icons.Default.Directions, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Cómo llegar")
-                }
-                OutlinedButton(
+                )
+                AppOutlinedButton(
+                    text = "Detalles",
                     onClick = { nav.navigate(Screen.Scheduled.route) },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Detalles")
-                }
+                )
             }
         }
     }
@@ -551,8 +563,9 @@ fun ClientDashboard(m: DashboardMetricsDto, nav: NavController) {
         
         Spacer(Modifier.height(24.dp))
         
-        DashboardButton("Mis Citas", Icons.Default.CalendarMonth) { nav.navigate(Screen.Scheduled.route) }
-        DashboardButton("Nueva Reserva", Icons.Default.AddCircle) { nav.navigate(Screen.Booking.route) }
+        AppOutlinedButton(text = "Mis Citas", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) })
+        Spacer(Modifier.height(8.dp))
+        AppOutlinedButton(text = "Nueva Reserva", icon = Icons.Default.AddCircle, onClick = { nav.navigate(Screen.Booking.route) })
     }
 }
 
@@ -565,8 +578,8 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
         if (r != null) {
             // Métricas operacionales rápidas (No clickeables para evitar redundancia)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricCard("Citas Mes", r.totalReservations.toString(), Icons.Default.Assessment, Modifier.weight(1f))
-                MetricCard("Hoy", r.todayReservations.toString(), Icons.Default.Today, Modifier.weight(1f))
+                MetricCard("Citas Mes", (r.totalReservations).toString(), Icons.Default.Assessment, Modifier.weight(1f))
+                MetricCard("Hoy", (r.todayReservations).toString(), Icons.Default.Today, Modifier.weight(1f))
             }
             
             Spacer(Modifier.height(16.dp))
@@ -609,11 +622,15 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
 
         Spacer(Modifier.height(24.dp))
         Text("Accesos Rápidos", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
         
-        DashboardButton("Perfil Profesional", Icons.Default.Person) { nav.navigate(Screen.ProfessionalProfile.route) }
-        DashboardButton("Mi Agenda", Icons.Default.CalendarMonth) { nav.navigate(Screen.Scheduled.route) }
-        DashboardButton("Servicios", Icons.AutoMirrored.Filled.List) { nav.navigate(Screen.ServiceManagement.route) }
-        DashboardButton("Suscripción", Icons.Default.Star) { nav.navigate(Screen.Subscription.route) }
+        AppOutlinedButton(text = "Perfil Profesional", icon = Icons.Default.Person, onClick = { nav.navigate(Screen.ProfessionalProfile.route) })
+        Spacer(Modifier.height(8.dp))
+        AppOutlinedButton(text = "Mi Agenda", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) })
+        Spacer(Modifier.height(8.dp))
+        AppOutlinedButton(text = "Servicios", icon = Icons.AutoMirrored.Filled.List, onClick = { nav.navigate(Screen.ServiceManagement.route) })
+        Spacer(Modifier.height(8.dp))
+        AppOutlinedButton(text = "Suscripción", icon = Icons.Default.Star, onClick = { nav.navigate(Screen.Subscription.route) })
     }
 }
 
@@ -661,7 +678,7 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
                     MetricCard(
                         label = "Citas Totales", 
                         value = m.appointmentsToday.toString(), 
-                        icon = Icons.Default.EventNote, 
+                        icon = Icons.AutoMirrored.Filled.EventNote, 
                         modifier = Modifier.weight(1f)
                     )
                     MetricCard(
@@ -693,12 +710,8 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
         Text("Accesos Directos Administrativos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         
-        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles") {
-            nav.navigate(Screen.AdminUsers.route)
-        }
-        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas") {
-            nav.navigate(Screen.AdminAudit.route)
-        }
+        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles", onShowUsers)
+        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas", onShowAudit)
         AdminActionButton("Reportes Financieros", Icons.Default.Payments, "Exportar balances globales", onShowFinance)
         AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
     }
@@ -906,16 +919,12 @@ fun MetricCard(
 
 @Composable
 fun DashboardButton(text: String, icon: ImageVector, onClick: () -> Unit) {
-    OutlinedButton(
+    com.pointcheck.core.presentation.components.AppOutlinedButton(
+        text = text,
+        icon = icon,
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        contentPadding = PaddingValues(16.dp),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Icon(icon, null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
-        Text(text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-    }
+        modifier = Modifier.padding(vertical = 4.dp)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1055,12 +1064,11 @@ fun SettingItem(
         } else {
             var textValue by remember { mutableStateOf(setting.value) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                AppTextField(
                     value = textValue,
                     onValueChange = { textValue = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    label = "",
+                    modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { onUpdate(textValue) }) {
                     Icon(Icons.Default.Save, "Guardar", tint = MaterialTheme.colorScheme.primary)

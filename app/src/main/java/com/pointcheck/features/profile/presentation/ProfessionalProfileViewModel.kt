@@ -13,6 +13,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+
+data class DayConfig(
+    val start: String = "09:00",
+    val end: String = "18:00",
+    val isActive: Boolean = false
+)
 
 data class ProfessionalProfileUiState(
     val profile: ProfessionalProfileResponseDto? = null,
@@ -20,14 +28,29 @@ data class ProfessionalProfileUiState(
     val error: String? = null,
     val successMessage: String? = null,
     val isEditing: Boolean = false,
-    val categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto> = emptyList()
+    val categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto> = emptyList(),
+    val workingHours: Map<String, DayConfig> = mapOf(
+        "MONDAY" to DayConfig(),
+        "TUESDAY" to DayConfig(),
+        "WEDNESDAY" to DayConfig(),
+        "THURSDAY" to DayConfig(),
+        "FRIDAY" to DayConfig(),
+        "SATURDAY" to DayConfig(),
+        "SUNDAY" to DayConfig()
+    )
 )
 
+/**
+ * ViewModel responsable de la gestión del Perfil Profesional del Especialista.
+ * Administra el estado de la UI para la edición de datos comerciales, categorías
+ * y configuración de horarios de disponibilidad.
+ */
 class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(application) {
     
     private val repository = ProfessionalProfileRepository(ApiClient.instance)
     private val categoryApi = ApiClient.retrofitInstance.create(com.pointcheck.features.onboarding.presentation.CategoryApi::class.java)
     private val prefs = UserPreferences(application)
+    private val gson = Gson()
     
     private val _state = MutableStateFlow(ProfessionalProfileUiState())
     val state: StateFlow<ProfessionalProfileUiState> = _state
@@ -37,6 +60,9 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
         loadCategories()
     }
 
+    /**
+     * Carga las categorías disponibles desde el API para poblar el selector de especialidades.
+     */
     private fun loadCategories() {
         viewModelScope.launch {
             try {
@@ -48,6 +74,21 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
         }
     }
 
+    /**
+     * Actualiza localmente la configuración de un día específico antes de guardar.
+     */
+    fun updateDayConfig(day: String, config: DayConfig) {
+        _state.update { currentState ->
+            val newHours = currentState.workingHours.toMutableMap()
+            newHours[day] = config
+            currentState.copy(workingHours = newHours)
+        }
+    }
+
+    /**
+     * Carga el perfil desde el backend y deserializa los horarios de trabajo (JSON).
+     * AUDITORÍA: Si el perfil no existe, se mantiene el estado inicial permitiendo la creación.
+     */
     fun loadProfile() {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
@@ -55,16 +96,33 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
             
             repository.getProfileByUserId(userId)
                 .onSuccess { profile ->
-                    _state.update { it.copy(profile = profile, isLoading = false) }
-                    // Guardar el profileId para futuras referencias (reservas, servicios)
+                    val workingHours = try {
+                        if (!profile.workingHoursJson.isNullOrBlank()) {
+                            val type = object : TypeToken<Map<String, DayConfig>>() {}.type
+                            gson.fromJson<Map<String, DayConfig>>(profile.workingHoursJson, type)
+                        } else {
+                            _state.value.workingHours
+                        }
+                    } catch (e: Exception) {
+                        _state.value.workingHours
+                    }
+
+                    _state.update { it.copy(profile = profile, isLoading = false, workingHours = workingHours) }
+                    // Persistencia local del ID de perfil para facilitar flujos de Reservas/Servicios
                     prefs.saveProfessionalProfileId(profile.id)
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false) } // No ponemos error porque puede que no tenga perfil aún
+                    _state.update { it.copy(isLoading = false) } 
                 }
         }
     }
 
+    /**
+     * Persiste los cambios del perfil en el servidor.
+     * AUDITORÍA: 
+     * - Valida consistencia horaria (inicio < fin).
+     * - Diferencia automáticamente entre creación (POST) y actualización (PUT).
+     */
     fun saveProfile(
         categoryId: String?,
         displayName: String,
@@ -79,7 +137,24 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
     ) {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
+
+            // Validación de lógica de negocio: Horarios consistentes
+            val invalidDays = _state.value.workingHours.filter { it.value.isActive }.filter { 
+                val start = it.value.start.split(":").let { (h, m) -> h.toInt() * 60 + m.toInt() }
+                val end = it.value.end.split(":").let { (h, m) -> h.toInt() * 60 + m.toInt() }
+                start >= end
+            }
+
+            if (invalidDays.isNotEmpty()) {
+                _state.update { it.copy(error = "La hora de inicio debe ser menor a la de fin en los días activos.") }
+                return@launch
+            }
+
             _state.update { it.copy(isLoading = true, error = null) }
+
+            // Serialización de horarios solo para días marcados como activos
+            val activeHours = _state.value.workingHours.filter { it.value.isActive }
+            val workingHoursJson = gson.toJson(activeHours)
 
             val request = ProfessionalProfileRequestDto(
                 userId = userId,
@@ -92,7 +167,8 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                 city = city,
                 defaultSessionDurationMinutes = duration,
                 latitude = latitude,
-                longitude = longitude
+                longitude = longitude,
+                workingHoursJson = workingHoursJson
             )
 
             val currentProfile = _state.value.profile

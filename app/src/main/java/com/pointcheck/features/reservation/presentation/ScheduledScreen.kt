@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.prefs.UserPreferences
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -45,13 +49,9 @@ fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) 
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Agenda de Citas") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Agenda de Citas",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -87,18 +87,27 @@ fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) 
                             },
                             onCancel = { vm.cancelReservation(res.id) }
                         )
+                        
+                        // Botón de Confirmar Pago al Contado (Acceso rápido para Especialista)
+                        val roleUpper = userRole?.uppercase()?.trim()
+                        if (roleUpper == "SPECIALIST" || roleUpper == "PROFESSIONAL") {
+                            if (res.status.uppercase() == "CONFIRMED") {
+                                AppButton(
+                                    text = "Confirmar Pago Efectivo",
+                                    containerColor = MaterialTheme.colorScheme.tertiary,
+                                    onClick = { vm.confirmCashPayment(res.id) },
+                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)
+                                )
+                            }
+                        }
                     }
                 }
                 
-                Button(
+                AppButton(
+                    text = "Nueva Reserva",
                     onClick = { nav.navigate(Screen.Booking.route) },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Nueva Reserva")
-                }
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }
@@ -138,21 +147,23 @@ fun ReservationCard(
             Spacer(Modifier.height(16.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                OutlinedButton(
+                AppOutlinedButton(
+                    text = "Cancelar",
                     onClick = onCancel,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Cancelar")
-                }
+                    modifier = Modifier.weight(1f),
+                    contentColor = MaterialTheme.colorScheme.error
+                )
 
                 val roleUpper = userRole?.uppercase()?.trim()
                 if (roleUpper == "SPECIALIST" || roleUpper == "PROFESSIONAL" || roleUpper == "ADMIN") {
                     val statusUpper = res.status.uppercase()
                     if (statusUpper != "COMPLETED" && statusUpper != "CANCELLED") {
                         Spacer(Modifier.width(8.dp))
-                        Button(onClick = onAtender) {
-                            Text("Atender")
-                        }
+                        AppButton(
+                            text = "Atender",
+                            onClick = onAtender,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -227,8 +238,9 @@ fun EmptyReservationsState(onNewBooking: () -> Unit) {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onNewBooking) {
-            Text("Agendar mi primera cita")
-        }
+        AppButton(
+            text = "Agendar mi primera cita",
+            onClick = onNewBooking
+        )
     }
 }

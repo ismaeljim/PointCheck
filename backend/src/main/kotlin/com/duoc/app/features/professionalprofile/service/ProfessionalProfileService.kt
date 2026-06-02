@@ -11,6 +11,11 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
+/**
+ * Servicio de lógica de negocio para la gestión de Perfiles Profesionales.
+ * Maneja el ciclo de vida del perfil del especialista, validaciones de rol y 
+ * asignación de categorías.
+ */
 @Service
 class ProfessionalProfileService(
     private val professionalProfileRepository: ProfessionalProfileRepository,
@@ -18,6 +23,13 @@ class ProfessionalProfileService(
     private val categoryRepository: CategoryRepository
 ) {
 
+    /**
+     * Crea un nuevo perfil profesional para un usuario con rol SPECIALIST.
+     * 
+     * AUDITORÍA:
+     * - Valida que el usuario exista y tenga el rol correcto.
+     * - Previene la creación de perfiles duplicados para el mismo usuario.
+     */
     @Transactional
     fun create(request: ProfessionalProfileRequest): ProfessionalProfileResponse {
         val user = userRepository.findById(request.userId).orElseThrow {
@@ -46,13 +58,19 @@ class ProfessionalProfileService(
             address = request.address,
             city = request.city,
             country = request.country,
+            latitude = request.latitude,
+            longitude = request.longitude,
             defaultSessionDurationMinutes = request.defaultSessionDurationMinutes,
+            workingHoursJson = request.workingHoursJson,
             active = true
         )
 
         return professionalProfileRepository.save(profile).toResponse()
     }
 
+    /**
+     * Obtiene perfiles activos, opcionalmente filtrados por categoría.
+     */
     fun getActive(categoryId: String? = null): List<ProfessionalProfileResponse> {
         return if (categoryId != null) {
             professionalProfileRepository.findByCategoryIdAndActiveTrue(categoryId).map { it.toResponse() }
@@ -61,12 +79,18 @@ class ProfessionalProfileService(
         }
     }
 
+    /**
+     * Recupera el perfil profesional por el ID del usuario propietario.
+     */
     fun getByUserId(userId: String): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId)
             ?: throw NoSuchElementException("Perfil profesional no encontrado para el usuario $userId")
         return profile.toResponse()
     }
 
+    /**
+     * Actualiza la información del perfil profesional.
+     */
     @Transactional
     fun update(id: String, request: ProfessionalProfileRequest): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findById(id).orElseThrow {
@@ -86,13 +110,19 @@ class ProfessionalProfileService(
             address = request.address,
             city = request.city,
             country = request.country,
+            latitude = request.latitude,
+            longitude = request.longitude,
             defaultSessionDurationMinutes = request.defaultSessionDurationMinutes,
+            workingHoursJson = request.workingHoursJson,
             updatedAt = LocalDateTime.now()
         )
 
         return professionalProfileRepository.save(updatedProfile).toResponse()
     }
 
+    /**
+     * Desactiva lógicamente un perfil profesional.
+     */
     @Transactional
     fun deactivate(id: String): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findById(id).orElseThrow {
@@ -120,6 +150,9 @@ class ProfessionalProfileService(
             city = this.city,
             country = this.country,
             defaultSessionDurationMinutes = this.defaultSessionDurationMinutes,
+            latitude = this.latitude,
+            longitude = this.longitude,
+            workingHoursJson = this.workingHoursJson,
             active = this.active,
             createdAt = this.createdAt,
             updatedAt = this.updatedAt

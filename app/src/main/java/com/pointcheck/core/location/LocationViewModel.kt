@@ -25,6 +25,12 @@ data class LocationUiState(
     val error: String? = null
 )
 
+/**
+ * AUDITORÍA: Motor de Geolocalización y Geocodificación.
+ * Utiliza Google Play Services (FusedLocation) para precisión y eficiencia energética.
+ * Hallazgo: Se implementa compatibilidad con API 33+ (Tiramisu) mediante GeocodeListener asíncrono.
+ * Brecha: No se gestiona la lógica de 'Rationale' para permisos, se asume que la Activity los maneja.
+ */
 class LocationViewModel(application: Application) : AndroidViewModel(application) {
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)

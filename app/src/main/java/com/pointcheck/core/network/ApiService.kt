@@ -199,25 +199,29 @@ interface ApiService {
     @GET("api/reports/weekly/{userId}")
     suspend fun getWeeklyReport(
         @Path("userId") userId: String,
-        @Query("weekOffset") weekOffset: Int = 0
+        @Query("weekOffset") weekOffset: Int = 0,
+        @Query("serviceId") serviceId: String? = null
     ): Response<WeeklyReportResponseDto>
 
     @GET("api/reports/monthly/{userId}")
     suspend fun getMonthlyReport(
         @Path("userId") userId: String,
-        @Query("monthOffset") monthOffset: Int = 0
+        @Query("monthOffset") monthOffset: Int = 0,
+        @Query("serviceId") serviceId: String? = null
     ): Response<MonthlyReportResponseDto>
 
     @GET("api/reports/export/weekly/{userId}")
     suspend fun exportWeeklyReport(
         @Path("userId") userId: String,
-        @Query("weekOffset") weekOffset: Int = 0
+        @Query("weekOffset") weekOffset: Int = 0,
+        @Query("serviceId") serviceId: String? = null
     ): Response<ResponseBody>
 
     @GET("api/reports/export/monthly/{userId}")
     suspend fun exportMonthlyReport(
         @Path("userId") userId: String,
-        @Query("monthOffset") monthOffset: Int = 0
+        @Query("monthOffset") monthOffset: Int = 0,
+        @Query("serviceId") serviceId: String? = null
     ): Response<ResponseBody>
 
     // --- New Dashboard Endpoints ---

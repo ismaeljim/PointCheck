@@ -30,6 +30,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.Payments
+import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.AppSelectorField
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppOutlinedButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -66,6 +72,14 @@ fun BookingScreen(
 
     var professionalExpanded by remember { mutableStateOf(false) }
     var serviceExpanded by remember { mutableStateOf(false) }
+    var paymentMethodExpanded by remember { mutableStateOf(false) }
+
+    val paymentMethods = listOf(
+        "CASH" to "Efectivo",
+        "TRANSFER" to "Transferencia",
+        "CARD_EXTERNAL" to "Tarjeta (POS Externo)",
+        "OTHER" to "Otro"
+    )
 
     LaunchedEffect(preSelectedSpecialistId, preSelectedCategoryId) {
         if (preSelectedSpecialistId != null) {
@@ -92,13 +106,9 @@ fun BookingScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Agendar Cita") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Agendar Cita",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -114,7 +124,7 @@ fun BookingScreen(
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
-                    SelectorField(
+                    AppSelectorField(
                         label = "Profesional",
                         value = s.selectedProfessional?.name ?: "Seleccionar especialista",
                         icon = Icons.Default.Person,
@@ -125,7 +135,7 @@ fun BookingScreen(
                     DropdownMenu(
                         expanded = professionalExpanded && !s.isLoading,
                         onDismissRequest = { professionalExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
+                        modifier = Modifier.fillMaxWidth(0.85f)
                     ) {
                         s.professionals.forEach { prof ->
                             DropdownMenuItem(
@@ -140,7 +150,7 @@ fun BookingScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    SelectorField(
+                    AppSelectorField(
                         label = "Servicio",
                         value = s.selectedService?.name ?: "Seleccionar servicio",
                         icon = Icons.Default.Work,
@@ -151,7 +161,7 @@ fun BookingScreen(
                     DropdownMenu(
                         expanded = serviceExpanded && !s.isLoading,
                         onDismissRequest = { serviceExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
+                        modifier = Modifier.fillMaxWidth(0.85f)
                     ) {
                         s.services.forEach { serv ->
                             DropdownMenuItem(
@@ -170,25 +180,26 @@ fun BookingScreen(
             Text("Paso 2: Fecha y Hora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
 
-            OutlinedButton(
+            AppOutlinedButton(
+                text = if (s.reservationStartMillis == null) "Elegir fecha" else "Cambiar fecha",
+                icon = Icons.Default.CalendarMonth,
                 onClick = { showDatePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = s.selectedService != null && !s.isLoading,
-                shape = MaterialTheme.shapes.medium,
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                Icon(Icons.Default.CalendarMonth, null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (s.reservationStartMillis == null) "Elegir fecha" else "Cambiar fecha")
-            }
+                enabled = s.selectedService != null && !s.isLoading
+            )
 
             if (s.reservationStartMillis != null && !isDayUnit) {
                 Spacer(Modifier.height(16.dp))
-                Text("Horarios Disponibles", style = MaterialTheme.typography.labelLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Horarios Disponibles", style = MaterialTheme.typography.labelLarge)
+                    if (s.isAvailabilityLoading) {
+                        Spacer(Modifier.width(8.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 
-                if (s.availableSlots.isEmpty()) {
-                    Text("No hay horarios disponibles para este día.", 
+                if (s.availableSlots.isEmpty() && !s.isAvailabilityLoading) {
+                    Text("El profesional no tiene turnos configurados para este día.",
                         style = MaterialTheme.typography.bodySmall, 
                         color = MaterialTheme.colorScheme.error)
                 } else {
@@ -250,34 +261,59 @@ fun BookingScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            Text("Paso 3: Notas Adicionales", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Paso 3: Método de Pago", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
+            Box {
+                AppSelectorField(
+                    label = "Seleccione Método de Pago",
+                    value = paymentMethods.find { it.first == s.paymentMethod }?.second ?: "Seleccionar...",
+                    icon = Icons.Default.Payments,
+                    onClick = { paymentMethodExpanded = true },
+                    enabled = !s.isLoading
+                )
+
+                DropdownMenu(
+                    expanded = paymentMethodExpanded,
+                    onDismissRequest = { paymentMethodExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.85f)
+                ) {
+                    paymentMethods.forEach { (key, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                vm.setPaymentMethod(key)
+                                paymentMethodExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Text("Paso 4: Notas Adicionales", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+
+            AppTextField(
                 value = s.notes,
                 onValueChange = { vm.setNotes(it) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Instrucciones especiales, síntomas, etc.") },
+                label = "Notas (Opcional)",
                 minLines = 3,
-                maxLines = 5,
-                shape = MaterialTheme.shapes.medium,
                 enabled = !s.isLoading
             )
 
             Spacer(Modifier.height(32.dp))
 
-            Button(
+            AppButton(
+                text = "Confirmar Reserva",
                 onClick = {
                     vm.createReservation {
                         // success handled by LaunchedEffect
                     }
                 },
                 enabled = s.isValid && !s.isLoading,
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                else Text("Confirmar Reserva", fontSize = 16.sp)
-            }
+                isLoading = s.isLoading
+            )
         }
 
         if (showDatePicker) {
@@ -297,20 +333,3 @@ fun BookingScreen(
     }
 }
 
-@Composable
-fun SelectorField(label: String, value: String, icon: ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(4.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(icon, null) },
-            trailingIcon = { IconButton(onClick = onClick, enabled = enabled) { Icon(Icons.Default.ArrowDropDown, null) } },
-            shape = MaterialTheme.shapes.medium
-        )
-    }
-}

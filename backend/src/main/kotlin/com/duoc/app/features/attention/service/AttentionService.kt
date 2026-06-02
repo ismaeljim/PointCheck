@@ -16,6 +16,20 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/**
+ * AUDITORÍA TÉCNICA: Flujo de Ejecución de Atenciones
+ * 
+ * Este servicio gestiona el ciclo de vida operativo de una cita desde que el especialista
+ * inicia la sesión hasta que se genera el registro financiero.
+ * 
+ * Hallazgos de Implementación:
+ * 1. [OK] Atomicidad: Uso de @Transactional para garantizar que el cambio de estado de la reserva, 
+ *    la atención y la facturación ocurran como una única unidad de trabajo.
+ * 2. [OK] Trazabilidad: Registro automático de 'startedAt' y 'finishedAt'.
+ * 3. [OK] Integración de Cobro: Gatillado automático de 'billingService' al finalizar la atención.
+ * 4. [BRECHA] Cálculo de Duración: Si no se provee 'durationMinutes', se calcula por diferencia de tiempo,
+ *    lo cual es correcto para métricas de eficiencia del especialista.
+ */
 @Service
 class AttentionService(
     private val attentionRepository: AttentionRepository,
@@ -23,6 +37,11 @@ class AttentionService(
     private val billingService: BillingService
 ) {
 
+    /**
+     * AUDITORÍA: Inicio de Atención.
+     * Cambia el estado de la reserva a CONFIRMED si estaba PENDING.
+     * Evita duplicidad de atenciones para una misma reserva.
+     */
     @Transactional
     fun start(request: StartAttentionRequest): AttentionResponse {
         val reservation = reservationRepository.findById(request.reservationId).orElseThrow {
@@ -53,6 +72,12 @@ class AttentionService(
         return attentionRepository.save(attention).toResponse()
     }
 
+    /**
+     * AUDITORÍA: Finalización y Facturación Automática.
+     * 1. Marca la atención como FINISHED.
+     * 2. Actualiza el estado de la reserva a COMPLETED.
+     * 3. Crea el registro de facturación basado en el precio del servicio contratado.
+     */
     @Transactional
     fun finish(attentionId: String, request: FinishAttentionRequest): AttentionResponse {
         val attention = attentionRepository.findById(attentionId).orElseThrow {
@@ -64,7 +89,7 @@ class AttentionService(
         }
 
         val finishedAt = LocalDateTime.now()
-        val duration = Duration.between(attention.startedAt, finishedAt).toMinutes().toInt()
+        val duration = request.durationMinutes ?: Duration.between(attention.startedAt, finishedAt).toMinutes().toInt()
 
         val updatedAttention = attention.copy(
             finishedAt = finishedAt,
@@ -86,7 +111,7 @@ class AttentionService(
 
         val savedAttention = attentionRepository.save(updatedAttention)
 
-        // Generar registro de cobro automáticamente si hay un servicio asociado con precio
+        // AUDITORÍA: El registro financiero nace de la oferta de servicio original.
         reservation.service?.let { service ->
             val price = service.price
             if (price != null) {

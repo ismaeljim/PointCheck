@@ -19,7 +19,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 
+/**
+ * Pantalla de Inicio de Sesión.
+ * Proporciona la interfaz de usuario para que clientes y especialistas accedan al sistema.
+ * 
+ * AUDITORÍA:
+ * - El estado de carga (s.isLoading) bloquea correctamente las interacciones.
+ * - Se utiliza AppTopBar y AppTextField para mantener consistencia visual.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -41,7 +50,7 @@ fun LoginScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Iniciar sesión") }) },
+        topBar = { AppTopBar(title = "Iniciar sesión") },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
         Column(
@@ -89,14 +98,11 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     
-                    OutlinedTextField(
+                    AppTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Contraseña") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
-                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
+                        label = "Contraseña",
+                        leadingIcon = Icons.Default.Lock,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         enabled = !s.isLoading,
@@ -107,11 +113,7 @@ fun LoginScreen(
                                     contentDescription = null
                                 )
                             }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        }
                     )
                     Spacer(Modifier.height(24.dp))
                     

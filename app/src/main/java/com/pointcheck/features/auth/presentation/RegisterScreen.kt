@@ -29,7 +29,9 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppOutlinedButton
 import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.core.util.RutUtils
 import com.pointcheck.core.util.RutVisualTransformation
 
@@ -59,13 +61,9 @@ fun RegisterScreen(
 
     Scaffold(
         topBar = { 
-            TopAppBar(
-                title = { Text("Crear Cuenta") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
-                    }
-                }
+            AppTopBar(
+                title = "Crear Cuenta",
+                onBack = { nav.popBackStack() }
             ) 
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -131,46 +129,32 @@ fun RegisterScreen(
                         enabled = !s.isLoading
                     )
 
-                    OutlinedTextField(
+                    AppTextField(
                         value = s.password,
                         onValueChange = { vm.onValueChange("password", it) },
-                        label = { Text("Contraseña") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
-                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
+                        label = "Contraseña",
+                        leadingIcon = Icons.Default.Lock,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null)
                             }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        }
                     )
 
-                    OutlinedTextField(
+                    AppTextField(
                         value = s.confirm,
                         onValueChange = { vm.onValueChange("confirm", it) },
-                        label = { Text("Confirmar Contraseña") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
-                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
+                        label = "Confirmar Contraseña",
+                        leadingIcon = Icons.Default.Lock,
                         visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
                             IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                                 Icon(if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null)
                             }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        }
                     )
                 }
             }
@@ -218,15 +202,12 @@ fun RegisterScreen(
                     HorizontalDivider(Modifier.padding(vertical = 16.dp))
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(
+                        AppOutlinedButton(
+                            text = "Subir Foto",
                             onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.CloudUpload, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Subir Foto")
-                        }
+                            icon = Icons.Default.CloudUpload
+                        )
                         Spacer(Modifier.width(16.dp))
                         if (s.avatarUri != null) {
                             Image(

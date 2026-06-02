@@ -1,5 +1,8 @@
 package com.pointcheck.features.services.presentation
 
+import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,13 +50,9 @@ fun ServiceListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Catálogo de Servicios") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Catálogo de Servicios",
+                onBack = { nav.popBackStack() }
             )
         },
         floatingActionButton = {
@@ -195,9 +194,7 @@ fun EmptyServicesState(onAdd: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onAdd) {
-            Text("Añadir primer servicio")
-        }
+        AppButton(text = "Añadir primer servicio", onClick = onAdd)
     }
 }
 
@@ -217,53 +214,48 @@ fun AddServiceDialog(
         title = { Text("Nuevo Servicio") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                AppTextField(
                     value = name, 
                     onValueChange = { name = it }, 
-                    label = { Text("Nombre del servicio") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
+                    label = "Nombre del servicio",
                     enabled = !isLoading
                 )
-                OutlinedTextField(
+                AppTextField(
                     value = desc, 
                     onValueChange = { desc = it }, 
-                    label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
+                    label = "Descripción",
                     enabled = !isLoading
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    AppTextField(
                         value = price, 
                         onValueChange = { price = it }, 
-                        label = { Text("Precio") },
+                        label = "Precio",
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium,
-                        prefix = { Text("$") },
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                     )
-                    OutlinedTextField(
+                    AppTextField(
                         value = duration, 
                         onValueChange = { duration = it }, 
-                        label = { Text("Minutos") },
+                        label = "Minutos",
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium,
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                     )
                 }
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
+                text = "Crear",
                 onClick = { 
                     onConfirm(name, desc, price.toDoubleOrNull() ?: 0.0, duration.toIntOrNull() ?: 30) 
                 },
-                enabled = name.isNotBlank() && price.isNotBlank() && !isLoading
-            ) { 
-                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Text("Crear") 
-            }
+                modifier = Modifier.width(100.dp),
+                enabled = name.isNotBlank() && price.isNotBlank() && !isLoading,
+                isLoading = isLoading
+            )
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancelar") }
