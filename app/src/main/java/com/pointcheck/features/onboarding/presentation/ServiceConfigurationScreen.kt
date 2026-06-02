@@ -1,0 +1,139 @@
+package com.pointcheck.features.onboarding.presentation
+
+import com.pointcheck.features.auth.data.dto.ServiceOfferingDto
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.features.auth.presentation.UserViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ServiceConfigurationScreen(
+    categoryId: String,
+    nav: NavController,
+    authVm: UserViewModel,
+    vm: CategoryViewModel = viewModel()
+) {
+    val state by vm.state.collectAsState()
+    val selectedServices = remember { mutableStateMapOf<String, ServiceOfferingDto>() }
+
+    LaunchedEffect(categoryId) {
+        vm.loadTemplates(categoryId)
+    }
+
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = "Configura tus Servicios",
+                onBack = { nav.popBackStack() }
+            )
+        }
+    ) { padding ->
+        if (state.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(Modifier.padding(padding).fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text(
+                            "Selecciona los servicios que ofreces y ajusta sus precios.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    items(state.templates) { template ->
+                        ServiceTemplateItem(
+                            template = template,
+                            onServiceChanged = { offering ->
+                                if (offering != null) {
+                                    selectedServices[template.id] = offering
+                                } else {
+                                    selectedServices.remove(template.id)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                AppButton(
+                    text = "Finalizar Registro",
+                    onClick = {
+                        authVm.onServicesSelected(selectedServices.values.toList())
+                        authVm.save {
+                            nav.navigate(Screen.Dashboard.route) {
+                                popUpTo(Screen.Register.route) { inclusive = true }
+                            }
+                        }
+                    },
+                    enabled = selectedServices.isNotEmpty(),
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ServiceTemplateItem(
+    template: com.pointcheck.features.onboarding.presentation.dto.ServiceTemplateDto,
+    onServiceChanged: (ServiceOfferingDto?) -> Unit
+) {
+    var enabled by remember { mutableStateOf(false) }
+    var price by remember { mutableStateOf(template.defaultPrice.toString()) }
+
+    LaunchedEffect(enabled, price) {
+        if (enabled) {
+            onServiceChanged(ServiceOfferingDto(template.id, price.toDoubleOrNull() ?: 0.0, template.unit))
+        } else {
+            onServiceChanged(null)
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = if (enabled) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = enabled, onCheckedChange = { enabled = it })
+            
+            Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                Text(template.name, fontWeight = FontWeight.Bold)
+                Text(template.description, style = MaterialTheme.typography.bodySmall)
+            }
+
+            AppTextField(
+                value = price,
+                onValueChange = { price = it },
+                label = "Precio",
+                modifier = Modifier.width(100.dp),
+                trailingIcon = { Text(if (template.unit == "SESSION") "Ses" else "Hr", modifier = Modifier.padding(end = 8.dp), style = MaterialTheme.typography.bodySmall) },
+                enabled = enabled
+            )
+        }
+    }
+}

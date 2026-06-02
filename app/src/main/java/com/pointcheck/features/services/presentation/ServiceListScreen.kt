@@ -1,5 +1,8 @@
 package com.pointcheck.features.services.presentation
 
+import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,23 +31,36 @@ fun ServiceListScreen(
 ) {
     val s by vm.state.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearSuccess()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Catálogo de Servicios") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Catálogo de Servicios",
+                onBack = { nav.popBackStack() }
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Nuevo Servicio") }
+                text = { Text("Nuevo Servicio") },
+                expanded = !s.isLoading
             )
         }
     ) { pad ->
@@ -71,7 +87,8 @@ fun ServiceListScreen(
                             description = service.description ?: "Sin descripción",
                             price = service.price,
                             duration = service.durationMinutes,
-                            onDelete = { vm.deleteService(service.id) }
+                            onDelete = { vm.deleteService(service.id) },
+                            enabled = !s.isLoading
                         )
                     }
                 }
@@ -83,7 +100,8 @@ fun ServiceListScreen(
                     onConfirm = { name, desc, price, dur ->
                         vm.addService(name, desc, price, dur)
                         showAddDialog = false
-                    }
+                    },
+                    isLoading = s.isLoading
                 )
             }
         }
@@ -96,7 +114,8 @@ fun ServiceCard(
     description: String,
     price: Double?,
     duration: Int?,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    enabled: Boolean = true
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -113,8 +132,8 @@ fun ServiceCard(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                IconButton(onClick = onDelete, enabled = enabled) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar", tint = if (enabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline)
                 }
             }
             
@@ -175,16 +194,15 @@ fun EmptyServicesState(onAdd: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onAdd) {
-            Text("Añadir primer servicio")
-        }
+        AppButton(text = "Añadir primer servicio", onClick = onAdd)
     }
 }
 
 @Composable
 fun AddServiceDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Double, Int) -> Unit
+    onConfirm: (String, String, Double, Int) -> Unit,
+    isLoading: Boolean = false
 ) {
     var name by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
@@ -192,53 +210,55 @@ fun AddServiceDialog(
     var duration by remember { mutableStateOf("30") }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text("Nuevo Servicio") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                AppTextField(
                     value = name, 
                     onValueChange = { name = it }, 
-                    label = { Text("Nombre del servicio") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    label = "Nombre del servicio",
+                    enabled = !isLoading
                 )
-                OutlinedTextField(
+                AppTextField(
                     value = desc, 
                     onValueChange = { desc = it }, 
-                    label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    label = "Descripción",
+                    enabled = !isLoading
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    AppTextField(
                         value = price, 
                         onValueChange = { price = it }, 
-                        label = { Text("Precio") },
+                        label = "Precio",
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium,
-                        prefix = { Text("$") }
+                        enabled = !isLoading,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                     )
-                    OutlinedTextField(
+                    AppTextField(
                         value = duration, 
                         onValueChange = { duration = it }, 
-                        label = { Text("Minutos") },
+                        label = "Minutos",
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium
+                        enabled = !isLoading,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                     )
                 }
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
+                text = "Crear",
                 onClick = { 
                     onConfirm(name, desc, price.toDoubleOrNull() ?: 0.0, duration.toIntOrNull() ?: 30) 
                 },
-                enabled = name.isNotBlank() && price.isNotBlank()
-            ) { Text("Crear") }
+                modifier = Modifier.width(100.dp),
+                enabled = name.isNotBlank() && price.isNotBlank() && !isLoading,
+                isLoading = isLoading
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancelar") }
         }
     )
 }

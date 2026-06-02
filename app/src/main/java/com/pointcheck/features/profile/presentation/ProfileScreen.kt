@@ -9,6 +9,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.presentation.components.AppTopBar
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -23,10 +26,10 @@ fun ProfileScreen(nav: NavController) {
 
     LaunchedEffect(Unit) {
         email = prefs.email.first() ?: "No identificado"
-        role = prefs.role.first() ?: ""
+        role = prefs.role.first() ?: "SIN ROL"
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Mi Perfil") }) }) { pad ->
+    Scaffold(topBar = { AppTopBar(title = "Mi Perfil") }) { pad ->
         Column(Modifier.padding(pad).padding(16.dp)) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -39,17 +42,16 @@ fun ProfileScreen(nav: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
-            if (role == "SPECIALIST") {
-                Button(
-                    onClick = { nav.navigate(Screen.ProfessionalProfile.route) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Configurar Perfil Profesional")
-                }
+            if (role.equals("SPECIALIST", ignoreCase = true)) {
+                AppButton(
+                    text = "Configurar Perfil Profesional",
+                    onClick = { nav.navigate(Screen.ProfessionalProfile.route) }
+                )
                 Spacer(Modifier.height(8.dp))
             }
 
-            OutlinedButton(
+            AppOutlinedButton(
+                text = "Cerrar Sesión",
                 onClick = {
                     scope.launch {
                         prefs.clear()
@@ -57,11 +59,8 @@ fun ProfileScreen(nav: NavController) {
                             popUpTo(Screen.Dashboard.route) { inclusive = true }
                         }
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Cerrar Sesión")
-            }
+                }
+            )
         }
     }
 }

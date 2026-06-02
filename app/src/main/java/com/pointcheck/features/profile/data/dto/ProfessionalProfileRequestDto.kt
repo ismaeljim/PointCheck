@@ -4,7 +4,8 @@ package com.pointcheck.features.profile.data.dto
  * DTO para crear o actualizar un perfil profesional.
  */
 data class ProfessionalProfileRequestDto(
-    val userId: Long,
+    val userId: String,
+    val categoryId: String? = null,
     val displayName: String,
     val businessName: String? = null,
     val specialty: String,
@@ -12,5 +13,8 @@ data class ProfessionalProfileRequestDto(
     val address: String? = null,
     val city: String? = null,
     val country: String? = "Chile",
-    val defaultSessionDurationMinutes: Int = 30
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val defaultSessionDurationMinutes: Int = 30,
+    val workingHoursJson: String? = null
 )

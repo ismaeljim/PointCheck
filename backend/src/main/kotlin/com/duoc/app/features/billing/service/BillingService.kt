@@ -14,6 +14,19 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/**
+ * AUDITORÍA TÉCNICA: Gestión de Facturación y Cobranza
+ * 
+ * Este servicio centraliza el control financiero de la plataforma, permitiendo
+ * rastrear los montos adeudados y pagados por los servicios prestados.
+ * 
+ * Hallazgos de Implementación:
+ * 1. [OK] Relación de Trazabilidad: Cada registro de cobro se vincula a una 'reservation' y opcionalmente a una 'attention'.
+ * 2. [OK] Multi-Moneda: Soporte base para 'currency' (Default: CLP).
+ * 3. [MEJORA] Integración de Pasarela: Actualmente solo gestiona estados lógicos (PENDING/PAID).
+ *    Falta integración con Webpay/Stripe para cobros digitales reales.
+ * 4. [OK] Referencia Externa: El campo 'externalReference' permite conciliar con transferencias o comprobantes físicos.
+ */
 @Service
 class BillingService(
     private val billingRecordRepository: BillingRecordRepository,
@@ -40,8 +53,8 @@ class BillingService(
             client = reservation.client,
             specialist = reservation.specialist,
             amount = request.amount,
-            currency = request.currency,
-            paymentMethod = request.paymentMethod,
+            currency = request.currency ?: "CLP",
+            paymentMethod = request.paymentMethod ?: reservation.paymentMethod,
             status = PaymentStatus.PENDING,
             notes = request.notes
         )
@@ -49,8 +62,12 @@ class BillingService(
         return billingRecordRepository.save(billingRecord).toResponse()
     }
 
+    /**
+     * AUDITORÍA: Cambio de Estado Financiero.
+     * Esencial para la liquidación de haberes del especialista.
+     */
     @Transactional
-    fun markAsPaid(id: Long, request: MarkAsPaidRequest): BillingRecordResponse {
+    fun markAsPaid(id: String, request: MarkAsPaidRequest): BillingRecordResponse {
         val billingRecord = billingRecordRepository.findById(id).orElseThrow {
             IllegalArgumentException("Registro de cobro no encontrado con ID: $id")
         }
@@ -68,7 +85,7 @@ class BillingService(
     }
 
     @Transactional
-    fun cancel(id: Long): BillingRecordResponse {
+    fun cancel(id: String): BillingRecordResponse {
         val billingRecord = billingRecordRepository.findById(id).orElseThrow {
             IllegalArgumentException("Registro de cobro no encontrado con ID: $id")
         }
@@ -81,16 +98,16 @@ class BillingService(
         return billingRecordRepository.save(updatedRecord).toResponse()
     }
 
-    fun getBySpecialist(specialistId: Long): List<BillingRecordResponse> {
+    fun getBySpecialist(specialistId: String): List<BillingRecordResponse> {
         return billingRecordRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
     }
 
-    fun getPendingBySpecialist(specialistId: Long): List<BillingRecordResponse> {
+    fun getPendingBySpecialist(specialistId: String): List<BillingRecordResponse> {
         return billingRecordRepository.findBySpecialist_IdAndStatus(specialistId, PaymentStatus.PENDING)
             .map { it.toResponse() }
     }
 
-    fun getTodayBySpecialist(specialistId: Long): List<BillingRecordResponse> {
+    fun getTodayBySpecialist(specialistId: String): List<BillingRecordResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
         return billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(specialistId, startOfDay, endOfDay)

@@ -18,33 +18,45 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttentionScreen(
     nav: NavController,
-    reservationId: Long,
-    clientId: Long,
-    specialistId: Long,
+    reservationId: String,
+    clientId: String,
+    specialistId: String,
     vm: AttentionViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Reseteamos el estado al entrar si es necesario o cargamos datos previos si existiera el endpoint
-    // Como el backend no tiene GET by reservationId directo para atenciones activas sin conocer el ID de atención,
-    // confiamos en el flujo de la UI.
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
+    LaunchedEffect(s.successMessage) {
+        s.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearSuccess()
+        }
+    }
 
     val scrollState = rememberScrollState()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Módulo de Atención") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Módulo de Atención",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -92,24 +104,23 @@ fun AttentionScreen(
                 
                 Spacer(Modifier.height(16.dp))
 
-                OutlinedTextField(
+                AppTextField(
                     value = s.observations,
                     onValueChange = { vm.setObservations(it) },
-                    label = { Text("Observaciones iniciales") },
-                    placeholder = { Text("Ej: Motivo de consulta, estado inicial...") },
+                    label = "Observaciones iniciales",
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
-                    shape = MaterialTheme.shapes.medium
+                    enabled = !s.isLoading
                 )
                 
                 Spacer(Modifier.height(24.dp))
                 
-                Button(
+                AppButton(
+                    text = "Iniciar Atención",
                     onClick = { vm.startAttention(reservationId) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
-                ) {
-                    Text("Iniciar Atención")
-                }
+                    enabled = !s.isLoading,
+                    isLoading = s.isLoading
+                )
             } else {
                 // Estado: En progreso o Finalizada
                 val att = s.currentAttention!!
@@ -137,28 +148,28 @@ fun AttentionScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                OutlinedTextField(
+                AppTextField(
                     value = s.observations,
                     onValueChange = { vm.setObservations(it) },
-                    label = { Text("Bitácora de la sesión") },
+                    label = "Bitácora de la sesión",
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5,
-                    enabled = !isFinished,
-                    shape = MaterialTheme.shapes.medium,
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, null) }
+                    enabled = !isFinished && !s.isLoading,
+                    leadingIcon = Icons.AutoMirrored.Filled.Notes
                 )
 
                 Spacer(Modifier.height(32.dp))
 
                 if (!isFinished) {
-                    Button(
+                    AppButton(
+                        text = "Finalizar y Guardar",
                         onClick = { vm.finishAttention() },
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
-                    ) {
-                        Text("Finalizar y Guardar")
-                    }
+                        enabled = !s.isLoading,
+                        isLoading = s.isLoading
+                    )
                 } else {
-                    Button(
+                    AppButton(
+                        text = "Ir a Registrar Cobro",
                         onClick = { 
                             nav.navigate(
                                 Screen.Billing.createRoute(
@@ -169,29 +180,19 @@ fun AttentionScreen(
                                 )
                             )
                         },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Text("Ir a Registrar Cobro")
-                    }
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
                     
                     Spacer(Modifier.height(12.dp))
                     
-                    OutlinedButton(
-                        onClick = { nav.popBackStack() },
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
-                    ) {
-                        Text("Volver a Agenda")
-                    }
+                    AppOutlinedButton(
+                        text = "Volver a Agenda",
+                        onClick = { nav.popBackStack() }
+                    )
                 }
             }
 
-            s.error?.let {
-                ErrorMessage(it)
-            }
-            s.successMessage?.let {
-                SuccessMessage(it)
-            }
+            // Eliminados mensajes estáticos de error/éxito duplicados
         }
     }
 }
@@ -206,32 +207,3 @@ fun AttentionDetailRow(icon: ImageVector, label: String, value: String) {
     }
 }
 
-@Composable
-fun ErrorMessage(msg: String) {
-    Card(
-        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    ) {
-        Text(
-            msg,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
-
-@Composable
-fun SuccessMessage(msg: String) {
-    Card(
-        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        Text(
-            msg,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}

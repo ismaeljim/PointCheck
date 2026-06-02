@@ -39,7 +39,7 @@ class SubscriptionService(
     }
 
     @Transactional
-    fun getCurrentByProfessionalProfile(professionalProfileId: Long): SubscriptionResponse? {
+    fun getCurrentByProfessionalProfile(professionalProfileId: String): SubscriptionResponse? {
         val subscriptions = subscriptionRepository.findByProfessionalProfile_IdAndStatus(professionalProfileId, SubscriptionStatus.ACTIVE)
         
         if (subscriptions.isEmpty()) return null
@@ -59,7 +59,7 @@ class SubscriptionService(
     }
 
     @Transactional
-    fun cancel(id: Long): SubscriptionResponse {
+    fun cancel(id: String): SubscriptionResponse {
         val subscription = subscriptionRepository.findById(id).orElseThrow {
             IllegalArgumentException("Suscripción no encontrada con ID: $id")
         }

@@ -7,10 +7,11 @@ import com.google.gson.annotations.SerializedName
  * Mapeado desde professional_profiles del backend.
  */
 data class SpecialistResponseDto(
-    val id: Long,        // Profile ID
-    val userId: Long,    // User ID
+    val id: String,        // Profile ID
+    val userId: String,    // User ID
     @SerializedName("displayName")
     val name: String,
     val specialty: String?,
+    val city: String?,
     val defaultSessionDurationMinutes: Int? = 30
 )

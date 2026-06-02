@@ -17,7 +17,8 @@ import kotlinx.coroutines.launch
 data class ServiceUiState(
     val services: List<ServiceResponseDto> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val successMessage: String? = null
 )
 
 class ServiceViewModel(application: Application) : AndroidViewModel(application) {
@@ -34,6 +35,7 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadServices() {
         viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
             // Intentamos obtener el ID de perfil. Si es nulo, es posible que el perfil se haya creado 
             // en esta sesión, por lo que intentamos cargarlo del backend si no está en prefs.
             var profileId = prefs.professionalProfileId.first()
@@ -54,11 +56,10 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
             }
 
             if (profileId == null) {
-                _state.update { it.copy(isLoading = false) }
+                _state.update { it.copy(isLoading = false, error = "No se encontró perfil profesional") }
                 return@launch
             }
 
-            _state.update { it.copy(isLoading = true) }
             repository.getServices(profileId!!)
                 .onSuccess { list -> _state.update { it.copy(services = list, isLoading = false) } }
                 .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
@@ -67,21 +68,33 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
 
     fun addService(name: String, description: String, price: Double, duration: Int) {
         viewModelScope.launch {
-            val profileId = prefs.professionalProfileId.first() ?: return@launch
-            _state.update { it.copy(isLoading = true) }
+            val profileId = prefs.professionalProfileId.first() ?: run {
+                _state.update { it.copy(error = "No se encontró perfil profesional") }
+                return@launch
+            }
+            _state.update { it.copy(isLoading = true, error = null) }
             val request = ServiceRequestDto(profileId, name, description, price, duration)
             repository.createService(request)
-                .onSuccess { loadServices() }
+                .onSuccess { 
+                    _state.update { it.copy(successMessage = "Servicio creado exitosamente") }
+                    loadServices() 
+                }
                 .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }
     }
 
-    fun deleteService(id: Long) {
+    fun deleteService(id: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             repository.deleteService(id)
-                .onSuccess { loadServices() }
+                .onSuccess { 
+                    _state.update { it.copy(successMessage = "Servicio eliminado exitosamente") }
+                    loadServices() 
+                }
                 .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

@@ -24,12 +24,12 @@ class ServiceOfferingController(
     }
 
     @GetMapping("/professional-profile/{professionalProfileId}")
-    fun getByProfessionalProfile(@PathVariable professionalProfileId: Long): ResponseEntity<List<ServiceOfferingResponse>> {
+    fun getByProfessionalProfile(@PathVariable professionalProfileId: String): ResponseEntity<List<ServiceOfferingResponse>> {
         return ResponseEntity.ok(serviceOfferingService.getByProfessionalProfile(professionalProfileId))
     }
 
     @PutMapping("/{id}/deactivate")
-    fun deactivate(@PathVariable id: Long): ResponseEntity<ServiceOfferingResponse> {
+    fun deactivate(@PathVariable id: String): ResponseEntity<ServiceOfferingResponse> {
         return ResponseEntity.ok(serviceOfferingService.deactivate(id))
     }
 }

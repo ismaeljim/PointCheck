@@ -14,9 +14,14 @@ class DashboardController(
 
     @GetMapping("/metrics/{userId}")
     fun getMetrics(
-        @PathVariable userId: Long,
+        @PathVariable userId: String,
         @RequestParam role: String
     ): ResponseEntity<DashboardMetricsResponse> {
         return ResponseEntity.ok(dashboardService.getMetrics(userId, role))
+    }
+
+    @GetMapping("/client/{userId}")
+    fun getClientDashboard(@PathVariable userId: String): ResponseEntity<com.duoc.app.features.dashboard.dto.ClientDashboardResponse> {
+        return ResponseEntity.ok(dashboardService.getClientDashboard(userId))
     }
 }

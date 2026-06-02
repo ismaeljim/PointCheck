@@ -3,43 +3,54 @@ package com.duoc.app.features.user.model
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
+/**
+ * Entidad que representa a un usuario en el sistema.
+ * Soporta autenticación y diferenciación de roles (CLIENT/SPECIALIST).
+ */
 @Entity
 @Table(
     name = "users",
+    // AUDITORÍA: Los índices ayudan en búsquedas frecuentes por rol y estado de actividad.
     indexes = [
         Index(name = "idx_users_role", columnList = "role"),
         Index(name = "idx_users_active", columnList = "active")
     ],
     uniqueConstraints = [
-        UniqueConstraint(name = "uk_users_email", columnNames = ["email"])
+        UniqueConstraint(name = "uk_users_email", columnNames = ["email"]),
+        UniqueConstraint(name = "uk_users_rut", columnNames = ["rut"])
     ]
 )
 data class User(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    val id: String? = null,
+
+    @Column(nullable = false)
+    var name: String,
     
     @Column(nullable = false)
-    val name: String,
+    var email: String,
     
     @Column(nullable = false)
-    val email: String,
+    var password: String,
+    
+    @Column(nullable = false, unique = true)
+    var rut: String,
     
     @Column(nullable = false)
-    val password: String,
-    
-    val phone: String? = null,
+    var phone: String,
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val role: UserRole = UserRole.CLIENT,
+    var role: UserRole = UserRole.CLIENT,
     
     @Column(nullable = false)
-    val active: Boolean = true,
+    var active: Boolean = true,
     
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    
+
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
 )

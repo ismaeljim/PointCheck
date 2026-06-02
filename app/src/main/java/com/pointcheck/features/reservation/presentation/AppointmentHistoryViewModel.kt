@@ -17,6 +17,7 @@ data class AppointmentHistoryUiState(
     val appointments: List<ReservationResponseDto> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    val successMessage: String? = null,
     val type: String = "recent" // "recent", "upcoming", "history"
 )
 
@@ -50,4 +51,7 @@ class AppointmentHistoryViewModel(application: Application) : AndroidViewModel(a
             }
         }
     }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

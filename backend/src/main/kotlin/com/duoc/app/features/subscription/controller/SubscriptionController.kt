@@ -19,14 +19,14 @@ class SubscriptionController(
     }
 
     @GetMapping("/professional-profile/{professionalProfileId}/current")
-    fun getCurrentByProfessionalProfile(@PathVariable professionalProfileId: Long): ResponseEntity<SubscriptionResponse> {
+    fun getCurrentByProfessionalProfile(@PathVariable professionalProfileId: String): ResponseEntity<SubscriptionResponse> {
         val subscription = subscriptionService.getCurrentByProfessionalProfile(professionalProfileId)
-            ?: throw NoSuchElementException("No se encontró suscripción activa para el perfil profesional")
+            ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(subscription)
     }
 
     @PutMapping("/{id}/cancel")
-    fun cancel(@PathVariable id: Long): ResponseEntity<SubscriptionResponse> {
+    fun cancel(@PathVariable id: String): ResponseEntity<SubscriptionResponse> {
         return ResponseEntity.ok(subscriptionService.cancel(id))
     }
 }

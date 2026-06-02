@@ -1,10 +1,10 @@
 package com.pointcheck.features.auth.presentation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,8 +17,18 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.navigation.Screen
-import kotlinx.coroutines.launch
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 
+/**
+ * Pantalla de Inicio de Sesión.
+ * Proporciona la interfaz de usuario para que clientes y especialistas accedan al sistema.
+ * 
+ * AUDITORÍA:
+ * - El estado de carga (s.isLoading) bloquea correctamente las interacciones.
+ * - Se utiliza AppTopBar y AppTextField para mantener consistencia visual.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -26,15 +36,21 @@ fun LoginScreen(
     vm: UserViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    LaunchedEffect(s.error) {
+        s.error?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearError()
+        }
+    }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Iniciar sesión") }) },
+        topBar = { AppTopBar(title = "Iniciar sesión") },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
         Column(
@@ -61,9 +77,10 @@ fun LoginScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(20.dp)) {
                     Text(
                         "Bienvenido",
                         style = MaterialTheme.typography.headlineSmall,
@@ -71,23 +88,24 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     
-                    OutlinedTextField(
+                    AppTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Correo electrónico") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        label = "Correo electrónico",
+                        leadingIcon = Icons.Default.Email,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !s.isLoading
                     )
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
+                    
+                    AppTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Contraseña") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
+                        label = "Contraseña",
+                        leadingIcon = Icons.Default.Lock,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !s.isLoading,
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
@@ -99,35 +117,26 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(24.dp))
                     
-                    Button(
+                    AppButton(
+                        text = "Iniciar Sesión",
                         onClick = {
                             vm.login(email.trim(), password) { ok ->
-                                scope.launch {
-                                    if (ok) {
-                                        nav.navigate(Screen.Dashboard.route) {
-                                            popUpTo(Screen.Login.route) { inclusive = true }
-                                        }
-                                    } else {
-                                        snackbarHostState.showSnackbar(s.error ?: "Credenciales inválidas")
+                                if (ok) {
+                                    nav.navigate(Screen.Dashboard.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
                                     }
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = email.isNotBlank() && password.isNotBlank() && !s.isLoading
-                    ) {
-                        if (s.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        } else {
-                            Text("Iniciar Sesión")
-                        }
-                    }
+                        isLoading = s.isLoading,
+                        enabled = email.isNotBlank() && password.isNotBlank()
+                    )
                 }
             }
             
             Spacer(Modifier.height(16.dp))
             
-            TextButton(onClick = { nav.navigate(Screen.Register.route) }) {
+            TextButton(onClick = { nav.navigate(Screen.Register.route) }, enabled = !s.isLoading) {
                 Text("¿No tienes cuenta? Regístrate aquí")
             }
         }

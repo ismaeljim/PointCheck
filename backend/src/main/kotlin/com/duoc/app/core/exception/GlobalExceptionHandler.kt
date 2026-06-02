@@ -5,40 +5,43 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.LocalDateTime
+import java.util.NoSuchElementException
+
+data class ErrorResponse(
+    val status: Int,
+    val message: String?,
+    val timestamp: LocalDateTime = LocalDateTime.now()
+)
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
-    @ExceptionHandler(IllegalArgumentException::class)
-    fun handleIllegalArgumentException(e: IllegalArgumentException): ResponseEntity<ApiErrorResponse> {
-        val errorResponse = ApiErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            error = "Bad Request",
-            message = e.message ?: "Argumento inválido",
-            timestamp = LocalDateTime.now()
+    @ExceptionHandler(IllegalArgumentException::class, NoSuchElementException::class)
+    fun handleNotFound(e: Exception): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            status = HttpStatus.NOT_FOUND.value(),
+            message = e.message
         )
-        return ResponseEntity(errorResponse, HttpStatus.BAD_REQUEST)
+        return ResponseEntity(error, HttpStatus.NOT_FOUND)
     }
 
-    @ExceptionHandler(NoSuchElementException::class)
-    fun handleNoSuchElementException(e: NoSuchElementException): ResponseEntity<ApiErrorResponse> {
-        val errorResponse = ApiErrorResponse(
-            status = HttpStatus.NOT_FOUND.value(),
-            error = "Not Found",
-            message = e.message ?: "Recurso no encontrado",
-            timestamp = LocalDateTime.now()
+    @ExceptionHandler(IllegalStateException::class)
+    fun handleIllegalState(e: IllegalStateException): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            status = HttpStatus.CONFLICT.value(),
+            message = e.message
         )
-        return ResponseEntity(errorResponse, HttpStatus.NOT_FOUND)
+        return ResponseEntity(error, HttpStatus.CONFLICT)
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneralException(e: Exception): ResponseEntity<ApiErrorResponse> {
-        val errorResponse = ApiErrorResponse(
+    fun handleGeneralError(e: Exception): ResponseEntity<ErrorResponse> {
+        // Log del error para depuración
+        e.printStackTrace()
+        val error = ErrorResponse(
             status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = "Internal Server Error",
-            message = e.message ?: "Ocurrió un error inesperado",
-            timestamp = LocalDateTime.now()
+            message = "Ocurrió un error interno inesperado."
         )
-        return ResponseEntity(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity(error, HttpStatus.INTERNAL_SERVER_ERROR)
     }
 }

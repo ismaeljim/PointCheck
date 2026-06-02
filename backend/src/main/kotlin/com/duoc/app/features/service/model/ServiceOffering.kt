@@ -15,8 +15,9 @@ import java.time.LocalDateTime
 )
 data class ServiceOffering(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_profile_id", nullable = false)
@@ -32,6 +33,13 @@ data class ServiceOffering(
     val price: BigDecimal? = null,
 
     val durationMinutes: Int? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "price_unit", nullable = false)
+    val priceUnit: PriceUnit = PriceUnit.SESSION,
+
+    @Column(name = "is_at_home", nullable = false)
+    val isAtHome: Boolean = false,
 
     val active: Boolean = true,
 

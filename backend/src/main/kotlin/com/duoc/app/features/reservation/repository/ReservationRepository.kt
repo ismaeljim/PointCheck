@@ -6,23 +6,31 @@ import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 
 @Repository
-interface ReservationRepository : JpaRepository<Reservation, Long> {
-    fun findByClient_Id(clientId: Long): List<Reservation>
-    fun findBySpecialist_Id(specialistId: Long): List<Reservation>
+interface ReservationRepository : JpaRepository<Reservation, String> {
+
+    fun findByClient_Id(clientId: String): List<Reservation>
+
+    fun findBySpecialist_Id(specialistId: String): List<Reservation>
 
     fun findBySpecialist_IdAndReservationStartBetween(
-        specialistId: Long,
+        specialistId: String?,
         start: LocalDateTime,
         end: LocalDateTime
     ): List<Reservation>
 
     fun findByClient_IdAndReservationStartAfter(
-        clientId: Long,
+        clientId: String,
         now: LocalDateTime
     ): List<Reservation>
 
     fun findBySpecialist_IdAndReservationStartAfter(
-        specialistId: Long,
+        specialistId: String,
         now: LocalDateTime
     ): List<Reservation>
+
+    fun existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThan(
+        specialistId: String,
+        end: LocalDateTime,
+        start: LocalDateTime
+    ): Boolean
 }

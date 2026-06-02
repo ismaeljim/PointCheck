@@ -5,8 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface ServiceOfferingRepository : JpaRepository<ServiceOffering, Long> {
-    fun findByProfessionalProfile_Id(professionalProfileId: Long): List<ServiceOffering>
-    fun findByProfessionalProfile_IdAndActiveTrue(professionalProfileId: Long): List<ServiceOffering>
+// CAMBIO: Hereda de String en lugar de Long
+interface ServiceOfferingRepository : JpaRepository<ServiceOffering, String> {
+
+    // CAMBIO: El parámetro ahora debe ser String para el UUID del perfil
+    fun findByProfessionalProfile_Id(professionalProfileId: String): List<ServiceOffering>
+
     fun findByActiveTrue(): List<ServiceOffering>
 }

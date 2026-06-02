@@ -1,5 +1,6 @@
 package com.duoc.app.features.reservation.model
 
+import com.duoc.app.features.billing.model.PaymentMethod
 import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
@@ -20,8 +21,9 @@ import java.time.LocalDateTime
 )
 data class Reservation(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    @GeneratedValue(strategy = GenerationType.UUID) // Genera UUID automáticamente como String
+    @Column(name = "id", updatable = false, nullable = false)
+    val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
@@ -46,6 +48,10 @@ data class Reservation(
 
     @Column(length = 1000)
     val notes: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method")
+    val paymentMethod: PaymentMethod? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),

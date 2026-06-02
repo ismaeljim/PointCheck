@@ -21,6 +21,7 @@ data class BillingUiState(
     val externalReference: String = "",
     val notes: String = "",
     val isLoading: Boolean = false,
+    val showPaymentModal: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
 )
@@ -37,7 +38,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
     fun setExternalReference(value: String) { _state.update { it.copy(externalReference = value) } }
     fun setNotes(value: String) { _state.update { it.copy(notes = value) } }
 
-    fun createBillingRecord(reservationId: Long, attentionId: Long?) {
+    fun createBillingRecord(reservationId: String, attentionId: String?) {
         val amountDouble = _state.value.amount.toDoubleOrNull() ?: 0.0
         if (amountDouble <= 0) {
             _state.update { it.copy(error = "El monto debe ser mayor a 0") }
@@ -64,7 +65,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun markAsPaid(billingId: Long) {
+    fun markAsPaid(billingId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             repository.markAsPaid(
@@ -82,7 +83,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun cancelBillingRecord(billingId: Long) {
+    fun cancelBillingRecord(billingId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             repository.cancelBillingRecord(billingId)
@@ -95,7 +96,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun loadBillingBySpecialist(specialistId: Long) {
+    fun loadBillingBySpecialist(specialistId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             repository.getBillingBySpecialist(specialistId)
@@ -104,7 +105,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun loadPendingBillingBySpecialist(specialistId: Long) {
+    fun loadPendingBillingBySpecialist(specialistId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             repository.getPendingBillingBySpecialist(specialistId)
@@ -113,12 +114,19 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun loadTodayBillingBySpecialist(specialistId: Long) {
+    fun loadTodayBillingBySpecialist(specialistId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             repository.getTodayBillingBySpecialist(specialistId)
                 .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
                 .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }
+    }
+
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
+
+    fun setShowPaymentModal(show: Boolean) {
+        _state.update { it.copy(showPaymentModal = show) }
     }
 }

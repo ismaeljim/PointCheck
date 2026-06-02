@@ -1,7 +1,7 @@
 package com.pointcheck.features.dashboard.data.dto
 
 data class ReportSummaryResponseDto(
-    val specialistId: Long,
+    val specialistId: String,
     val totalReservations: Int,
     val todayReservations: Int,
     val completedAttentions: Int,
@@ -9,5 +9,6 @@ data class ReportSummaryResponseDto(
     val totalCharged: Double,
     val pendingAmount: Double,
     val paidBillingCount: Int,
-    val pendingBillingCount: Int
+    val pendingBillingCount: Int,
+    val specialty: String? = null
 )

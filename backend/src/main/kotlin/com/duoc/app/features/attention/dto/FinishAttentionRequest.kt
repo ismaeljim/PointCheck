@@ -1,5 +1,6 @@
 package com.duoc.app.features.attention.dto
 
 data class FinishAttentionRequest(
-    val observations: String? = null
+    val observations: String? = null,
+    val durationMinutes: Int? = null
 )

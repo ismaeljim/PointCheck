@@ -17,7 +17,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class SubscriptionUiState(
-    val professionalProfileId: Long? = null,
+    val professionalProfileId: String? = null,
     val currentSubscription: SubscriptionResponseDto? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -122,7 +122,6 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    fun clearMessages() {
-        _state.update { it.copy(error = null, successMessage = null) }
-    }
+    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

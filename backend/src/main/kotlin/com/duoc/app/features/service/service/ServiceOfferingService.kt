@@ -8,6 +8,17 @@ import com.duoc.app.features.service.repository.ServiceOfferingRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 
+/**
+ * AUDITORÍA TÉCNICA: Gestión de Oferta de Servicios
+ * 
+ * Este servicio centraliza el catálogo de prestaciones que los especialistas pueden ofrecer.
+ * 
+ * Hallazgos de Implementación:
+ * 1. [OK] Desacoplamiento de Entidad/DTO: Se utiliza el patrón Mapper para no exponer el modelo de datos.
+ * 2. [OK] Validaciones de Negocio: Se verifica la existencia y el estado activo del perfil profesional antes de crear el servicio.
+ * 3. [MEJORA] Soft-Delete: Implementado mediante el campo 'active'. Se recomienda auditoría de cambios para el historial de precios.
+ * 4. [BRECHA] Validación de Precios: Falta validación de rango de precios permitidos (ej. no negativos).
+ */
 @Service
 class ServiceOfferingService(
     private val serviceOfferingRepository: ServiceOfferingRepository,
@@ -15,6 +26,7 @@ class ServiceOfferingService(
 ) {
 
     fun create(request: ServiceOfferingRequest): ServiceOfferingResponse {
+        // AUDITORÍA: Verificación de integridad referencial manual antes de persistencia.
         val profile = professionalProfileRepository.findById(request.professionalProfileId).orElseThrow {
             IllegalArgumentException("El perfil profesional con ID ${request.professionalProfileId} no existe.")
         }
@@ -34,7 +46,7 @@ class ServiceOfferingService(
         return serviceOfferingRepository.save(serviceOffering).toResponse()
     }
 
-    fun getByProfessionalProfile(professionalProfileId: Long): List<ServiceOfferingResponse> {
+    fun getByProfessionalProfile(professionalProfileId: String): List<ServiceOfferingResponse> {
         return serviceOfferingRepository.findByProfessionalProfile_Id(professionalProfileId).map { it.toResponse() }
     }
 
@@ -42,7 +54,11 @@ class ServiceOfferingService(
         return serviceOfferingRepository.findByActiveTrue().map { it.toResponse() }
     }
 
-    fun deactivate(id: Long): ServiceOfferingResponse {
+    /**
+     * AUDITORÍA: El método utiliza 'copy' de Data Class para inmutabilidad parcial.
+     * Se garantiza que el servicio deje de ser elegible para nuevas reservas sin borrar historial.
+     */
+    fun deactivate(id: String): ServiceOfferingResponse {
         val serviceOffering = serviceOfferingRepository.findById(id).orElseThrow {
             IllegalArgumentException("Servicio no encontrado con ID: $id")
         }

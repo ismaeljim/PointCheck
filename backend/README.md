@@ -40,27 +40,26 @@ Desde la carpeta `backend`:
 
 | Módulo | Endpoint | Método | Descripción |
 | :--- | :--- | :--- | :--- |
-| **Auth** | `/api/auth/register` | `POST` | Registro de nuevos usuarios. |
+| **Auth** | `/api/auth/register` | `POST` | Registro de nuevos usuarios y especialistas con categoría. |
 | **Prof. Profile** | `/api/professional-profiles` | `POST` | Crear perfil para especialista. |
 | **Service** | `/api/services/professional-profile/{id}` | `GET` | Listar servicios de un perfil. |
-| **Reservation** | `/api/reservations` | `POST` | Crear una nueva reserva. |
+| **Reservation** | `/api/reservations` | `POST` | Crear una nueva reserva con método de pago. |
 | **Attention** | `/api/attentions/start` | `POST` | Iniciar una atención. |
 | **Billing** | `/api/billing/{id}/paid` | `PUT` | Marcar registro como pagado. |
+| **Report** | `/api/reports/export/csv` | `GET` | Exportar reporte financiero en CSV con filtros. |
 | **Subscription** | `/api/subscriptions` | `POST` | Contratar plan para el perfil. |
 
 ## 🧪 Flujo de Prueba Postman (Happy Path)
 Para validar el sistema completo, siga este orden de peticiones:
 
-1.  **Registrar Especialista**: `POST /api/auth/register` (con `role: SPECIALIST`).
-2.  **Crear Professional Profile**: `POST /api/professional-profiles` usando el `userId` obtenido.
-3.  **Registrar Cliente**: `POST /api/auth/register` (con `role: CLIENT`).
-4.  **Crear Servicio**: `POST /api/services` vinculándolo al `professionalProfileId`.
-5.  **Crear Reserva**: `POST /api/reservations` asociando cliente, especialista y servicio.
-6.  **Iniciar Atención**: `POST /api/attentions/start` enviando el `reservationId`.
-7.  **Finalizar Atención**: `POST /api/attentions/{id}/finish`.
-8.  **Registrar Cobro**: `POST /api/billing` (se genera automáticamente al finalizar o manualmente).
-9.  **Marcar como Pagado**: `PUT /api/billing/{id}/paid`.
-10. **Consultar Reporte**: `GET /api/reports/specialist/{specialistId}` para ver métricas actualizadas.
+1.  **Registrar Especialista**: `POST /api/auth/register` (con `role: SPECIALIST` y `categoryId`).
+2.  **Registrar Cliente**: `POST /api/auth/register` (con `role: CLIENT`).
+3.  **Crear Servicio**: `POST /api/services` vinculándolo al `professionalProfileId`.
+4.  **Crear Reserva**: `POST /api/reservations` con `paymentMethod`.
+5.  **Iniciar Atención**: `POST /api/attentions/start` enviando el `reservationId`.
+6.  **Finalizar Atención**: `POST /api/attentions/{id}/finish` (Esto genera automáticamente un `BillingRecord`).
+7.  **Marcar como Pagado**: `PUT /api/billing/{id}/paid`.
+8.  **Exportar Reporte**: `GET /api/reports/export/csv?serviceId=...` para obtener el archivo de auditoría.
 
 ---
 **Desarrollado para el ecosistema PointCheck.**

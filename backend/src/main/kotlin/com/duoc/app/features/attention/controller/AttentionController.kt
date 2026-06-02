@@ -21,19 +21,19 @@ class AttentionController(
 
     @PutMapping("/{attentionId}/finish")
     fun finish(
-        @PathVariable attentionId: Long,
+        @PathVariable attentionId: String,
         @RequestBody request: FinishAttentionRequest
     ): ResponseEntity<AttentionResponse> {
         return ResponseEntity.ok(attentionService.finish(attentionId, request))
     }
 
     @GetMapping("/specialist/{specialistId}/today")
-    fun getTodayBySpecialist(@PathVariable specialistId: Long): ResponseEntity<List<AttentionResponse>> {
+    fun getTodayBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<AttentionResponse>> {
         return ResponseEntity.ok(attentionService.getTodayBySpecialist(specialistId))
     }
 
     @GetMapping("/client/{clientId}/history")
-    fun getHistoryByClient(@PathVariable clientId: Long): ResponseEntity<List<AttentionResponse>> {
+    fun getHistoryByClient(@PathVariable clientId: String): ResponseEntity<List<AttentionResponse>> {
         return ResponseEntity.ok(attentionService.getHistoryByClient(clientId))
     }
 }

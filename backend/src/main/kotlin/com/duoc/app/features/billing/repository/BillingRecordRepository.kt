@@ -7,20 +7,22 @@ import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 
 @Repository
-interface BillingRecordRepository : JpaRepository<BillingRecord, Long> {
-    fun findByReservation_Id(reservationId: Long): List<BillingRecord>
-    fun findByAttention_Id(attentionId: Long): List<BillingRecord>
-    fun findBySpecialist_Id(specialistId: Long): List<BillingRecord>
-    fun findByClient_Id(clientId: Long): List<BillingRecord>
+interface BillingRecordRepository : JpaRepository<BillingRecord, String> {
+    fun findByReservation_Id(reservationId: String): List<BillingRecord>
+    fun findByAttention_Id(attentionId: String): List<BillingRecord>
+    fun findBySpecialist_Id(specialistId: String): List<BillingRecord>
+    fun findByClient_Id(clientId: String): List<BillingRecord>
     
     fun findBySpecialist_IdAndStatus(
-        specialistId: Long,
+        specialistId: String?,
         status: PaymentStatus
     ): List<BillingRecord>
 
     fun findBySpecialist_IdAndCreatedAtBetween(
-        specialistId: Long,
+        specialistId: String,
         start: LocalDateTime,
         end: LocalDateTime
     ): List<BillingRecord>
+
+    fun findByStatus(status: PaymentStatus): List<BillingRecord>
 }

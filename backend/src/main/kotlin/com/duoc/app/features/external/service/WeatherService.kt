@@ -4,6 +4,12 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 
+/**
+ * AUDITORÍA: Servicio de Clima (Proxy OpenWeather).
+ * Actúa como pasarela para evitar exponer la API Key en el cliente móvil.
+ * Hallazgo: Se utiliza WebClient reactivo pero con llamada bloqueante (.block()).
+ * Recomendación: Migrar a un flujo puramente reactivo si el tráfico escala para no agotar threads.
+ */
 @Service
 class WeatherService(private val webClient: WebClient) {
 
