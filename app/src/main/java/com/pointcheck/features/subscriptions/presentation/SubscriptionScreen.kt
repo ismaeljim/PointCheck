@@ -19,6 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,13 +48,9 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Mi Suscripción") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Mi Suscripción",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -173,16 +172,11 @@ fun ActiveSubscriptionCard(
             
             if (isActive) {
                 Spacer(Modifier.height(32.dp))
-                OutlinedButton(
+                AppOutlinedButton(
+                    text = "CANCELAR SUSCRIPCIÓN",
                     onClick = onCancel,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) CircularProgressIndicator(Modifier.size(24.dp))
-                    else Text("CANCELAR SUSCRIPCIÓN")
-                }
+                    isLoading = isLoading
+                )
             }
         }
     }
@@ -265,17 +259,13 @@ fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = fa
                 color = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
             Spacer(Modifier.height(16.dp))
-            Button(
+            AppButton(
+                text = "Elegir este plan",
                 onClick = onSelect,
-                modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                )
-            ) {
-                if (isLoading) CircularProgressIndicator(Modifier.size(24.dp))
-                else Text("Elegir este plan")
-            }
+                isLoading = isLoading,
+                containerColor = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+            )
         }
     }
 }

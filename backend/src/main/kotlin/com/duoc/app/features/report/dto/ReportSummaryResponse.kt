@@ -10,5 +10,6 @@ data class ReportSummaryResponse(
     val totalCharged: BigDecimal = BigDecimal.ZERO,
     val pendingAmount: BigDecimal = BigDecimal.ZERO,
     val paidBillingCount: Int = 0,
-    val pendingBillingCount: Int = 0
+    val pendingBillingCount: Int = 0,
+    val specialty: String? = null
 )

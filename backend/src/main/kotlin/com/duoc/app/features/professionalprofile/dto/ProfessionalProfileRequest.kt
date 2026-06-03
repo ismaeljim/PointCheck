@@ -1,5 +1,8 @@
 package com.duoc.app.features.professionalprofile.dto
 
+/**
+ * DTO para la creación o actualización de un perfil profesional.
+ */
 data class ProfessionalProfileRequest(
     val userId: String,
     val categoryId: String? = null,
@@ -12,5 +15,6 @@ data class ProfessionalProfileRequest(
     val country: String? = "Chile",
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val defaultSessionDurationMinutes: Int = 60
+    val defaultSessionDurationMinutes: Int = 60,
+    val workingHoursJson: String? = null
 )

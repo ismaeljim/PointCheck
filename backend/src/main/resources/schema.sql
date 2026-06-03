@@ -1,11 +1,20 @@
--- 1. LIMPIEZA TOTAL (Evita errores de BeanCreationException)
+-- 1. LIMPIEZA TOTAL (Orden de dependencias invertido para evitar errores de FK)
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS subscriptions, billing_records, attentions, reservations, services, service_templates, professional_profiles, categories, users, audit_logs, global_settings;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS billing_records;
+DROP TABLE IF EXISTS attentions;
+DROP TABLE IF EXISTS reservations;
+DROP TABLE IF EXISTS services;
+DROP TABLE IF EXISTS service_templates;
+DROP TABLE IF EXISTS professional_profiles;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS global_settings;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 2. ESTRUCTURA DE TABLAS
+-- 2. ESTRUCTURA DE TABLAS (UUID as String)
 
--- Tabla de Usuarios
 CREATE TABLE users (
     id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -22,7 +31,6 @@ CREATE TABLE users (
     CONSTRAINT uk_users_rut UNIQUE (rut)
 ) ENGINE=InnoDB;
 
--- Tabla de Categorías
 CREATE TABLE categories (
     id VARCHAR(36) NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -34,7 +42,6 @@ CREATE TABLE categories (
     CONSTRAINT uk_categories_name UNIQUE (name)
 ) ENGINE=InnoDB;
 
--- Perfiles Profesionales
 CREATE TABLE professional_profiles (
     id VARCHAR(36) NOT NULL,
     user_id VARCHAR(36) NOT NULL,
@@ -61,7 +68,6 @@ CREATE TABLE professional_profiles (
     CONSTRAINT fk_professional_profiles_category FOREIGN KEY (category_id) REFERENCES categories(id)
 ) ENGINE=InnoDB;
 
--- Servicios
 CREATE TABLE services (
     id VARCHAR(36) NOT NULL,
     professional_profile_id VARCHAR(36) NOT NULL,
@@ -78,7 +84,6 @@ CREATE TABLE services (
     CONSTRAINT fk_services_profile FOREIGN KEY (professional_profile_id) REFERENCES professional_profiles(id)
 ) ENGINE=InnoDB;
 
--- Reservas
 CREATE TABLE reservations (
     id VARCHAR(36) NOT NULL,
     client_id VARCHAR(36) NOT NULL,
@@ -88,6 +93,7 @@ CREATE TABLE reservations (
     reservation_end DATETIME(6) NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
     notes VARCHAR(1000) NULL,
+    payment_method VARCHAR(50) NULL,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NULL,
     PRIMARY KEY (id),
@@ -96,30 +102,6 @@ CREATE TABLE reservations (
     CONSTRAINT fk_res_service FOREIGN KEY (service_id) REFERENCES services(id)
 ) ENGINE=InnoDB;
 
--- Logs de Auditoría
-CREATE TABLE audit_logs (
-    id VARCHAR(36) NOT NULL,
-    action VARCHAR(100) NOT NULL,
-    performed_by VARCHAR(255) NOT NULL,
-    target_type VARCHAR(50) NOT NULL,
-    target_id VARCHAR(100) NOT NULL,
-    details VARCHAR(1000) NULL,
-    timestamp DATETIME(6) NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB;
-
--- Configuraciones Globales
-CREATE TABLE global_settings (
-    id VARCHAR(36) NOT NULL,
-    config_key VARCHAR(100) NOT NULL,
-    config_value VARCHAR(255) NOT NULL,
-    description VARCHAR(255) NULL,
-    updated_at DATETIME(6) NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_settings_key UNIQUE (config_key)
-) ENGINE=InnoDB;
-
--- Atenciones
 CREATE TABLE attentions (
     id VARCHAR(36) NOT NULL,
     reservation_id VARCHAR(36) NOT NULL,
@@ -139,7 +121,6 @@ CREATE TABLE attentions (
     CONSTRAINT fk_att_spec FOREIGN KEY (specialist_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
--- Registros de Facturación
 CREATE TABLE billing_records (
     id VARCHAR(36) NOT NULL,
     reservation_id VARCHAR(36) NOT NULL,
@@ -162,19 +143,6 @@ CREATE TABLE billing_records (
     CONSTRAINT fk_bill_spec FOREIGN KEY (specialist_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
--- Tabla de Plantillas de Servicios
-CREATE TABLE service_templates (
-    id VARCHAR(36) NOT NULL,
-    category_id VARCHAR(36) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    default_price DECIMAL(10,2) NULL,
-    default_duration INT NULL,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_templates_category FOREIGN KEY (category_id) REFERENCES categories(id)
-) ENGINE=InnoDB;
-
--- Suscripciones
 CREATE TABLE subscriptions (
     id VARCHAR(36) NOT NULL,
     professional_profile_id VARCHAR(36) NOT NULL,
@@ -186,4 +154,36 @@ CREATE TABLE subscriptions (
     updated_at DATETIME(6) NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_sub_profile FOREIGN KEY (professional_profile_id) REFERENCES professional_profiles(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE audit_logs (
+    id VARCHAR(36) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    performed_by VARCHAR(255) NOT NULL,
+    target_type VARCHAR(50) NOT NULL,
+    target_id VARCHAR(100) NOT NULL,
+    details VARCHAR(1000) NULL,
+    timestamp DATETIME(6) NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB;
+
+CREATE TABLE global_settings (
+    id VARCHAR(36) NOT NULL,
+    config_key VARCHAR(100) NOT NULL,
+    config_value VARCHAR(255) NOT NULL,
+    description VARCHAR(255) NULL,
+    updated_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_settings_key UNIQUE (config_key)
+) ENGINE=InnoDB;
+
+CREATE TABLE service_templates (
+    id VARCHAR(36) NOT NULL,
+    category_id VARCHAR(36) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    default_price DECIMAL(10,2) NULL,
+    default_duration INT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_templates_category FOREIGN KEY (category_id) REFERENCES categories(id)
 ) ENGINE=InnoDB;

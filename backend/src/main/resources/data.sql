@@ -18,11 +18,12 @@ INSERT INTO users (id, name, email, password, rut, phone, role, active, created_
 ('u-cli-002', 'Carla Rojas', 'carla@yahoo.cl', '123456', '21.444.444-4', '+56944444444', 'CLIENT', 1, NOW());
 
 -- 3. PERFILES PROFESIONALES
-INSERT INTO professional_profiles (id, user_id, category_id, display_name, business_name, specialty, description, address, city, country, default_session_duration_minutes, active, created_at) VALUES
-('prof-001', 'u-spec-001', 'cat-001-barber', 'Franco Studio', 'Franco Barber Co.', 'Barbero Master', 'Cortes clásicos y modernos.', 'Av. Providencia 1234', 'Santiago', 'Chile', 45, 1, NOW()),
-('prof-002', 'u-spec-002', 'cat-002-health', 'Dra. Maria Paz', 'Centro Kinesiológico', 'Kinesióloga Deportiva', 'Rehabilitación avanzada.', 'Apoquindo 4500', 'Las Condes', 'Chile', 60, 1, NOW());
+-- Actualización: Franco el Barbero ahora incluye working_hours_json por defecto (Lunes a Viernes 09:00-18:00)
+INSERT INTO professional_profiles (id, user_id, category_id, display_name, business_name, specialty, description, address, city, country, default_session_duration_minutes, working_hours_json, active, created_at) VALUES
+('prof-001', 'u-spec-001', 'cat-001-barber', 'Franco Studio', 'Franco Barber Co.', 'Barbero Master', 'Cortes clásicos y modernos.', 'Av. Providencia 1234', 'Santiago', 'Chile', 45, '{"MONDAY":{"start":"09:00","end":"18:00","isActive":true},"TUESDAY":{"start":"09:00","end":"18:00","isActive":true},"WEDNESDAY":{"start":"09:00","end":"18:00","isActive":true},"THURSDAY":{"start":"09:00","end":"18:00","isActive":true},"FRIDAY":{"start":"09:00","end":"18:00","isActive":true}}', 1, NOW()),
+('prof-002', 'u-spec-002', 'cat-002-health', 'Dra. Maria Paz', 'Centro Kinesiológico', 'Kinesióloga Deportiva', 'Rehabilitación avanzada.', 'Apoquindo 4500', 'Las Condes', 'Chile', 60, NULL, 1, NOW());
 
--- 4. SUSCRIPCIONES (Para que los especialistas tengan acceso total)
+-- 4. SUSCRIPCIONES
 INSERT INTO subscriptions (id, professional_profile_id, plan_name, status, start_date, end_date, created_at) VALUES
 ('sub-001', 'prof-001', 'PREMIUM_MONTHLY', 'ACTIVE', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 1 MONTH), NOW()),
 ('sub-002', 'prof-002', 'BASIC_FREE', 'ACTIVE', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 1 YEAR), NOW());
@@ -33,7 +34,7 @@ INSERT INTO services (id, professional_profile_id, name, description, price, dur
 ('ser-002', 'prof-001', 'Afeitado Premium', 'Toalla caliente', 10000.00, 20, 'SESSION', 0, 1, NOW()),
 ('ser-003', 'prof-002', 'Evaluación Kine', 'Sesión inicial', 45000.00, 60, 'SESSION', 1, 1, NOW());
 
--- 6. PLANTILLAS DE SERVICIO (Para el Admin o creación rápida)
+-- 6. PLANTILLAS DE SERVICIO
 INSERT INTO service_templates (id, category_id, name, default_price, default_duration, active) VALUES
 ('temp-001', 'cat-001-barber', 'Corte Simple', 12000.00, 30, 1),
 ('temp-002', 'cat-002-health', 'Consulta Médica', 35000.00, 20, 1);
@@ -48,7 +49,7 @@ INSERT INTO reservations (id, client_id, specialist_id, service_id, reservation_
 INSERT INTO attentions (id, reservation_id, client_id, specialist_id, started_at, finished_at, duration_minutes, status, observations, created_at) VALUES
 ('att-001', 'res-comp-001', 'u-cli-001', 'u-spec-001', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 47 HOUR), 45, 'FINISHED', 'Corte de cabello ejecutado sin problemas.', NOW());
 
--- 9. FACTURACIÓN (Dashboard Data)
+-- 9. FACTURACIÓN
 INSERT INTO billing_records (id, reservation_id, attention_id, client_id, specialist_id, amount, currency, status, paid_at, created_at) VALUES
 ('bill-001', 'res-comp-001', 'att-001', 'u-cli-001', 'u-spec-001', 15000.00, 'CLP', 'PAID', DATE_SUB(NOW(), INTERVAL 2 DAY), NOW());
 
@@ -58,4 +59,4 @@ INSERT INTO global_settings (id, config_key, config_value, description, updated_
 ('gs-2', 'CURRENCY_CODE', 'CLP', 'Moneda local', NOW());
 
 INSERT INTO audit_logs (id, action, performed_by, target_type, target_id, details, timestamp) VALUES
-('log-001', 'SYSTEM_INIT', 'system', 'DB', 'INIT', 'Datos de prueba UUID cargados para demo', NOW());
+('log-001', 'SYSTEM_INIT', 'system', 'DB', 'INIT', 'Datos de prueba UUID cargados con horarios para Franco', NOW());

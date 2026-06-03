@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,13 +58,9 @@ fun BillingScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Gestión de Cobro") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
+            AppTopBar(
+                title = "Gestión de Cobro",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -90,14 +91,11 @@ fun BillingScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = s.amount,
                             onValueChange = { vm.setAmount(it) },
-                            label = { Text("Monto a Cobrar") },
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = { Icon(Icons.Default.AttachMoney, null) },
-                            shape = MaterialTheme.shapes.medium,
-                            prefix = { Text("$") },
+                            label = "Monto a Cobrar",
+                            leadingIcon = Icons.Default.AttachMoney,
                             enabled = !s.isLoading
                         )
 
@@ -140,13 +138,11 @@ fun BillingScreen(
 
                         Spacer(Modifier.height(16.dp))
 
-                        OutlinedTextField(
+                        AppTextField(
                             value = s.notes,
                             onValueChange = { vm.setNotes(it) },
-                            label = { Text("Notas (Opcional)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = { Icon(Icons.Default.Description, null) },
-                            shape = MaterialTheme.shapes.medium,
+                            label = "Notas (Opcional)",
+                            leadingIcon = Icons.Default.Description,
                             enabled = !s.isLoading
                         )
                     }
@@ -154,18 +150,26 @@ fun BillingScreen(
 
                 Spacer(Modifier.height(32.dp))
 
-                Button(
+                AppButton(
+                    text = "Generar Cobro",
                     onClick = { vm.createBillingRecord(reservationId, attentionId) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    enabled = !s.isLoading && s.amount.isNotBlank()
-                ) {
-                    if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    else Text("Generar Cobro")
-                }
+                    enabled = !s.isLoading && s.amount.isNotBlank(),
+                    isLoading = s.isLoading
+                )
             } else {
                 // Detalle del cobro creado
                 val billing = s.currentBilling!!
                 
+                if (billing.status == "PENDING") {
+                    // Botón para abrir el Modal de Selección de Pago
+                    AppButton(
+                        text = "Seleccionar Método de Pago",
+                        onClick = { vm.setShowPaymentModal(true) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
+
                 Text(
                     "Resumen de Transacción",
                     style = MaterialTheme.typography.headlineSmall,
@@ -204,47 +208,128 @@ fun BillingScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     
-                    OutlinedTextField(
+                    AppTextField(
                         value = s.externalReference,
                         onValueChange = { vm.setExternalReference(it) },
-                        label = { Text("Número de Referencia / Comprobante") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
+                        label = "Número de Referencia / Comprobante",
                         enabled = !s.isLoading
                     )
                     
                     Spacer(Modifier.height(24.dp))
                     
                     Row(Modifier.fillMaxWidth()) {
-                        Button(
+                        AppButton(
+                            text = "Registrar Pago",
                             onClick = { vm.markAsPaid(billing.id) },
-                            modifier = Modifier.weight(1f).height(56.dp),
-                            enabled = !s.isLoading
-                        ) {
-                            if (s.isLoading) CircularProgressIndicator(Modifier.size(24.dp))
-                            else Text("Registrar Pago")
-                        }
+                            modifier = Modifier.weight(1f),
+                            isLoading = s.isLoading
+                        )
                         Spacer(Modifier.width(12.dp))
-                        OutlinedButton(
+                        AppOutlinedButton(
+                            text = "Anular",
                             onClick = { vm.cancelBillingRecord(billing.id) },
-                            modifier = Modifier.weight(1f).height(56.dp),
-                            enabled = !s.isLoading,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("Anular")
-                        }
+                            modifier = Modifier.weight(1f),
+                            enabled = !s.isLoading
+                        )
                     }
                 } else {
-                    Button(
-                        onClick = { nav.popBackStack() },
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
-                    ) {
-                        Text("Finalizar y Volver")
-                    }
+                    AppButton(
+                        text = "Finalizar y Volver",
+                        onClick = { nav.popBackStack() }
+                    )
                 }
             }
+        }
 
-            // Eliminados mensajes estáticos redundantes
+        if (s.showPaymentModal && s.currentBilling != null) {
+            PaymentSelectionModal(
+                amount = s.currentBilling!!.amount,
+                onSelectMethod = { method ->
+                    vm.setPaymentMethod(method)
+                    if (method != "CASH") {
+                        vm.markAsPaid(s.currentBilling!!.id)
+                    }
+                    vm.setShowPaymentModal(false)
+                },
+                onDismiss = { vm.setShowPaymentModal(false) }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaymentSelectionModal(
+    amount: Double,
+    onSelectMethod: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 48.dp, start = 24.dp, end = 24.dp)
+        ) {
+            Text(
+                "Finalizar Pago",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Total a pagar: $${amount}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(Modifier.height(24.dp))
+            
+            PaymentOptionItem(
+                title = "Tarjeta de Crédito / Débito",
+                subtitle = "Pago rápido y seguro",
+                icon = Icons.Default.CreditCard,
+                onClick = { onSelectMethod("CARD") }
+            )
+            
+            PaymentOptionItem(
+                title = "Transferencia Bancaria",
+                subtitle = "Envía el comprobante después",
+                icon = Icons.Default.Receipt,
+                onClick = { onSelectMethod("TRANSFER") }
+            )
+            
+            PaymentOptionItem(
+                title = "Pago en Efectivo",
+                subtitle = "Paga directamente en el local",
+                icon = Icons.Default.AttachMoney,
+                onClick = { onSelectMethod("CASH") }
+            )
+        }
+    }
+}
+
+@Composable
+fun PaymentOptionItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -259,4 +344,3 @@ fun BillingInfoRow(icon: ImageVector, label: String, value: String, color: andro
         Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = color)
     }
 }
-

@@ -20,6 +20,18 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+/**
+ * AUDITORÍA TÉCNICA: Gestión de Reservas (UI State Management)
+ * 
+ * Este ViewModel orquestra el flujo multipaso de reserva:
+ * Selección Especialista -> Servicio -> Fecha/Hora -> Confirmación.
+ * 
+ * Hallazgos:
+ * 1. [OK] Reactividad: Uso de StateFlow para manejar el estado de la UI (BookingUiState).
+ * 2. [OK] Validación Centralizada: Método 'validate' garantiza integridad antes de habilitar el botón de reserva.
+ * 3. [MEJORA] Inyección de Dependencias: El repositorio se instancia directamente; se recomienda Hilt/Koin.
+ * 4. [OK] UX - Feedback: Manejo de estados de carga (isLoading) y mensajes de éxito/error.
+ */
 data class BookingUiState(
     val professionals: List<SpecialistResponseDto> = emptyList(),
     val services: List<ServiceResponseDto> = emptyList(),
@@ -29,8 +41,10 @@ data class BookingUiState(
     val reservationStartMillis: Long? = null,
     val availableSlots: List<String> = emptyList(),
     val selectedSlot: String? = null,
+    val paymentMethod: String? = null,
     val notes: String = "",
     val isLoading: Boolean = false,
+    val isAvailabilityLoading: Boolean = false,
     val isValid: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
@@ -63,6 +77,10 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * AUDITORÍA: Selección de Especialista.
+     * Gatilla carga asíncrona de servicios y clima local para mejorar la UX.
+     */
     fun selectProfessional(professional: SpecialistResponseDto) {
         _state.update { it.copy(
             selectedProfessional = professional,
@@ -72,19 +90,61 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         ) }
         loadServicesForProfessional(professional.id)
         loadWeather(professional.city)
+        loadAvailabilityIfPossible()
     }
 
-    fun selectProfessionalById(id: String, categoryId: String? = null) {
+    fun selectProfessionalById(id: String?, categoryId: String? = null) {
+        if (id.isNullOrBlank() || id == "null") {
+            loadProfessionals(categoryId)
+            return
+        }
+
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            repository.getActiveProfiles(categoryId)
-                .onSuccess { list ->
-                    val found = list.find { it.id == id }
-                    if (found != null) {
-                        selectProfessional(found)
+            
+            val currentList = _state.value.professionals
+            var found = currentList.find { 
+                it.id.trim().equals(id.trim(), ignoreCase = true) || 
+                it.userId.trim().equals(id.trim(), ignoreCase = true) 
+            }
+
+            if (found == null) {
+                repository.getActiveProfiles(null) 
+                    .onSuccess { list ->
+                        found = list.find { 
+                            it.id.trim().equals(id.trim(), ignoreCase = true) || 
+                            it.userId.trim().equals(id.trim(), ignoreCase = true) 
+                        }
+                        
+                        _state.update { s -> s.copy(
+                            professionals = list,
+                            selectedProfessional = found,
+                            isLoading = false
+                        ).let { it.copy(isValid = validate(it)) } }
+                        
+                        val finalFound = found
+                        if (finalFound != null) {
+                            loadServicesForProfessional(finalFound.id)
+                            loadWeather(finalFound.city)
+                            loadAvailabilityIfPossible()
+                        }
                     }
-                    _state.update { it.copy(isLoading = false) }
+                    .onFailure { e ->
+                        _state.update { it.copy(error = e.message, isLoading = false) }
+                    }
+            } else {
+                _state.update { s -> s.copy(
+                    selectedProfessional = found,
+                    isLoading = false
+                ).let { it.copy(isValid = validate(it)) } }
+                
+                val finalFound = found
+                if (finalFound != null) {
+                    loadServicesForProfessional(finalFound.id)
+                    loadWeather(finalFound.city)
+                    loadAvailabilityIfPossible()
                 }
+            }
         }
     }
 
@@ -110,10 +170,13 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         loadAvailabilityIfPossible()
     }
 
+    /**
+     * AUDITORÍA: Gestión de Tiempo.
+     * Al seleccionar fecha, se limpian slots previos y se gatilla consulta de disponibilidad.
+     */
     fun setReservationDateTime(millis: Long) {
         val cal = Calendar.getInstance()
         cal.timeInMillis = millis
-        // Por defecto a las 9:00 AM si no hay slot
         cal.set(Calendar.HOUR_OF_DAY, 9)
         cal.set(Calendar.MINUTE, 0)
         
@@ -129,9 +192,13 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         if (s.selectedProfessional != null && s.reservationStartMillis != null) {
             val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(s.reservationStartMillis)
             viewModelScope.launch {
+                _state.update { it.copy(isAvailabilityLoading = true) }
                 repository.getAvailability(s.selectedProfessional.id, dateStr)
                     .onSuccess { resp ->
-                        _state.update { it.copy(availableSlots = resp.availableSlots) }
+                        _state.update { it.copy(availableSlots = resp.availableSlots, isAvailabilityLoading = false) }
+                    }
+                    .onFailure { e ->
+                        _state.update { it.copy(error = e.message, isAvailabilityLoading = false, availableSlots = emptyList()) }
                     }
             }
         }
@@ -159,11 +226,21 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(notes = notes) }
     }
 
+    fun setPaymentMethod(method: String) {
+        _state.update { s -> s.copy(paymentMethod = method).let { it.copy(isValid = validate(it)) } }
+    }
+
+    /**
+     * AUDITORÍA: Motor de Validación.
+     * Requisito: Especialista + Servicio + Fecha + Hora (o unidad diaria) + Método Pago.
+     */
     private fun validate(s: BookingUiState): Boolean {
+        val isDayUnit = s.selectedService?.priceUnit == "DAY"
         return s.selectedProfessional != null &&
                s.selectedService != null &&
                s.reservationStartMillis != null &&
-               s.selectedSlot != null
+               s.paymentMethod != null &&
+               (s.selectedSlot != null || isDayUnit)
     }
 
     fun loadMyReservations(userId: String) {
@@ -196,7 +273,8 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
                 specialistId = s.selectedProfessional!!.id,
                 serviceId = s.selectedService!!.id,
                 reservationStart = startStr,
-                notes = s.notes
+                notes = s.notes,
+                paymentMethod = s.paymentMethod
             )
 
             repository.createReservation(request)
@@ -216,6 +294,25 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess {
                     val userId = prefs.userId.first()
                     if (userId != null) loadMyReservations(userId)
+                    _state.update { it.copy(successMessage = "Reserva cancelada") }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(error = e.message) }
+                }
+        }
+    }
+
+    fun confirmCashPayment(reservationId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            repository.updateReservationStatus(reservationId, "COMPLETED")
+                .onSuccess {
+                    _state.update { it.copy(isLoading = false, successMessage = "Pago en efectivo confirmado") }
+                    val userId = prefs.userId.first()
+                    if (userId != null) loadMyReservations(userId)
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = "Error al confirmar: ${e.message}") }
                 }
         }
     }

@@ -37,6 +37,12 @@ import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import coil.compose.AsyncImage
 
+/**
+ * AUDITORÍA: Orquestador principal de la interfaz de usuario.
+ * Implementa un Dashboard polimórfico basado en roles (ADMIN, SPECIALIST, CLIENT).
+ * Hallazgo: Uso extensivo de BottomSheets para acciones administrativas agiliza la navegación
+ * pero incrementa la complejidad del estado en un solo archivo.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {

@@ -6,6 +6,8 @@ data class WeeklyReportResponseDto(
     val totalReservations: Int,
     val completedAttentions: Int,
     val totalRevenue: Double,
+    val totalHoursWorked: Double,
+    val previousPeriodRevenue: Double,
     val dailyBreakdown: List<DailyMetricDto>
 )
 

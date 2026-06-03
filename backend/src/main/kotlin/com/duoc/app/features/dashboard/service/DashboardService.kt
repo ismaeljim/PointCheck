@@ -25,6 +25,7 @@ class DashboardService(
 ) {
 
     fun getReportSummary(userId: String): com.duoc.app.features.report.dto.ReportSummaryResponse {
+        val profile = profileRepository.findByUser_Id(userId)
         val allReservations = reservationRepository.findBySpecialist_Id(userId)
         val today = LocalDate.now()
         
@@ -33,21 +34,28 @@ class DashboardService(
         }
         
         val attentions = attentionRepository.findBySpecialist_Id(userId)
+        val completedReservations = allReservations.filter { it.status == com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED }
+        
+        val allDurations = mutableListOf<Double>()
+        attentions.forEach { it.durationMinutes?.let { d -> allDurations.add(d.toDouble()) } }
+        completedReservations.forEach { res ->
+            res.service?.durationMinutes?.let { d -> allDurations.add(d.toDouble()) }
+        }
+
         val billing = billingRecordRepository.findBySpecialist_Id(userId)
 
         return com.duoc.app.features.report.dto.ReportSummaryResponse(
             totalReservations = allReservations.size,
             todayReservations = todayReservations.size,
-            completedAttentions = attentions.size,
-            averageAttentionMinutes = if (attentions.isNotEmpty()) {
-                attentions.mapNotNull { it.durationMinutes }.average().let { if (it.isNaN()) 0.0 else it }
-            } else 0.0,
+            completedAttentions = attentions.size + completedReservations.size,
+            averageAttentionMinutes = if (allDurations.isNotEmpty()) allDurations.average() else 0.0,
             totalCharged = billing.filter { it.status == PaymentStatus.PAID }.map { it.amount }
                 .fold(BigDecimal.ZERO, BigDecimal::add),
             pendingAmount = billing.filter { it.status == PaymentStatus.PENDING }.map { it.amount }
                 .fold(BigDecimal.ZERO, BigDecimal::add),
             paidBillingCount = billing.count { it.status == PaymentStatus.PAID },
-            pendingBillingCount = billing.count { it.status == PaymentStatus.PENDING }
+            pendingBillingCount = billing.count { it.status == PaymentStatus.PENDING },
+            specialty = profile?.specialty
         )
     }
 
@@ -83,25 +91,43 @@ class DashboardService(
                 val profile = profileRepository.findByUser_Id(userId)
                 if (profile == null) return DashboardMetricsResponse()
 
-                val todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
-                val todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX)
+                val now = LocalDateTime.now()
+                val todayStart = now.toLocalDate().atStartOfDay()
+                val todayEnd = now.toLocalDate().atTime(LocalTime.MAX)
+                val monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
 
                 val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
                     userId, todayStart, todayEnd
                 )
                 
+                val monthReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
+                    userId, monthStart, todayEnd.plusDays(30) // Just to be safe for the month
+                ).filter { it.reservationStart.month == now.month && it.reservationStart.year == now.year }
+
                 val attentions = attentionRepository.findBySpecialist_Id(userId)
+                val completedReservations = monthReservations.filter { it.status == com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED }
+                
+                val allDurations = mutableListOf<Double>()
+                attentions.forEach { it.durationMinutes?.let { d -> allDurations.add(d.toDouble()) } }
+                completedReservations.forEach { res ->
+                    res.service?.durationMinutes?.let { d -> allDurations.add(d.toDouble()) }
+                }
+
                 val billing = billingRecordRepository.findBySpecialist_Id(userId)
+
+                val monthlyBilling = billing.filter { 
+                    it.createdAt.month == now.month && it.createdAt.year == now.year
+                }
 
                 DashboardMetricsResponse(
                     appointmentsToday = todayReservations.size,
-                    totalAttentionsPerformed = attentions.size,
-                    averageDurationMinutes = if (attentions.isNotEmpty()) {
-                        attentions.mapNotNull { it.durationMinutes }.average().let { if (it.isNaN()) 0.0 else it }
-                    } else 0.0,
-                    pendingBillingAmount = billing.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() },
-                    paidBillingAmount = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() },
-                    subscriptionStatus = "ACTIVE"
+                    appointmentsMonth = monthReservations.size,
+                    totalAttentionsPerformed = attentions.size + completedReservations.size,
+                    averageDurationMinutes = if (allDurations.isNotEmpty()) allDurations.average() else 0.0,
+                    pendingBillingAmount = monthlyBilling.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() },
+                    paidBillingAmount = monthlyBilling.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() },
+                    subscriptionStatus = "ACTIVE",
+                    specialty = profile.specialty
                 )
             }
         }
@@ -120,7 +146,7 @@ class DashboardService(
             .map { (specialist, reservations) ->
                 val profile = profileRepository.findByUser_Id(specialist.id!!)
                 com.duoc.app.features.dashboard.dto.FavoriteSpecialistDto(
-                    specialistId = specialist.id!!,
+                    specialistId = profile?.id ?: specialist.id!!,
                     name = specialist.name,
                     specialty = profile?.specialty,
                     visitCount = reservations.size.toLong()

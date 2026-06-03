@@ -35,6 +35,11 @@ data class DashboardUiState(
     val auditLogs: List<com.pointcheck.features.admin.data.dto.AuditLogDto> = emptyList()
 )
 
+/**
+ * AUDITORÍA: Gestor de estado del Dashboard.
+ * Implementa la carga reactiva de datos según el rol del usuario persistido en DataStore.
+ * Flujo: Carga de métricas core -> Carga de datos específicos de rol -> Carga de clima asíncrona.
+ */
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = DashboardRepository(ApiClient.instance)

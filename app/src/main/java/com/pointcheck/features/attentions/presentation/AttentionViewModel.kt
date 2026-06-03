@@ -11,6 +11,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * AUDITORÍA TÉCNICA: Gestión de la Sesión de Atención (Especialista)
+ * 
+ * Este ViewModel controla el estado de la prestación del servicio en tiempo real.
+ * Permite al especialista iniciar la sesión, registrar observaciones y finalizarla.
+ * 
+ * Hallazgos:
+ * 1. [OK] Ciclo de Vida: Manejo claro de estados 'Start' y 'Finish'.
+ * 2. [OK] Persistencia de Observaciones: Las notas se actualizan reactivamente en el UI State.
+ * 3. [INFO] Integración Backend: El cierre de atención gatilla automáticamente la facturación en el servidor.
+ * 4. [MEJORA] Temporizador: Se podría agregar un cronómetro visual para que el especialista vea la duración real.
+ */
 data class AttentionUiState(
     val currentAttention: AttentionResponseDto? = null,
     val observations: String = "",
@@ -30,6 +42,10 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(observations = value) }
     }
 
+    /**
+     * AUDITORÍA: Gatilla el inicio de la atención en el backend.
+     * La reserva cambia a estado 'CONFIRMED'.
+     */
     fun startAttention(reservationId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
@@ -47,6 +63,10 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * AUDITORÍA: Gatilla el fin de la atención.
+     * La reserva cambia a 'COMPLETED' y se genera el cobro (BillingRecord).
+     */
     fun finishAttention() {
         val attentionId = _state.value.currentAttention?.id ?: return
         viewModelScope.launch {

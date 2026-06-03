@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Estado de la UI para el proceso de registro y gestión de usuario.
+ * Centraliza los datos del formulario, estados de carga y errores.
+ */
 data class RegisterUiState(
     val name: String = "",
     val email: String = "",
@@ -35,6 +39,16 @@ data class RegisterUiState(
     val isLoading: Boolean = false
 )
 
+/**
+ * ViewModel principal para la gestión de usuarios y autenticación en la App.
+ * Maneja tanto el registro de nuevos usuarios (Clientes/Especialistas) como el inicio de sesión.
+ * 
+ * AUDITORÍA:
+ * - Implementa persistencia local de sesión mediante UserPreferences.
+ * - Soporta el flujo de registro en múltiples pasos para Especialistas.
+ * - BUG POTENCIAL: La lógica de 'save' asume que el avatarUri es una cadena persistente, 
+ *   pero las URIs de MediaPicker pueden caducar si no se toman persistencias de permisos.
+ */
 class UserViewModel(app: Application) : AndroidViewModel(app) {
     private val authRepository = AuthRepository()
     private val profileRepository = ProfessionalProfileRepository(ApiClient.instance)
@@ -73,6 +87,13 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = n.copy(isValid = validate(n))
     }
 
+    /**
+     * Valida el estado del formulario de registro.
+     * 
+     * AUDITORÍA:
+     * - Se valida formato de Email, RUT y longitud mínima de campos.
+     * - Para Especialistas, se obliga a tener Ciudad, Dirección y Categoría.
+     */
     private fun validate(s: RegisterUiState): Boolean {
         val baseValid = s.name.isNotBlank()
                 && Patterns.EMAIL_ADDRESS.matcher(s.email).matches()
@@ -93,6 +114,10 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = s.copy(avatarUri = uri.toString(), isValid = validate(s))
     }
 
+    /**
+     * Ejecuta el registro del usuario en el Backend.
+     * Si tiene éxito, guarda la sesión localmente y recupera el perfil profesional si aplica.
+     */
     fun save(onDone: () -> Unit) {
         val s = _state.value
         if (!s.isValid) return
@@ -142,6 +167,11 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearError() = _state.update { it.copy(error = null) }
 
+    /**
+     * Realiza el login y establece la sesión local.
+     * AUDITORÍA: Al iniciar sesión, se intenta recuperar el ProfessionalProfileId 
+     * de forma proactiva para especialistas.
+     */
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }

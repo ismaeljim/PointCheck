@@ -23,7 +23,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
 
+/**
+ * Pantalla de Inicio de Sesión.
+ * Proporciona la interfaz de usuario para que clientes y especialistas accedan al sistema.
+ * 
+ * AUDITORÍA:
+ * - El estado de carga (s.isLoading) bloquea correctamente las interacciones.
+ * - Se utiliza AppTopBar y AppTextField para mantener consistencia visual.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(

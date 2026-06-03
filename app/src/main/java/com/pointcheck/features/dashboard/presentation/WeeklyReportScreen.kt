@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -16,6 +17,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,6 +29,8 @@ import com.pointcheck.core.presentation.components.HeaderIcon
 import com.pointcheck.core.presentation.components.SectionHeader
 import com.pointcheck.features.dashboard.data.dto.DailyMetricDto
 import com.pointcheck.features.dashboard.data.dto.WeeklySummaryDto
+import com.pointcheck.features.services.data.dto.ServiceResponseDto
+import androidx.compose.foundation.lazy.LazyRow
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -220,6 +226,107 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun TrendIndicator(growth: Double) {
+    val isPositive = growth >= 0
+    val color = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+    val icon = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown
+    
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = String.format(Locale.getDefault(), "%+.1f%%", growth),
+            color = color,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun StatMiniItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun TrendLineChart(data: List<Float>, modifier: Modifier = Modifier) {
+    val maxVal = (data.maxOrNull() ?: 0f).coerceAtLeast(1f)
+    val color = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+
+    Box(
+        modifier = modifier
+            .background(surfaceColor, MaterialTheme.shapes.medium)
+            .padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val spacing = width / (data.size - 1).coerceAtLeast(1)
+
+            val points = data.mapIndexed { index, value ->
+                val x = index * spacing
+                val y = height - (value / maxVal) * height
+                androidx.compose.ui.geometry.Offset(x, y)
+            }
+
+            val path = Path().apply {
+                if (points.isNotEmpty()) {
+                    moveTo(points.first().x, points.first().y)
+                    for (i in 1 until points.size) {
+                        lineTo(points[i].x, points[i].y)
+                    }
+                }
+            }
+
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Draw points
+            points.forEach { point ->
+                drawCircle(color = color, radius = 4.dp.toPx(), center = point)
+                drawCircle(color = Color.White, radius = 2.dp.toPx(), center = point)
+            }
+        }
+    }
+}
+
+@Composable
+fun ServiceFilterRow(
+    services: List<ServiceResponseDto>,
+    selectedServiceId: String?,
+    onServiceSelected: (String?) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp)
+    ) {
+        item {
+            FilterChip(
+                selected = selectedServiceId == null,
+                onClick = { onServiceSelected(null) },
+                label = { Text("Todos") }
+            )
+        }
+        items(services) { service ->
+            FilterChip(
+                selected = selectedServiceId == service.id,
+                onClick = { onServiceSelected(service.id) },
+                label = { Text(service.name) }
+            )
         }
     }
 }

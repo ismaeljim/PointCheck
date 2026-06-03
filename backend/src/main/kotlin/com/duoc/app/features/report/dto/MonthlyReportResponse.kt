@@ -6,6 +6,8 @@ data class MonthlyReportResponse(
     val totalReservations: Int,
     val completedAttentions: Int,
     val totalRevenue: Double,
+    val totalHoursWorked: Double,
+    val previousPeriodRevenue: Double,
     val weeklyBreakdown: List<WeeklySummaryDto>
 )
 

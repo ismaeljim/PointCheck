@@ -18,12 +18,12 @@ class DashboardRepository(private val api: ApiService) {
         return handleApiCall("Error al obtener resumen de reporte") { api.getReportSummaryBySpecialist(specialistId) }
     }
 
-    suspend fun getWeeklyReport(userId: String, weekOffset: Int): Result<WeeklyReportResponseDto> {
-        return handleApiCall("Error al obtener reporte semanal") { api.getWeeklyReport(userId, weekOffset) }
+    suspend fun getWeeklyReport(userId: String, weekOffset: Int, serviceId: String? = null): Result<WeeklyReportResponseDto> {
+        return handleApiCall("Error al obtener reporte semanal") { api.getWeeklyReport(userId, weekOffset, serviceId) }
     }
 
-    suspend fun getMonthlyReport(userId: String, monthOffset: Int): Result<MonthlyReportResponseDto> {
-        return handleApiCall("Error al obtener reporte mensual") { api.getMonthlyReport(userId, monthOffset) }
+    suspend fun getMonthlyReport(userId: String, monthOffset: Int, serviceId: String? = null): Result<MonthlyReportResponseDto> {
+        return handleApiCall("Error al obtener reporte mensual") { api.getMonthlyReport(userId, monthOffset, serviceId) }
     }
 
     suspend fun getClientDashboard(clientId: String): Result<com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto> {
@@ -48,9 +48,9 @@ class DashboardRepository(private val api: ApiService) {
         }
     }
 
-    suspend fun exportWeeklyReport(userId: String, weekOffset: Int): Result<String> {
+    suspend fun exportWeeklyReport(userId: String, weekOffset: Int, serviceId: String? = null): Result<String> {
         return try {
-            val response = api.exportWeeklyReport(userId, weekOffset)
+            val response = api.exportWeeklyReport(userId, weekOffset, serviceId)
             if (response.isSuccessful) {
                 Result.success(response.body()?.string() ?: "")
             } else {
@@ -62,9 +62,9 @@ class DashboardRepository(private val api: ApiService) {
         }
     }
 
-    suspend fun exportMonthlyReport(userId: String, monthOffset: Int): Result<String> {
+    suspend fun exportMonthlyReport(userId: String, monthOffset: Int, serviceId: String? = null): Result<String> {
         return try {
-            val response = api.exportMonthlyReport(userId, monthOffset)
+            val response = api.exportMonthlyReport(userId, monthOffset, serviceId)
             if (response.isSuccessful) {
                 Result.success(response.body()?.string() ?: "")
             } else {

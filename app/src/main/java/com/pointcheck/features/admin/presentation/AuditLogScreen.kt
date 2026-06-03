@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,13 +24,9 @@ fun AuditLogScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Logs de Auditoría") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        // Icono de volver
-                    }
-                }
+            AppTopBar(
+                title = "Logs de Auditoría",
+                onBack = onBack
             )
         }
     ) { padding ->

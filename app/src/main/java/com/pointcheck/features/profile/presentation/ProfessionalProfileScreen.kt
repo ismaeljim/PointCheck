@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
@@ -22,6 +23,10 @@ import androidx.navigation.NavController
 import com.pointcheck.core.location.LocationViewModel
 import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.AppSelectorField
+import com.pointcheck.core.presentation.components.DayScheduleRow
+import com.pointcheck.core.presentation.components.AppOutlinedButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,10 +35,10 @@ fun ProfessionalProfileScreen(
     vm: ProfessionalProfileViewModel = viewModel(),
     locationVm: LocationViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val s by vm.state.collectAsState()
     val locState by locationVm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     
     var displayName by remember { mutableStateOf("") }
     var businessName by remember { mutableStateOf("") }
@@ -81,13 +86,9 @@ fun ProfessionalProfileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Perfil Profesional") },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }, enabled = !s.isLoading) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                },
+            AppTopBar(
+                title = "Perfil Profesional",
+                onBack = { nav.popBackStack() },
                 actions = {
                     if (!s.isEditing && s.profile != null) {
                         IconButton(onClick = { vm.toggleEdit() }, enabled = !s.isLoading) {
@@ -157,32 +158,21 @@ fun ProfessionalProfileScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Especialidad y Servicios", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
-                        // Selector de Categoría (Visual)
-                        ExposedDropdownMenuBox(
-                            expanded = expandedCategory && s.isEditing,
-                            onExpandedChange = { if (s.isEditing) expandedCategory = !expandedCategory },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        // Selector de Categoría Refactorizado
+                        Box {
                             val selectedCategory = s.categories.find { it.id == selectedCategoryId }
-                            OutlinedTextField(
+                            AppSelectorField(
+                                label = "Categoría de Servicio",
                                 value = selectedCategory?.name ?: "Seleccionar Categoría",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Categoría de Servicio") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory) },
-                                leadingIcon = { Icon(Icons.Default.Category, null, tint = MaterialTheme.colorScheme.primary) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                enabled = s.isEditing,
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                                )
+                                icon = Icons.Default.Category,
+                                onClick = { if (s.isEditing) expandedCategory = true },
+                                enabled = s.isEditing
                             )
 
-                            ExposedDropdownMenu(
+                            DropdownMenu(
                                 expanded = expandedCategory && s.isEditing,
-                                onDismissRequest = { expandedCategory = false }
+                                onDismissRequest = { expandedCategory = false },
+                                modifier = Modifier.fillMaxWidth(0.85f)
                             ) {
                                 s.categories.forEach { category ->
                                     DropdownMenuItem(
@@ -209,7 +199,8 @@ fun ProfessionalProfileScreen(
                             onValueChange = { description = it },
                             label = "Descripción / Bio",
                             leadingIcon = Icons.Default.Description,
-                            enabled = s.isEditing
+                            enabled = s.isEditing,
+                            minLines = 3
                         )
                         
                         AppTextField(
@@ -217,8 +208,42 @@ fun ProfessionalProfileScreen(
                             onValueChange = { duration = it },
                             label = "Duración promedio cita (min)",
                             leadingIcon = Icons.Default.Timer,
-                            enabled = s.isEditing
+                            enabled = s.isEditing,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                         )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Mi Horario de Atención", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Text("Activa los días que atiendes y define tu horario.", style = MaterialTheme.typography.bodySmall)
+
+                        val daysTranslation = mapOf(
+                            "MONDAY" to "Lunes",
+                            "TUESDAY" to "Martes",
+                            "WEDNESDAY" to "Miércoles",
+                            "THURSDAY" to "Jueves",
+                            "FRIDAY" to "Viernes",
+                            "SATURDAY" to "Sábado",
+                            "SUNDAY" to "Domingo"
+                        )
+
+                        listOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY").forEach { dayKey ->
+                            val config = s.workingHours[dayKey] ?: DayConfig()
+                            DayScheduleRow(
+                                dayName = daysTranslation[dayKey] ?: dayKey,
+                                config = config,
+                                onConfigChange = { vm.updateDayConfig(dayKey, it) },
+                                enabled = s.isEditing
+                            )
+                        }
                     }
                 }
 
@@ -233,16 +258,26 @@ fun ProfessionalProfileScreen(
                         Text("Ubicación", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
                         Box {
-                            AppTextField(
-                                value = address,
-                                onValueChange = { 
-                                    address = it
-                                    locationVm.getAddressSuggestions(it)
-                                },
-                                label = "Dirección de atención",
-                                leadingIcon = Icons.Default.Place,
-                                enabled = s.isEditing
-                            )
+                            Column {
+                                AppTextField(
+                                    value = address,
+                                    onValueChange = { 
+                                        address = it
+                                        locationVm.getAddressSuggestions(it)
+                                    },
+                                    label = "Dirección de atención",
+                                    leadingIcon = Icons.Default.Place,
+                                    enabled = s.isEditing
+                                )
+                                if (s.isEditing) {
+                                    Text(
+                                        "Si trabajas a domicilio, indica tu comuna o punto de referencia principal",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
 
                             if (locState.addressSuggestions.isNotEmpty() && s.isEditing) {
                                 DropdownMenu(
@@ -277,25 +312,23 @@ fun ProfessionalProfileScreen(
                         )
 
                         if (s.isEditing) {
-                            OutlinedButton(
+                            AppOutlinedButton(
+                                text = "Usar mi ubicación actual (GPS)",
+                                icon = Icons.Default.MyLocation,
                                 onClick = {
                                     locationVm.getCurrentLocation { lat, lng ->
                                         latitude = lat
                                         longitude = lng
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Ubicación activada: Ahora los clientes podrán ver tu zona de cobertura o local",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !locState.isLocating,
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                if (locState.isLocating) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Icon(Icons.Default.MyLocation, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Usar mi ubicación actual (GPS)")
-                                }
-                            }
+                                isLoading = locState.isLocating,
+                                enabled = !locState.isLocating
+                            )
                             
                             if (latitude != null && longitude != null) {
                                 Text(
@@ -358,27 +391,6 @@ fun ProfessionalProfileScreen(
 }
 
 @Composable
-fun ProfileField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    icon: ImageVector,
-    enabled: Boolean,
-    minLines: Int = 1
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-        enabled = enabled,
-        leadingIcon = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) },
-        shape = MaterialTheme.shapes.medium,
-        minLines = minLines
-    )
-}
-
-@Composable
 fun EmptyProfileState(onStart: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(32.dp),
@@ -404,26 +416,6 @@ fun EmptyProfileState(onStart: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onStart, modifier = Modifier.height(56.dp).fillMaxWidth()) {
-            Text("Configurar ahora")
-        }
-    }
-}
-
-@Composable
-fun ProfileStatusMessage(msg: String, isError: Boolean) {
-    val containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
-    val contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
-    
-    Card(
-        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Text(
-            msg,
-            color = contentColor,
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
+        AppButton(text = "Configurar ahora", onClick = onStart)
     }
 }

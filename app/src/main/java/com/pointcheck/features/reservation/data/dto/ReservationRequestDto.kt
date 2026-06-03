@@ -9,5 +9,6 @@ data class ReservationRequestDto(
     val serviceId: String? = null,
     val reservationStart: String,
     val reservationEnd: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    val paymentMethod: String? = null
 )

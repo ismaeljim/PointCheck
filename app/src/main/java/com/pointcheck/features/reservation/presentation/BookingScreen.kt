@@ -48,6 +48,14 @@ fun BookingScreen(
 
     var professionalExpanded by remember { mutableStateOf(false) }
     var serviceExpanded by remember { mutableStateOf(false) }
+    var paymentMethodExpanded by remember { mutableStateOf(false) }
+
+    val paymentMethods = listOf(
+        "CASH" to "Efectivo",
+        "TRANSFER" to "Transferencia",
+        "CARD_EXTERNAL" to "Tarjeta (POS Externo)",
+        "OTHER" to "Otro"
+    )
 
     LaunchedEffect(preSelectedSpecialistId, preSelectedCategoryId) {
         if (preSelectedSpecialistId != null) {

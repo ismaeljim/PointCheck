@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.core.presentation.components.AppButton
+import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.HeaderIcon
 import com.pointcheck.core.presentation.components.SectionHeader
 
@@ -261,57 +263,50 @@ fun AddServiceDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        title = { Text("Nuevo Servicio") },
+        title = { Text("Nuevo servicio") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name, 
-                    onValueChange = { name = it }, 
-                    label = { Text("Nombre del servicio") },
+                AppTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = "Nombre del servicio",
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
                     enabled = !isLoading
                 )
-                OutlinedTextField(
-                    value = desc, 
-                    onValueChange = { desc = it }, 
-                    label = { Text("Descripción") },
+                AppTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
+                    label = "Descripcion",
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
                     enabled = !isLoading
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = price, 
-                        onValueChange = { price = it }, 
-                        label = { Text("Precio") },
+                    AppTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = "Precio ($)",
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        prefix = { Text("$") },
                         enabled = !isLoading
                     )
-                    OutlinedTextField(
-                        value = duration, 
-                        onValueChange = { duration = it }, 
-                        label = { Text("Minutos") },
+                    AppTextField(
+                        value = duration,
+                        onValueChange = { duration = it },
+                        label = "Minutos",
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
                         enabled = !isLoading
                     )
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = { 
-                    onConfirm(name, desc, price.toDoubleOrNull() ?: 0.0, duration.toIntOrNull() ?: 30) 
+            AppButton(
+                text = "Crear",
+                onClick = {
+                    onConfirm(name, desc, price.toDoubleOrNull() ?: 0.0, duration.toIntOrNull() ?: 30)
                 },
                 enabled = name.isNotBlank() && price.isNotBlank() && !isLoading,
-                shape = RoundedCornerShape(12.dp)
-            ) { 
-                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Text("Crear") 
-            }
+                isLoading = isLoading
+            )
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancelar") }
