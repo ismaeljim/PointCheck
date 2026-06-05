@@ -15,6 +15,9 @@ interface UserRepository : JpaRepository<User, String> {
     /**
      * Recupera un usuario por su email para procesos de login.
      */
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u LEFT JOIN FETCH u.professionalProfile pp LEFT JOIN FETCH pp.category WHERE u.email = :email")
+    fun findByEmailWithProfile(email: String): User?
+
     fun findByEmail(email: String): User?
 
     /**

@@ -51,17 +51,19 @@ sealed class Screen(val route: String) {
             (if (specialistId != null && categoryId != null) "&" else "") +
             (categoryId?.let { "categoryId=$it" } ?: "")
     }
-    object Scheduled : Screen("scheduled")
+    object Scheduled : Screen("scheduled?filter={filter}") {
+        fun createRoute(filter: String? = null) = "scheduled" + (filter?.let { "?filter=$it" } ?: "")
+    }
     object Profile : Screen("profile")
     object ProfessionalProfile : Screen("professional_profile")
     object ServiceManagement : Screen("service_management")
     object Subscription : Screen("subscription")
-    object Attention : Screen("attention/{reservationId}/{clientId}/{specialistId}") {
-        fun createRoute(reservationId: String, clientId: String, specialistId: String) = "attention/$reservationId/$clientId/$specialistId"
+    object Attention : Screen("attention/{reservationId}") {
+        fun createRoute(reservationId: String) = "attention/$reservationId"
     }
-    object Billing : Screen("billing/{resId}/{cliId}/{specId}?attId={attId}") {
-        fun createRoute(resId: String, cliId: String, specId: String, attId: String?) =
-            "billing/$resId/$cliId/$specId" + (attId?.let { "?attId=$it" } ?: "")
+    object Billing : Screen("billing/{reservationId}?attentionId={attentionId}") {
+        fun createRoute(reservationId: String, attentionId: String?) =
+            "billing/$reservationId" + (attentionId?.let { "?attentionId=$it" } ?: "")
     }
     object ServiceDetail : Screen("service_detail/{serviceName}") {
         fun createRoute(serviceName: String) = "service_detail/$serviceName"
@@ -90,7 +92,12 @@ fun AppNavigation(snackbar: SnackbarHostState) {
             CategorySelectionScreen(nav, authVm)
         }
         
-        composable(
+        /**
+     * Rutas de Proceso (Atención y Facturación)
+     * Optimizadas para requerir solo 'reservationId'. 
+     * Los ViewModels recargan el contexto completo para asegurar consistencia con UserSummaryDto.
+     */
+    composable(
             "service_configuration/{categoryId}",
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
         ) { backStackEntry ->
@@ -98,7 +105,12 @@ fun AppNavigation(snackbar: SnackbarHostState) {
             ServiceConfigurationScreen(catId, nav, authVm)
         }
         
-        composable(
+        /**
+     * Rutas de Proceso (Atención y Facturación)
+     * Optimizadas para requerir solo 'reservationId'. 
+     * Los ViewModels recargan el contexto completo para asegurar consistencia con UserSummaryDto.
+     */
+    composable(
             route = Screen.Booking.route,
             arguments = listOf(
                 navArgument("specialistId") { 
@@ -118,54 +130,76 @@ fun AppNavigation(snackbar: SnackbarHostState) {
             BookingScreen(nav, snackbar, specId, catId)
         }
 
-        composable(Screen.Scheduled.route) { ScheduledScreen(nav) }
+        composable(
+            route = Screen.Scheduled.route,
+            arguments = listOf(navArgument("filter") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val filter = backStackEntry.arguments?.getString("filter")
+            ScheduledScreen(nav, filter = filter)
+        }
         composable(Screen.Profile.route) { ProfileScreen(nav) }
         composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
         composable(Screen.ServiceManagement.route) { ServiceListScreen(nav) }
         composable(Screen.Subscription.route) { SubscriptionScreen(nav) }
 
-        composable(
+        /**
+     * Rutas de Proceso (Atención y Facturación)
+     * Optimizadas para requerir solo 'reservationId'. 
+     * Los ViewModels recargan el contexto completo para asegurar consistencia con UserSummaryDto.
+     */
+    composable(
             route = Screen.Attention.route,
             arguments = listOf(
-                navArgument("reservationId") { type = NavType.StringType },
-                navArgument("clientId") { type = NavType.StringType },
-                navArgument("specialistId") { type = NavType.StringType }
+                navArgument("reservationId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val resId = backStackEntry.arguments?.getString("reservationId") ?: ""
-            val cliId = backStackEntry.arguments?.getString("clientId") ?: ""
-            val specId = backStackEntry.arguments?.getString("specialistId") ?: ""
-            AttentionScreen(nav, resId, cliId, specId)
+            AttentionScreen(nav, resId)
         }
 
-        composable(
+        /**
+     * Rutas de Proceso (Atención y Facturación)
+     * Optimizadas para requerir solo 'reservationId'. 
+     * Los ViewModels recargan el contexto completo para asegurar consistencia con UserSummaryDto.
+     */
+    composable(
             route = Screen.Billing.route,
             arguments = listOf(
-                navArgument("resId") { type = NavType.StringType },
-                navArgument("cliId") { type = NavType.StringType },
-                navArgument("specId") { type = NavType.StringType },
-                navArgument("attId") {
+                navArgument("reservationId") { type = NavType.StringType },
+                navArgument("attentionId") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
-            val resId = backStackEntry.arguments?.getString("resId") ?: ""
-            val cliId = backStackEntry.arguments?.getString("cliId") ?: ""
-            val specId = backStackEntry.arguments?.getString("specId") ?: ""
-            val attId = backStackEntry.arguments?.getString("attId")
-            BillingScreen(nav, resId, cliId, specId, attId)
+            val resId = backStackEntry.arguments?.getString("reservationId") ?: ""
+            val attId = backStackEntry.arguments?.getString("attentionId")
+            BillingScreen(nav, resId, attId)
         }
 
-        composable(
+        /**
+     * Rutas de Proceso (Atención y Facturación)
+     * Optimizadas para requerir solo 'reservationId'. 
+     * Los ViewModels recargan el contexto completo para asegurar consistencia con UserSummaryDto.
+     */
+    composable(
             route = Screen.ServiceDetail.route,
             arguments = listOf(navArgument("serviceName") { type = NavType.StringType })
         ) { backStackEntry ->
             val name = backStackEntry.arguments?.getString("serviceName") ?: ""
             ServiceDetailScreen(name, nav)
         }
-        composable(
+        /**
+     * Rutas de Proceso (Atención y Facturación)
+     * Optimizadas para requerir solo 'reservationId'. 
+     * Los ViewModels recargan el contexto completo para asegurar consistencia con UserSummaryDto.
+     */
+    composable(
             route = Screen.AppointmentHistory.route,
             arguments = listOf(navArgument("type") { type = NavType.StringType })
         ) { backStackEntry ->

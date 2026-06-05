@@ -42,15 +42,25 @@ data class User(
     var phone: String,
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'CLIENT'")
     var role: UserRole = UserRole.CLIENT,
     
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BIT(1) DEFAULT 1")
     var active: Boolean = true,
     
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at")
-    var updatedAt: LocalDateTime? = null
-)
+    var updatedAt: LocalDateTime? = null,
+
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var professionalProfile: com.duoc.app.features.professionalprofile.model.ProfessionalProfile? = null
+) {
+    fun toSummaryDto() = com.duoc.app.features.user.dto.UserSummaryDto(
+        id = this.id!!,
+        name = this.name,
+        rut = this.rut,
+        role = this.role
+    )
+}

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.pointcheck
 
 import android.os.Bundle
@@ -24,7 +26,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PointCheckApp() {
     val snackbar = remember { SnackbarHostState() }

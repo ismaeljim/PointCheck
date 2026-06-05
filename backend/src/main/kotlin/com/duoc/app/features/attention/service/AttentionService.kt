@@ -141,10 +141,10 @@ class AttentionService(
     }
 
     private fun Attention.toResponse(): AttentionResponse = AttentionResponse(
-        id = this.id,
-        reservationId = this.reservation.id,
-        clientId = this.client.id,
-        specialistId = this.specialist.id,
+        id = this.id!!,
+        reservationId = this.reservation.id!!,
+        client = this.client.toSummaryDto(),
+        specialist = this.specialist.toSummaryDto(),
         startedAt = this.startedAt,
         finishedAt = this.finishedAt,
         durationMinutes = this.durationMinutes,

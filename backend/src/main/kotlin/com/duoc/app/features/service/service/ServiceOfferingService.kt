@@ -40,7 +40,9 @@ class ServiceOfferingService(
             name = request.name,
             description = request.description,
             price = request.price,
-            durationMinutes = request.durationMinutes
+            durationMinutes = request.durationMinutes,
+            priceUnit = request.priceUnit,
+            isAtHome = request.isAtHome
         )
 
         return serviceOfferingRepository.save(serviceOffering).toResponse()
@@ -78,6 +80,8 @@ class ServiceOfferingService(
         description = this.description,
         price = this.price,
         durationMinutes = this.durationMinutes,
+        priceUnit = this.priceUnit.name,
+        isAtHome = this.isAtHome,
         active = this.active
     )
 }

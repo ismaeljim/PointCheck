@@ -5,18 +5,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Payment
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,14 +26,16 @@ import com.pointcheck.core.presentation.components.AppTopBar
 fun BillingScreen(
     nav: NavController,
     reservationId: String,
-    @Suppress("UNUSED_PARAMETER") clientId: String,
-    @Suppress("UNUSED_PARAMETER") specialistId: String,
     attentionId: String?,
     vm: BillingViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(reservationId) {
+        vm.loadBillingByReservation(reservationId)
+    }
 
     LaunchedEffect(s.error) {
         s.error?.let {
@@ -189,6 +185,10 @@ fun BillingScreen(
                             billing.status,
                             color = if (billing.status == "PAID") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                         )
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        BillingInfoRow(Icons.Default.Person, "Cliente", billing.client.name)
+                        BillingInfoRow(Icons.Default.Wallet, "Especialista", billing.specialist.name)
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
                         BillingInfoRow(Icons.Default.AttachMoney, "Monto", "${billing.amount} ${billing.currency}")
                         BillingInfoRow(Icons.Default.CreditCard, "Método", billing.paymentMethod ?: "No definido")
                         BillingInfoRow(Icons.Default.History, "Fecha", billing.createdAt)
@@ -257,90 +257,52 @@ fun BillingScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentSelectionModal(
     amount: Double,
     onSelectMethod: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 48.dp, start = 24.dp, end = 24.dp)
-        ) {
-            Text(
-                "Finalizar Pago",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Total a pagar: $${amount}",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(Modifier.height(24.dp))
-            
-            PaymentOptionItem(
-                title = "Tarjeta de Crédito / Débito",
-                subtitle = "Pago rápido y seguro",
-                icon = Icons.Default.CreditCard,
-                onClick = { onSelectMethod("CARD") }
-            )
-            
-            PaymentOptionItem(
-                title = "Transferencia Bancaria",
-                subtitle = "Envía el comprobante después",
-                icon = Icons.Default.Receipt,
-                onClick = { onSelectMethod("TRANSFER") }
-            )
-            
-            PaymentOptionItem(
-                title = "Pago en Efectivo",
-                subtitle = "Paga directamente en el local",
-                icon = Icons.Default.AttachMoney,
-                onClick = { onSelectMethod("CASH") }
-            )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Seleccionar Pago ($amount CLP)") },
+        text = {
+            Column {
+                PaymentOptionItem("TRANSFER", "Transferencia Bancaria", Icons.Default.AccountBalance, onSelectMethod)
+                PaymentOptionItem("CARD", "Tarjeta Débito/Crédito", Icons.Default.CreditCard, onSelectMethod)
+                PaymentOptionItem("CASH", "Efectivo", Icons.Default.Payments, onSelectMethod)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
-    }
+    )
 }
 
 @Composable
-fun PaymentOptionItem(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
+fun PaymentOptionItem(id: String, label: String, icon: ImageVector, onSelect: (String) -> Unit) {
     Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        onClick = { onSelect(id) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(16.dp))
-            Column {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(label, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
 
 @Composable
-fun BillingInfoRow(icon: ImageVector, label: String, value: String, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
-    Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(12.dp))
-        Text("$label:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
-        Spacer(Modifier.width(4.dp))
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = color)
+fun BillingInfoRow(icon: ImageVector, label: String, value: String, color: Color = Color.Unspecified) {
+    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(8.dp))
+        Text("$label: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = color)
     }
 }

@@ -43,7 +43,7 @@ data class Reservation(
     val reservationEnd: LocalDateTime? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
     val status: ReservationStatus = ReservationStatus.PENDING,
 
     @Column(length = 1000)

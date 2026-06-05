@@ -109,10 +109,10 @@ fun RegisterScreen(
                     val isRutValid = remember(s.rut) { RutUtils.validateRut(s.rut) || s.rut.isEmpty() }
                     AppTextField(
                         value = s.rut,
-                        onValueChange = { if (it.length <= 9) vm.onValueChange("rut", it) },
-                        label = "RUT",
+                        onValueChange = { vm.onValueChange("rut", it) },
+                        label = "RUT (ej: 12.345.678-9)",
                         leadingIcon = Icons.Default.Badge,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         enabled = !s.isLoading,
                         isError = !isRutValid
                     )

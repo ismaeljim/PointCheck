@@ -54,31 +54,6 @@ class UserPreferences(private val context: Context) {
         }
     }
 
-    /**
-     * Método legacy para compatibilidad. Se recomienda usar saveSession.
-     */
-    suspend fun saveUser(name: String, email: String) {
-        context.dataStore.edit { p ->
-            p[UserPrefsKeys.NAME] = name
-            p[UserPrefsKeys.EMAIL] = email
-            p[UserPrefsKeys.LOGGED] = true
-        }
-    }
-
-    suspend fun saveName(name: String) {
-        context.dataStore.edit { p ->
-            p[UserPrefsKeys.NAME] = name
-            p[UserPrefsKeys.LOGGED] = true
-        }
-    }
-
-    suspend fun saveEmail(email: String) {
-        context.dataStore.edit { p ->
-            p[UserPrefsKeys.EMAIL] = email
-            p[UserPrefsKeys.LOGGED] = true
-        }
-    }
-
     suspend fun setAvatar(uri: String) {
         context.dataStore.edit { it[UserPrefsKeys.AVATAR_URI] = uri }
     }

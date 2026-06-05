@@ -24,7 +24,7 @@ data class DayConfig(
 
 data class ProfessionalProfileUiState(
     val profile: ProfessionalProfileResponseDto? = null,
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val error: String? = null,
     val successMessage: String? = null,
     val isEditing: Boolean = false,

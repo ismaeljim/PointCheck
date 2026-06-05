@@ -1,11 +1,17 @@
 package com.pointcheck.features.billing.data.dto
 
+import com.pointcheck.core.data.dto.UserSummaryDto
+
+/**
+ * DTO para el registro de facturación.
+ * Actualizado para usar UserSummaryDto.
+ */
 data class BillingRecordResponseDto(
     val id: String,
     val reservationId: String,
     val attentionId: String?,
-    val clientId: String,
-    val specialistId: String,
+    val client: UserSummaryDto,
+    val specialist: UserSummaryDto,
     val amount: Double,
     val currency: String,
     val paymentMethod: String?,

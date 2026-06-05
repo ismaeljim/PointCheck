@@ -2,38 +2,39 @@ package com.duoc.app.core.util
 
 /**
  * Utilidades para la gestión de RUT chileno.
- * Incluye lógica de formateo y validación mediante el algoritmo de Módulo 11.
+ * Versión Senior: Flexible con el formato de entrada, estricta con la validez.
  */
 object RutUtils {
 
     /**
-     * Limpia el RUT eliminando puntos, espacios y convirtiendo a mayúsculas.
-     * Retorna el RUT en formato 12345678-9
+     * Limpia el RUT de cualquier caracter no alfanumérico y asegura formato 12345678-9.
      */
     fun formatRut(rut: String): String {
-        val clean = rut.replace(".", "").replace(" ", "").uppercase()
-        if (!clean.contains("-")) {
-            if (clean.length < 2) return clean
-            val body = clean.substring(0, clean.length - 1)
-            val dv = clean.substring(clean.length - 1)
-            return "$body-$dv"
-        }
-        return clean
+        // Elimina todo lo que no sea número o K
+        val clean = rut.replace(Regex("[^0-9kK]"), "").uppercase()
+        
+        if (clean.length < 2) return clean
+        
+        val body = clean.substring(0, clean.length - 1)
+        val dv = clean.substring(clean.length - 1)
+        return "$body-$dv"
     }
 
     /**
-     * Valida un RUT chileno usando el algoritmo de Módulo 11.
+     * Valida un RUT chileno sin importar el formato original (puntos, guiones, espacios).
      */
     fun validateRut(rut: String): Boolean {
         try {
-            val cleanRut = rut.replace(".", "").replace(" ", "").uppercase()
-            if (!cleanRut.matches(Regex("^[0-9]+-[0-9K]$"))) return false
+            // Limpieza profunda para validación
+            val clean = rut.replace(Regex("[^0-9kK]"), "").uppercase()
             
-            val parts = cleanRut.split("-")
-            if (parts.size != 2) return false
+            if (clean.length < 2 || clean.length > 10) return false
             
-            val body = parts[0]
-            val dv = parts[1]
+            val body = clean.substring(0, clean.length - 1)
+            val dv = clean.substring(clean.length - 1)
+            
+            // Validamos que el cuerpo sea numérico
+            if (!body.all { it.isDigit() }) return false
             
             return calculateDV(body) == dv
         } catch (e: Exception) {

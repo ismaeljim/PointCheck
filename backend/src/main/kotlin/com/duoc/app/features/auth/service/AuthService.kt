@@ -7,6 +7,7 @@ import com.duoc.app.features.service.repository.CategoryRepository
 import com.duoc.app.features.user.dto.UserResponse
 import com.duoc.app.features.user.model.User
 import com.duoc.app.features.user.repository.UserRepository
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
 /**
@@ -17,7 +18,8 @@ import org.springframework.stereotype.Service
 class AuthService(
     private val userRepository: UserRepository,
     private val professionalProfileRepository: com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val passwordEncoder: PasswordEncoder
 ) {
 
     /**
@@ -45,11 +47,11 @@ class AuthService(
             throw IllegalArgumentException("El RUT ya está registrado.")
         }
 
-        // Creación del objeto de dominio User
+        // Creación del objeto de dominio User con contraseña cifrada
         val user = User(
             name = request.name,
             email = request.email,
-            password = request.password, // TODO: Pendiente Encriptación
+            password = passwordEncoder.encode(request.password),
             rut = formattedRut,
             phone = request.phone,
             role = request.role
@@ -86,22 +88,35 @@ class AuthService(
      * Incluye el categoryId si el usuario es un especialista para navegación directa en App.
      */
     fun login(request: LoginRequest): UserResponse {
-        val user = userRepository.findByEmail(request.email)
-            ?: throw IllegalArgumentException("Credenciales inválidas o usuario no encontrado.")
+        val cleanEmail = request.email.trim()
+        val cleanPassword = request.password.trim() // Limpieza de seguridad
+        
+        println("AUTH-DEBUG: Intento de login para email: [$cleanEmail]")
+        println("AUTH-DEBUG: Longitud password recibida: ${cleanPassword.length}")
+        
+        val user = userRepository.findByEmailWithProfile(cleanEmail)
+        if (user == null) {
+            println("AUTH-DEBUG: USUARIO NO ENCONTRADO en la DB: [$cleanEmail]")
+            throw IllegalArgumentException("Usuario no encontrado: $cleanEmail")
+        }
 
-        // Validación de seguridad básica (Texto Plano - REVISAR)
-        if (user.password != request.password) {
-            throw IllegalArgumentException("Credenciales inválidas o usuario no encontrado.")
+        println("AUTH-DEBUG: Usuario encontrado. Comparando password...")
+        
+        // Validación de seguridad mediante BCrypt
+        if (!passwordEncoder.matches(cleanPassword, user.password)) {
+            println("AUTH-DEBUG: PASSWORD INCORRECTO para [$cleanEmail]")
+            throw IllegalArgumentException("Contraseña incorrecta para este usuario.")
         }
 
         if (!user.active) {
+            println("AUTH-DEBUG: CUENTA DESACTIVADA para [${request.email}]")
             throw IllegalArgumentException("La cuenta se encuentra desactivada.")
         }
 
-        // Recupera el ID de categoría del perfil profesional si aplica
-        val categoryId = if (user.role == com.duoc.app.features.user.model.UserRole.SPECIALIST) {
-            professionalProfileRepository.findByUser_Id(user.id!!)?.category?.id
-        } else null
+        println("AUTH-DEBUG: LOGIN EXITOSO para [${request.email}]")
+
+        // OPTIMIZACIÓN SENIOR: Usamos la relación ya cargada por JOIN FETCH
+        val categoryId = user.professionalProfile?.category?.id
 
         return user.toResponse(categoryId)
     }

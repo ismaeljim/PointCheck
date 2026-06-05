@@ -28,12 +28,14 @@ import com.pointcheck.core.presentation.components.AppTopBar
 fun AttentionScreen(
     nav: NavController,
     reservationId: String,
-    clientId: String,
-    specialistId: String,
     vm: AttentionViewModel = viewModel()
 ) {
     val s by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(reservationId) {
+        vm.loadAttentionByReservation(reservationId)
+    }
 
     LaunchedEffect(s.error) {
         s.error?.let {
@@ -72,14 +74,32 @@ fun AttentionScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        "Información de Reserva #$reservationId",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "Información de Reserva #$reservationId",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    s.currentAttention?.let { att ->
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Cliente: ${att.client.name}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "RUT: ${att.client.rut}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             
@@ -174,8 +194,6 @@ fun AttentionScreen(
                             nav.navigate(
                                 Screen.Billing.createRoute(
                                     reservationId,
-                                    clientId,
-                                    specialistId,
                                     att.id
                                 )
                             )

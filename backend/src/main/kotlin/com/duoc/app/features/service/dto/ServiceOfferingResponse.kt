@@ -9,5 +9,7 @@ data class ServiceOfferingResponse(
     val description: String?,
     val price: BigDecimal?,
     val durationMinutes: Int?,
+    val priceUnit: String?,
+    val isAtHome: Boolean,
     val active: Boolean
 )

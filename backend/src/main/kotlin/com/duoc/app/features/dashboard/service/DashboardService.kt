@@ -6,6 +6,7 @@ import com.duoc.app.features.billing.repository.BillingRecordRepository
 import com.duoc.app.features.dashboard.dto.DashboardMetricsResponse
 import com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository
 import com.duoc.app.features.reservation.repository.ReservationRepository
+import com.duoc.app.features.reservation.model.ReservationStatus
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -25,36 +26,58 @@ class DashboardService(
 ) {
 
     fun getReportSummary(userId: String): com.duoc.app.features.report.dto.ReportSummaryResponse {
-        val profile = profileRepository.findByUser_Id(userId)
-        val allReservations = reservationRepository.findBySpecialist_Id(userId)
-        val today = LocalDate.now()
-        
-        val todayReservations = allReservations.filter { 
-            it.reservationStart.toLocalDate().isEqual(today)
-        }
-        
-        val attentions = attentionRepository.findBySpecialist_Id(userId)
-        val completedReservations = allReservations.filter { it.status == com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED }
-        
-        val allDurations = mutableListOf<Double>()
-        attentions.forEach { it.durationMinutes?.let { d -> allDurations.add(d.toDouble()) } }
-        completedReservations.forEach { res ->
-            res.service?.durationMinutes?.let { d -> allDurations.add(d.toDouble()) }
-        }
+        val now = LocalDateTime.now()
+        val todayStart = now.toLocalDate().atStartOfDay()
+        val todayEnd = now.toLocalDate().atTime(LocalTime.MAX)
+        val monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
 
-        val billing = billingRecordRepository.findBySpecialist_Id(userId)
+        val profile = profileRepository.findByUser_Id(userId)
+        
+        // Optimizamos usando conteos directos en DB en lugar de traer listas completas
+        val totalReservations = reservationRepository.countBySpecialist_Id(userId)
+        val todayReservations = reservationRepository.countBySpecialist_IdAndReservationStartBetween(userId, todayStart, todayEnd)
+        
+        val completedAttentionsCount = attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
+            userId, monthStart, todayEnd, com.duoc.app.features.attention.model.AttentionStatus.FINISHED
+        )
+        val completedReservationsCount = reservationRepository.countBySpecialist_IdAndReservationStartBetweenAndStatus(
+            userId, monthStart, todayEnd, ReservationStatus.COMPLETED
+        )
+
+        val totalDurationAttentions = attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
+            userId, monthStart, todayEnd, com.duoc.app.features.attention.model.AttentionStatus.FINISHED
+        ) ?: 0L
+        val totalDurationReservations = reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
+            userId, monthStart, todayEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+        ) ?: 0L
+
+        val totalPerformed = (completedAttentionsCount + completedReservationsCount).toInt()
+
+        val totalCharged = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
+            userId, monthStart, todayEnd, PaymentStatus.PAID
+        ) ?: BigDecimal.ZERO
+
+        val pendingAmount = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
+            userId, monthStart, todayEnd, PaymentStatus.PENDING
+        ) ?: BigDecimal.ZERO
+
+        val paidBillingCount = billingRecordRepository.countBySpecialist_IdAndCreatedAtBetweenAndStatus(
+            userId, monthStart, todayEnd, PaymentStatus.PAID
+        )
+
+        val pendingBillingCount = billingRecordRepository.countBySpecialist_IdAndCreatedAtBetweenAndStatus(
+            userId, monthStart, todayEnd, PaymentStatus.PENDING
+        )
 
         return com.duoc.app.features.report.dto.ReportSummaryResponse(
-            totalReservations = allReservations.size,
-            todayReservations = todayReservations.size,
-            completedAttentions = attentions.size + completedReservations.size,
-            averageAttentionMinutes = if (allDurations.isNotEmpty()) allDurations.average() else 0.0,
-            totalCharged = billing.filter { it.status == PaymentStatus.PAID }.map { it.amount }
-                .fold(BigDecimal.ZERO, BigDecimal::add),
-            pendingAmount = billing.filter { it.status == PaymentStatus.PENDING }.map { it.amount }
-                .fold(BigDecimal.ZERO, BigDecimal::add),
-            paidBillingCount = billing.count { it.status == PaymentStatus.PAID },
-            pendingBillingCount = billing.count { it.status == PaymentStatus.PENDING },
+            totalReservations = totalReservations.toInt(),
+            todayReservations = todayReservations.toInt(),
+            completedAttentions = totalPerformed,
+            averageAttentionMinutes = if (totalPerformed > 0) (totalDurationAttentions + totalDurationReservations).toDouble() / totalPerformed else 0.0,
+            totalCharged = totalCharged,
+            pendingAmount = pendingAmount,
+            paidBillingCount = paidBillingCount.toInt(),
+            pendingBillingCount = pendingBillingCount.toInt(),
             specialty = profile?.specialty
         )
     }
@@ -95,37 +118,55 @@ class DashboardService(
                 val todayStart = now.toLocalDate().atStartOfDay()
                 val todayEnd = now.toLocalDate().atTime(LocalTime.MAX)
                 val monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
+                val monthEnd = todayEnd // Hasta el final del día de hoy
 
-                val todayReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
+                // 1. Métricas de Reservas (Hoy y Mes) - CONSULTAS DE CONTEO DIRECTO
+                val appointmentsToday = reservationRepository.countBySpecialist_IdAndReservationStartBetween(
                     userId, todayStart, todayEnd
+                ).toInt()
+                
+                val appointmentsMonth = reservationRepository.countBySpecialist_IdAndReservationStartBetween(
+                    userId, monthStart, todayEnd.plusDays(30)
+                ).toInt()
+
+                // 2. Métricas de Atención y Duración (SQL SUM/AVG)
+                val completedAttentionsCount = attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
+                    userId, monthStart, todayEnd, com.duoc.app.features.attention.model.AttentionStatus.FINISHED
                 )
                 
-                val monthReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-                    userId, monthStart, todayEnd.plusDays(30) // Just to be safe for the month
-                ).filter { it.reservationStart.month == now.month && it.reservationStart.year == now.year }
+                val completedReservationsCount = reservationRepository.countBySpecialist_IdAndReservationStartBetweenAndStatus(
+                    userId, monthStart, todayEnd, ReservationStatus.COMPLETED
+                )
 
-                val attentions = attentionRepository.findBySpecialist_Id(userId)
-                val completedReservations = monthReservations.filter { it.status == com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED }
+                val totalDurationAttentions = attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
+                    userId, monthStart, todayEnd, com.duoc.app.features.attention.model.AttentionStatus.FINISHED
+                ) ?: 0L
                 
-                val allDurations = mutableListOf<Double>()
-                attentions.forEach { it.durationMinutes?.let { d -> allDurations.add(d.toDouble()) } }
-                completedReservations.forEach { res ->
-                    res.service?.durationMinutes?.let { d -> allDurations.add(d.toDouble()) }
-                }
+                val totalDurationReservations = reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
+                    userId, monthStart, todayEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+                ) ?: 0L
 
-                val billing = billingRecordRepository.findBySpecialist_Id(userId)
+                val totalPerformed = (completedAttentionsCount + completedReservationsCount).toInt()
+                val avgDuration = if (totalPerformed > 0) {
+                    (totalDurationAttentions + totalDurationReservations).toDouble() / totalPerformed
+                } else 0.0
 
-                val monthlyBilling = billing.filter { 
-                    it.createdAt.month == now.month && it.createdAt.year == now.year
-                }
+                // 3. Métricas Financieras (SQL SUM directa)
+                val pendingAmount = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
+                    userId, monthStart, todayEnd, PaymentStatus.PENDING
+                )?.toDouble() ?: 0.0
+
+                val paidAmount = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
+                    userId, monthStart, todayEnd, PaymentStatus.PAID
+                )?.toDouble() ?: 0.0
 
                 DashboardMetricsResponse(
-                    appointmentsToday = todayReservations.size,
-                    appointmentsMonth = monthReservations.size,
-                    totalAttentionsPerformed = attentions.size + completedReservations.size,
-                    averageDurationMinutes = if (allDurations.isNotEmpty()) allDurations.average() else 0.0,
-                    pendingBillingAmount = monthlyBilling.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() },
-                    paidBillingAmount = monthlyBilling.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() },
+                    appointmentsToday = appointmentsToday,
+                    appointmentsMonth = appointmentsMonth,
+                    totalAttentionsPerformed = totalPerformed,
+                    averageDurationMinutes = avgDuration,
+                    pendingBillingAmount = pendingAmount,
+                    paidBillingAmount = paidAmount,
                     subscriptionStatus = "ACTIVE",
                     specialty = profile.specialty
                 )
@@ -178,11 +219,8 @@ class DashboardService(
         val profProfile = this.service?.professionalProfile
         return com.duoc.app.features.reservation.dto.ReservationResponse(
             id = this.id!!,
-            clientId = this.client.id!!,
-            clientRut = this.client.rut,
-            specialistId = this.specialist.id!!,
-            specialistName = this.specialist.name,
-            specialistRut = this.specialist.rut,
+            client = this.client.toSummaryDto(),
+            specialist = this.specialist.toSummaryDto(),
             city = profProfile?.city,
             address = profProfile?.address,
             serviceId = this.service?.id,

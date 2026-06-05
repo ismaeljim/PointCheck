@@ -63,10 +63,10 @@ data class ProfessionalProfile(
     @Column(length = 100)
     val country: String? = null,
 
-    @Column(nullable = false)
+    @Column(name = "is_verified", nullable = false, columnDefinition = "BIT(1) DEFAULT 0")
     var isVerified: Boolean = false,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "FLOAT DEFAULT 0.0")
     var rating: Float = 0.0f,
 
     /**
@@ -85,10 +85,10 @@ data class ProfessionalProfile(
     @Column(name = "working_hours_json", columnDefinition = "TEXT")
     var workingHoursJson: String? = null,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 60")
     val defaultSessionDurationMinutes: Int = 60,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BIT(1) DEFAULT 1")
     val active: Boolean = true,
 
     @Column(name = "created_at", nullable = false, updatable = false)

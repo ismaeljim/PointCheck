@@ -68,6 +68,9 @@ interface ApiService {
     @PUT("api/reservations/{id}/cancel")
     suspend fun cancelReservation(@Path("id") id: String): Response<ReservationResponseDto>
 
+    @PUT("api/reservations/{id}/confirm-payment")
+    suspend fun confirmPayment(@Path("id") id: String): Response<ReservationResponseDto>
+
     @GET("api/reservations/availability")
     suspend fun getAvailability(
         @Query("specialistId") specialistId: String,

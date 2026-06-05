@@ -13,6 +13,7 @@ import com.duoc.app.features.user.repository.UserRepository
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -23,13 +24,6 @@ import java.time.format.DateTimeFormatter
  * 
  * Este componente es el núcleo del negocio. Gestiona la intersección entre 
  * la agenda del especialista y las necesidades del cliente.
- * 
- * Hallazgos de Implementación:
- * 1. [CRÍTICO] Lógica de Disponibilidad: El método 'getAvailability' realiza un parseo flexible de JSON 
- *    para manejar los horarios de trabajo. Es resiliente pero costoso computacionalmente (parseo por cada request).
- * 2. [OK] Prevención de Overlapping: Implementada validación de traslape mediante 'existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThan'.
- * 3. [MEJORA] Atomicidad: Se recomienda @Transactional para el proceso de creación y envío de notificaciones.
- * 4. [OK] Integración de Notificaciones: El flujo de reserva gatilla alertas automáticas.
  */
 @Service
 class ReservationService(
@@ -37,15 +31,12 @@ class ReservationService(
     private val userRepository: UserRepository,
     private val serviceOfferingRepository: ServiceOfferingRepository,
     private val professionalProfileRepository: ProfessionalProfileRepository,
-    private val notificationService: com.duoc.app.features.notification.service.NotificationService
+    private val notificationService: com.duoc.app.features.notification.service.NotificationService,
+    private val billingRecordRepository: com.duoc.app.features.billing.repository.BillingRecordRepository
 ) {
 
     private val objectMapper = jacksonObjectMapper()
 
-    /**
-     * AUDITORÍA: Algoritmo de generación de slots temporales.
-     * Soporta internacionalización básica y normalización de caracteres para las llaves del JSON (Lunes vs Monday).
-     */
     fun getAvailability(specialistId: String, date: LocalDate): AvailabilityResponse {
         val profile = professionalProfileRepository.findById(specialistId)
             .orElseGet { professionalProfileRepository.findByUser_Id(specialistId) }
@@ -90,14 +81,11 @@ class ReservationService(
             possibleKeys.any { it == keyNorm }
         }
 
-        if (dayConfigEntry == null) {
+        val config = dayConfigEntry?.value as? Map<*, *>
+        val isActive = config?.get("isActive") as? Boolean ?: false
+        
+        if (dayConfigEntry == null || !isActive) {
             return AvailabilityResponse(specialistId, date, emptyList())
-        }
-
-        val config = dayConfigEntry.value
-        val (startStr, endStr) = when (config) {
-            is Map<*, *> -> Pair(config["start"]?.toString(), config["end"]?.toString())
-            else -> Pair("09:00", "18:00")
         }
 
         fun parseFlexTime(timeStr: String?, default: LocalTime): LocalTime {
@@ -113,8 +101,8 @@ class ReservationService(
             }
         }
 
-        val startTime = parseFlexTime(startStr, LocalTime.of(9, 0))
-        val endTime = parseFlexTime(endStr, LocalTime.of(18, 0))
+        val startTime = parseFlexTime(config["start"]?.toString(), LocalTime.of(9, 0))
+        val endTime = parseFlexTime(config["end"]?.toString(), LocalTime.of(18, 0))
         val slotDuration = if (profile.defaultSessionDurationMinutes > 0) profile.defaultSessionDurationMinutes.toLong() else 60L
 
         val allReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
@@ -132,7 +120,8 @@ class ReservationService(
             val slotEnd = slotStart.plusMinutes(slotDuration)
 
             val isOccupied = allReservations.any { res ->
-                res.reservationStart.isBefore(slotEnd) && (res.reservationEnd?.isAfter(slotStart) ?: true)
+                val resEnd = res.reservationEnd ?: res.reservationStart.plusMinutes(60)
+                res.reservationStart.isBefore(slotEnd) && resEnd.isAfter(slotStart)
             }
 
             if (!isOccupied) {
@@ -145,13 +134,7 @@ class ReservationService(
         return AvailabilityResponse(specialistId, date, availableSlots)
     }
 
-    /**
-     * AUDITORÍA: Creación de reserva.
-     * 1. Valida existencia de cliente.
-     * 2. Valida pertenencia del servicio al especialista.
-     * 3. Verifica conflictos de horario en tiempo real.
-     * 4. Gatilla notificación de confirmación asíncrona (conceptual).
-     */
+    @Transactional
     fun create(request: ReservationRequest): ReservationResponse {
         val client = userRepository.findById(request.clientId).orElseThrow {
             IllegalArgumentException("El cliente con ID ${request.clientId} no existe.")
@@ -178,7 +161,8 @@ class ReservationService(
             service = serviceEntity
         }
 
-        val reservationEnd = request.reservationEnd ?: request.reservationStart.plusMinutes(60)
+        val reservationEnd = request.reservationEnd ?: request.reservationStart.plusMinutes(service?.durationMinutes?.toLong() ?: 60L)
+
         val hasConflict = reservationRepository.existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThan(
             specialist.id!!,
             reservationEnd,
@@ -232,6 +216,7 @@ class ReservationService(
             .map { it.toResponse() }
     }
 
+    @Transactional
     fun updateStatus(id: String, status: ReservationStatus): ReservationResponse {
         val reservation = reservationRepository.findById(id).orElseThrow {
             IllegalArgumentException("Reserva no encontrada con ID: $id")
@@ -255,26 +240,86 @@ class ReservationService(
         return saved.toResponse()
     }
 
+    @Transactional
     fun cancel(id: String): ReservationResponse {
         return updateStatus(id, ReservationStatus.CANCELLED)
     }
 
+    @Transactional
+    fun confirmPayment(id: String): ReservationResponse {
+        val reservation = reservationRepository.findById(id).orElseThrow {
+            IllegalArgumentException("Reserva no encontrada con ID: $id")
+        }
+
+        if (reservation.status == ReservationStatus.CANCELLED) {
+            throw IllegalStateException("No se puede confirmar el pago de una reserva cancelada.")
+        }
+
+        // 1. Actualizar estado de la reserva
+        val updatedReservation = reservation.copy(
+            status = ReservationStatus.COMPLETED,
+            updatedAt = LocalDateTime.now()
+        )
+        val saved = reservationRepository.save(updatedReservation)
+
+        // 2. Gestionar el registro de facturación (BillingRecord)
+        // Buscamos si ya existe uno vinculado a esta reserva
+        val existingBilling = billingRecordRepository.findByReservation_Id(id).firstOrNull()
+
+        if (existingBilling != null) {
+            val updatedBilling = existingBilling.copy(
+                status = com.duoc.app.features.billing.model.PaymentStatus.PAID,
+                paidAt = LocalDateTime.now(),
+                paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH,
+                updatedAt = LocalDateTime.now()
+            )
+            billingRecordRepository.save(updatedBilling)
+        } else {
+            // Si no existe, lo creamos como pagado (flujo simplificado para efectivo)
+            val servicePrice = reservation.service?.price ?: java.math.BigDecimal.ZERO
+            val newBilling = com.duoc.app.features.billing.model.BillingRecord(
+                reservation = saved,
+                client = reservation.client,
+                specialist = reservation.specialist,
+                amount = servicePrice,
+                status = com.duoc.app.features.billing.model.PaymentStatus.PAID,
+                paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH,
+                paidAt = LocalDateTime.now(),
+                notes = "Pago confirmado manualmente por el especialista"
+            )
+            billingRecordRepository.save(newBilling)
+        }
+
+        return saved.toResponse()
+    }
+
+    /**
+     * SENIOR MAPPING LOGIC: Conversión de Entidad a DTO.
+     * 
+     * ¿POR QUÉ ESTO?:
+     * Anteriormente, este mapeador realizaba llamadas al professionalProfileRepository 
+     * de forma imperativa para cada elemento de una lista (N+1).
+     * 
+     * AHORA:
+     * El servicio es agnóstico a la carga. Confía en que el Repositorio ha inyectado 
+     * las relaciones necesarias vía EntityGraph. Si 'this.service' está presente, 
+     * sus propiedades anidadas ya están en memoria (Eager Loading controlado).
+     * 
+     * BENEFICIO: Código más limpio, desacoplado de la persistencia y extremadamente rápido.
+     */
     private fun Reservation.toResponse(): ReservationResponse {
-        val profProfile = this.service?.professionalProfile ?: professionalProfileRepository.findByUser_Id(this.specialist.id!!)
+        val profile = this.service?.professionalProfile
 
         return ReservationResponse(
             id = this.id!!,
-            clientId = this.client.id!!,
-            clientRut = this.client.rut,
-            specialistId = this.specialist.id!!,
-            specialistName = this.specialist.name,
-            specialistRut = this.specialist.rut,
-            city = profProfile?.city,
-            address = profProfile?.address,
+            client = this.client.toSummaryDto(),
+            specialist = this.specialist.toSummaryDto(),
+            city = profile?.city,
+            address = profile?.address,
             serviceId = this.service?.id,
             serviceName = this.service?.name,
-            categoryIcon = profProfile?.category?.iconKey,
-            categoryColor = profProfile?.category?.colorHex,
+            categoryIcon = profile?.category?.iconKey,
+            categoryColor = profile?.category?.colorHex,
             isAtHome = this.service?.isAtHome ?: false,
             reservationStart = this.reservationStart,
             reservationEnd = this.reservationEnd,

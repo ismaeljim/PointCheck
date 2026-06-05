@@ -272,9 +272,9 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
             Spacer(Modifier.height(24.dp))
         }
 
+        Text("Tus Especialistas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
         if (d?.favoriteSpecialists?.isNotEmpty() == true) {
-            Text("Tus Especialistas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -285,8 +285,34 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
+        } else {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.FavoriteBorder, 
+                        null, 
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text("Aún no tienes favoritos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Explora las categorías abajo para encontrar y guardar a tus especialistas de confianza.", 
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
         }
+        Spacer(Modifier.height(24.dp))
 
         Text("Explorar Servicios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         if (s.categories.isEmpty() && s.isLoading) {
@@ -355,7 +381,7 @@ fun FeaturedAppointmentCard(
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            "con ${appointment.specialistName ?: "Especialista"}",
+                            "con ${appointment.specialist.name}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -576,10 +602,22 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
         Spacer(Modifier.height(16.dp))
         
         if (r != null) {
-            // Métricas operacionales rápidas (No clickeables para evitar redundancia)
+            // Métricas operacionales rápidas (Clickable para navegación filtrada)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricCard("Citas Mes", (r.totalReservations).toString(), Icons.Default.Assessment, Modifier.weight(1f))
-                MetricCard("Hoy", (r.todayReservations).toString(), Icons.Default.Today, Modifier.weight(1f))
+                MetricCard(
+                    label = "Citas Mes", 
+                    value = (r.totalReservations).toString(), 
+                    icon = Icons.Default.Assessment, 
+                    modifier = Modifier.weight(1f),
+                    onClick = { nav.navigate(Screen.Scheduled.createRoute("month")) }
+                )
+                MetricCard(
+                    label = "Hoy", 
+                    value = (r.todayReservations).toString(), 
+                    icon = Icons.Default.Today, 
+                    modifier = Modifier.weight(1f),
+                    onClick = { nav.navigate(Screen.Scheduled.createRoute("today")) }
+                )
             }
             
             Spacer(Modifier.height(16.dp))

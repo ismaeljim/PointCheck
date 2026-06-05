@@ -35,7 +35,12 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_API_KEY_HERE" />
+            android:value="{GOOGLE_MAPS_API_KEY}" />
+
+        <!-- Configuración para Places SDK (usa la misma llave) -->
+        <meta-data
+            android:name="com.google.android.libraries.places.API_KEY"
+            android:value="{GOOGLE_MAPS_API_KEY}" />
 
     </application>
 

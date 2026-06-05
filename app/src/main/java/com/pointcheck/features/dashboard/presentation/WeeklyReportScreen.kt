@@ -81,12 +81,11 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
             modifier = Modifier
                 .padding(pad)
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
-            // Selector de Periodo
+            // Selector de Periodo (Fijo arriba para navegación rápida)
             TabRow(
                 selectedTabIndex = if (s.period == ReportPeriod.WEEKLY) 0 else 1,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Tab(
                     selected = s.period == ReportPeriod.WEEKLY,
@@ -100,128 +99,140 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
                 )
             }
 
-            // Filtro de Servicios
-            if (s.services.isNotEmpty()) {
-                ServiceFilterRow(
-                    services = s.services,
-                    selectedServiceId = s.selectedServiceId,
-                    onServiceSelected = { vm.setServiceFilter(it) }
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-
-            // Selector de Fecha (Semana o Mes)
-            DateSelector(
-                label = if (s.period == ReportPeriod.WEEKLY) "Semana ${s.report?.weekNumber ?: ""}" else "${s.monthlyReport?.monthName ?: ""} ${s.monthlyReport?.year ?: ""}",
-                subLabel = if (s.period == ReportPeriod.WEEKLY) "Año ${s.report?.year ?: ""}" else "Reporte del Mes",
-                onPrevious = { vm.changeOffset(1) },
-                onNext = { vm.changeOffset(-1) },
-                isLoading = s.isLoading
-            )
-
-            if (s.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp))
-            }
-
-            val totalRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.totalRevenue else s.monthlyReport?.totalRevenue
-            val prevRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.previousPeriodRevenue else s.monthlyReport?.previousPeriodRevenue
-            val totalHours = if (s.period == ReportPeriod.WEEKLY) s.report?.totalHoursWorked else s.monthlyReport?.totalHoursWorked
-            
-            if (totalRevenue != null) {
-                Spacer(Modifier.height(16.dp))
-                
-                // Resumen Principal
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text("Ingresos Totales", style = MaterialTheme.typography.labelLarge)
-                                Text("$${totalRevenue}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                            }
-                            
-                            val growth = if (prevRevenue != null && prevRevenue > 0) {
-                                ((totalRevenue - prevRevenue) / prevRevenue) * 100
-                            } else 0.0
-
-                            TrendIndicator(growth)
-                        }
-                        
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f))
-                        
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                            val maxRevenueDay = s.report?.dailyBreakdown?.maxByOrNull { it.revenue }
-                            val maxRevenueWeek = s.monthlyReport?.weeklyBreakdown?.maxByOrNull { it.revenue }
-
-                            StatMiniItem(
-                                icon = Icons.Default.CalendarToday,
-                                label = "Día más fuerte",
-                                value = maxRevenueDay?.dayOfWeek ?: maxRevenueWeek?.dateRange ?: "N/A"
-                            )
-                            StatMiniItem(
-                                icon = Icons.Default.AccessTime,
-                                label = "Horas totales",
-                                value = String.format(Locale.getDefault(), "%.1f h", totalHours ?: 0.0)
-                            )
-                        }
+            // Usamos un único LazyColumn para que toda la pantalla tenga scroll
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Filtro de Servicios
+                if (s.services.isNotEmpty()) {
+                    item {
+                        ServiceFilterRow(
+                            services = s.services,
+                            selectedServiceId = s.selectedServiceId,
+                            onServiceSelected = { vm.setServiceFilter(it) }
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
-                
-                // Gráfico de Tendencia (Line Chart)
-                Text("Tendencia de Ingresos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
-                val chartData = if (s.period == ReportPeriod.WEEKLY) {
-                    s.report?.dailyBreakdown?.map { it.revenue.toFloat() } ?: emptyList()
-                } else {
-                    s.monthlyReport?.weeklyBreakdown?.map { it.revenue.toFloat() } ?: emptyList()
-                }
-                
-                if (chartData.isNotEmpty()) {
-                    TrendLineChart(
-                        data = chartData,
-                        modifier = Modifier.fillMaxWidth().height(180.dp).padding(vertical = 8.dp)
+                // Selector de Fecha
+                item {
+                    DateSelector(
+                        label = if (s.period == ReportPeriod.WEEKLY) "Semana ${s.report?.weekNumber ?: ""}" else "${s.monthlyReport?.monthName ?: ""} ${s.monthlyReport?.year ?: ""}",
+                        subLabel = if (s.period == ReportPeriod.WEEKLY) "Año ${s.report?.year ?: ""}" else "Reporte del Mes",
+                        onPrevious = { vm.changeOffset(1) },
+                        onNext = { vm.changeOffset(-1) },
+                        isLoading = s.isLoading
                     )
                 }
 
-                Spacer(Modifier.height(24.dp))
-                Text(if (s.period == ReportPeriod.WEEKLY) "Desglose Diario" else "Desglose Semanal", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(8.dp))
+                if (s.isLoading) {
+                    item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) }
+                }
 
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (s.period == ReportPeriod.WEEKLY) {
-                        s.report?.dailyBreakdown?.let { items ->
-                            items(items) { day -> DailyMetricItem(day) }
-                        }
-                    } else {
-                        s.monthlyReport?.weeklyBreakdown?.let { items ->
-                            items(items) { week -> WeeklySummaryItem(week) }
+                val totalRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.totalRevenue else s.monthlyReport?.totalRevenue
+                val prevRevenue = if (s.period == ReportPeriod.WEEKLY) s.report?.previousPeriodRevenue else s.monthlyReport?.previousPeriodRevenue
+                val totalHours = if (s.period == ReportPeriod.WEEKLY) s.report?.totalHoursWorked else s.monthlyReport?.totalHoursWorked
+
+                if (totalRevenue != null) {
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        // Resumen Principal
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("Ingresos Totales", style = MaterialTheme.typography.labelLarge)
+                                        Text("$${totalRevenue}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                    }
+                                    
+                                    val growth = if (prevRevenue != null && prevRevenue > 0) {
+                                        ((totalRevenue - prevRevenue) / prevRevenue) * 100
+                                    } else 0.0
+
+                                    TrendIndicator(growth)
+                                }
+                                
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f))
+                                
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                                    val maxRevenueDay = s.report?.dailyBreakdown?.maxByOrNull { it.revenue }
+                                    val maxRevenueWeek = s.monthlyReport?.weeklyBreakdown?.maxByOrNull { it.revenue }
+
+                                    StatMiniItem(
+                                        icon = Icons.Default.CalendarToday,
+                                        label = "Día más fuerte",
+                                        value = maxRevenueDay?.dayOfWeek ?: maxRevenueWeek?.dateRange ?: "N/A"
+                                    )
+                                    StatMiniItem(
+                                        icon = Icons.Default.AccessTime,
+                                        label = "Horas totales",
+                                        value = String.format(Locale.getDefault(), "%.1f h", totalHours ?: 0.0)
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-            } else if (s.summary != null) {
-                val report = s.summary!!
-                Spacer(Modifier.height(24.dp))
-                Text("Estadísticas de Atención", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(8.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatRow("Total Reservas", report.totalReservations.toString())
-                    StatRow("Atenciones Completadas", report.completedAttentions.toString())
-                    StatRow("Promedio Atención (min)", String.format(Locale.getDefault(), "%.1f", report.averageAttentionMinutes))
-                    StatRow("Cobros Realizados", report.paidBillingCount.toString())
-                    StatRow("Cobros Pendientes", report.pendingBillingCount.toString())
-                    StatRow("Pendiente de Cobro", "$${report.pendingAmount}")
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Tendencia de Ingresos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        val chartData = if (s.period == ReportPeriod.WEEKLY) {
+                            s.report?.dailyBreakdown?.map { it.revenue.toFloat() } ?: emptyList()
+                        } else {
+                            s.monthlyReport?.weeklyBreakdown?.map { it.revenue.toFloat() } ?: emptyList()
+                        }
+                        
+                        if (chartData.isNotEmpty()) {
+                            TrendLineChart(
+                                data = chartData,
+                                modifier = Modifier.fillMaxWidth().height(180.dp).padding(vertical = 8.dp)
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text(if (s.period == ReportPeriod.WEEKLY) "Desglose Diario" else "Desglose Semanal", style = MaterialTheme.typography.titleLarge)
+                    }
+
+                    // Inyectamos los items del desglose directamente en el LazyColumn raíz
+                    if (s.period == ReportPeriod.WEEKLY) {
+                        items(s.report?.dailyBreakdown ?: emptyList()) { day ->
+                            DailyMetricItem(day)
+                        }
+                    } else {
+                        items(s.monthlyReport?.weeklyBreakdown ?: emptyList()) { week ->
+                            WeeklySummaryItem(week)
+                        }
+                    }
+                } else if (s.summary != null) {
+                    val report = s.summary!!
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Estadísticas de Atención", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(8.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatRow("Total Reservas", report.totalReservations.toString())
+                            StatRow("Atenciones Completadas", report.completedAttentions.toString())
+                            StatRow("Promedio Atención (min)", String.format(Locale.getDefault(), "%.1f", report.averageAttentionMinutes))
+                            StatRow("Cobros Realizados", report.paidBillingCount.toString())
+                            StatRow("Cobros Pendientes", report.pendingBillingCount.toString())
+                            StatRow("Pendiente de Cobro", "$${report.pendingAmount}")
+                        }
+                    }
                 }
             }
         }

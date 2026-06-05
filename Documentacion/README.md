@@ -2,41 +2,33 @@
 
 PointCheck es una plataforma integral para la gestión de citas y servicios profesionales, diseñada para optimizar la interacción entre especialistas y clientes.
 
-## 🚀 Funcionalidades Recientes (Fase 4: Atención y Facturación)
+## 🚀 Funcionalidades Recientes (Fases 4-6: Atención, Navegación y Rendimiento)
 
-Se ha completado la auditoría del ciclo operativo y financiero:
+Se ha completado la auditoría y refactorización del flujo core:
 
-1. **Gestión de Atenciones (Workflow Especialista)**:
-   - **Ciclo de Vida**: Flujo controlado de `IN_PROGRESS` a `FINISHED` con registro automático de tiempos de ejecución.
-   - **Trazabilidad Operativa**: Vinculación mandatoria entre Reserva -> Atención para auditoría de cumplimiento de citas.
-   - **Observaciones de Sesión**: Capacidad de registrar notas clínicas o comerciales durante la atención que persisten en el historial del cliente.
+1. **Gestión de Atenciones y Facturación (Fase 4)**:
+   - **Ciclo de Vida**: Flujo de `IN_PROGRESS` a `FINISHED` con generación automática de `BillingRecord`.
+   - **Trazabilidad**: Vinculación Reserva -> Atención -> Cobro asegurando integridad de datos.
 
-2. **Automatización Financiera (Billing)**:
-   - **Gatillado Automático**: Al finalizar una atención, el sistema genera inmediatamente un `BillingRecord` (Registro de Cobro) basado en el precio del servicio pactado.
-   - **Manejo de Estados de Pago**: Control de cobranza mediante estados `PENDING`, `PAID` y `CANCELLED`.
-   - **Conciliación**: Soporte para referencias externas para cruce con transferencias bancarias o vouchers.
+2. **Refactor de Navegación (Fase 5)**:
+   - **Simplificación de Rutas**: Las pantallas de `Attention` y `Billing` ahora se acceden únicamente mediante `reservationId`. Se eliminó la redundancia de pasar IDs de cliente/especialista en la URL.
+   - **Carga Reactiva**: Los ViewModels ahora son responsables de recuperar el contexto completo (`UserSummaryDto`) a partir del ID de la reserva, garantizando consistencia.
 
-3. **Arquitectura de Sincronización**:
-   - **Atomicidad Transaccional**: Uso de `@Transactional` en el backend para asegurar que la finalización de una cita y la generación de su cobro sean indivisibles.
-   - **UX de Control**: El `AttentionViewModel` en la App permite al especialista gestionar la sesión de forma reactiva con feedback inmediato de éxito.
+3. **Optimización de Rendimiento (Fase 6)**:
+   - **Solución N+1 (Backend)**: Implementación de `@EntityGraph` en Repositorios (`Reservation`, `Attention`, `Billing`) para realizar Fetch Joins y reducir drásticamente el número de consultas SQL.
+   - **Optimización de UI (Android)**: Auditoría de recomposiciones en Compose y uso eficiente de `StateFlow` para evitar fugas de memoria y sobrecarga de CPU.
 
-## 📈 Estado de Implementación y Auditoría
+## 📉 Estado de Implementación y Auditoría
 
 ### Autenticación y Seguridad ✅
 - Comentado técnico y auditoría de flujo completada.
-- *Hallazgo*: Las contraseñas se almacenan en texto plano (Pendiente: BCrypt).
-
-### Perfiles y Especialistas ✅
-- Implementada la gestión de perfiles comerciales y horarios.
-
-### Servicios y Reservas ✅
-- Validada lógica de colisiones y motor de disponibilidad.
-- **Brecha**: Se recomienda implementar `@Transactional` en el proceso de creación de reservas.
 
 ### Atenciones y Facturación ✅
-- **Auditoría de Backend**: Flujo de estados y generación de cobros validado.
-- **Auditoría de App**: Gestión de sesión por parte del especialista auditada.
-- **Brecha Financiera**: Falta integración con pasarelas de pago digitales (Webpay/Stripe); actualmente el flujo es de registro manual/lógico.
+- **Auditoría de Backend**: Optimizada con `@EntityGraph`.
+- **Navegación**: Refactorizada para usar rutas minimalistas.
+
+### Arquitectura de Datos (DTOs) ✅
+- **UserSummaryDto**: Estandarizado en toda la App para representar usuarios (Cliente/Especialista) con consistencia de campos.
 
 ### Módulo de Reportes y BI ✅
 - **KPIs Automáticos**: Cálculo de ingresos, carga de trabajo (horas) y promedios de atención por periodo.

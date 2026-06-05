@@ -30,22 +30,44 @@ import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * PointCheck Scheduled Screen - GESTIÓN DE AGENDA DUAL
+ * 
+ * ¿POR QUÉ "AGENDA DUAL"?
+ * En PointCheck, un Especialista no solo atiende clientes, sino que también puede ser cliente 
+ * de otros profesionales. Una agenda única causaría confusión sobre si el usuario es quien 
+ * debe dar el servicio o recibirlo.
+ * 
+ * IMPLEMENTACIÓN:
+ * 1. TAB SEPARATION: Si el rol es SPECIALIST, habilitamos pestañas ("Mis Atenciones" vs "Mis Reservas").
+ * 2. ACTION LOGIC: 
+ *    - En "Mis Atenciones", el profesional tiene botones de "Atender" y "Cobrar".
+ *    - En "Mis Reservas", el usuario solo tiene la opción de "Cancelar", comportándose como un cliente.
+ * 
+ * ESTO RESOLVIÓ: La ambigüedad de roles en la misma pantalla y centralizó la gestión 
+ * de tiempos del profesional en un solo lugar.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) {
+fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationViewModel = viewModel()) {
+    // ... resto del código
     val reservations by vm.reservations.collectAsState()
+    val attentions by vm.attentions.collectAsState()
     val state by vm.state.collectAsState()
     val context = LocalContext.current
     val prefs = remember { UserPreferences(context) }
     var userRole by remember { mutableStateOf<String?>(null) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         val userId = prefs.userId.first()
         if (userId != null) {
-            vm.loadMyReservations(userId)
+            vm.loadDualAgenda(userId)
         }
         userRole = prefs.role.first()
     }
+
+    val isSpecialist = userRole?.uppercase() == "SPECIALIST" || userRole?.uppercase() == "PROFESSIONAL"
 
     Scaffold(
         topBar = {
@@ -60,54 +82,84 @@ fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) 
                 .padding(pad)
                 .fillMaxSize()
         ) {
-            if (state.isLoading && reservations.isEmpty()) {
+            if (isSpecialist) {
+                TabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Mis Atenciones") }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Mis Reservas") }
+                    )
+                }
+            }
+
+            val rawList = if (isSpecialist && selectedTab == 0) attentions else reservations
+            val currentList = remember(rawList, filter) {
+                if (filter == null) rawList
+                else {
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val now = Calendar.getInstance()
+                    val todayStr = sdf.format(now.time)
+                    val monthPrefix = todayStr.substring(0, 7) // "YYYY-MM"
+
+                    rawList.filter { res ->
+                        when (filter) {
+                            "today" -> res.reservationStart.startsWith(todayStr)
+                            "month" -> res.reservationStart.startsWith(monthPrefix)
+                            else -> true
+                        }
+                    }
+                }
+            }
+
+            if (state.isLoading && currentList.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (reservations.isEmpty()) {
-                EmptyReservationsState(onNewBooking = { nav.navigate(Screen.Booking.route) })
+            } else if (currentList.isEmpty()) {
+                EmptyReservationsState(
+                    userRole = userRole,
+                    isAttentionsTab = isSpecialist && selectedTab == 0,
+                    onNewBooking = { nav.navigate(Screen.Booking.route) }
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(reservations) { res ->
+                    items(currentList) { res ->
                         ReservationCard(
                             res = res,
                             userRole = userRole,
+                            isSpecialistView = isSpecialist && selectedTab == 0,
                             onAtender = {
                                 nav.navigate(
-                                    Screen.Attention.createRoute(
-                                        res.id,
-                                        res.clientId,
-                                        res.specialistId
-                                    )
+                                    Screen.Attention.createRoute(res.id)
                                 )
+                            },
+                            onConfirmPayment = {
+                                vm.confirmPayment(res.id) {
+                                    // Callback opcional
+                                }
                             },
                             onCancel = { vm.cancelReservation(res.id) }
                         )
-                        
-                        // Botón de Confirmar Pago al Contado (Acceso rápido para Especialista)
-                        val roleUpper = userRole?.uppercase()?.trim()
-                        if (roleUpper == "SPECIALIST" || roleUpper == "PROFESSIONAL") {
-                            if (res.status.uppercase() == "CONFIRMED") {
-                                AppButton(
-                                    text = "Confirmar Pago Efectivo",
-                                    containerColor = MaterialTheme.colorScheme.tertiary,
-                                    onClick = { vm.confirmCashPayment(res.id) },
-                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)
-                                )
-                            }
-                        }
                     }
                 }
                 
-                AppButton(
-                    text = "Nueva Reserva",
-                    onClick = { nav.navigate(Screen.Booking.route) },
-                    modifier = Modifier.padding(16.dp)
-                )
+                // Solo mostramos "Nueva Reserva" si el usuario es CLIENTE o está en su pestaña de reservas
+                if (userRole?.uppercase() == "CLIENT" || (isSpecialist && selectedTab == 1)) {
+                    AppButton(
+                        text = "Nueva Reserva",
+                        onClick = { nav.navigate(Screen.Booking.route) },
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
         }
     }
@@ -117,7 +169,9 @@ fun ScheduledScreen(nav: NavController, vm: ReservationViewModel = viewModel()) 
 fun ReservationCard(
     res: ReservationResponseDto,
     userRole: String?,
+    isSpecialistView: Boolean = false,
     onAtender: () -> Unit,
+    onConfirmPayment: () -> Unit,
     onCancel: () -> Unit
 ) {
     Card(
@@ -131,7 +185,7 @@ fun ReservationCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Cita #${res.id}",
+                    text = "Cita #${res.id.takeLast(8)}",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -141,29 +195,42 @@ fun ReservationCard(
             Spacer(Modifier.height(8.dp))
 
             InfoRow(icon = Icons.Default.MedicalServices, text = res.serviceName ?: "Servicio sin nombre")
-            InfoRow(icon = Icons.Default.Person, text = "Especialista: ${res.specialistName ?: res.specialistId}")
+            if (isSpecialistView) {
+                InfoRow(icon = Icons.Default.Person, text = "Cliente: ${res.client.name}")
+            } else {
+                InfoRow(icon = Icons.Default.Person, text = "Especialista: ${res.specialist.name}")
+            }
             InfoRow(icon = Icons.Default.CalendarToday, text = res.reservationStart.replace("T", " ").substringBeforeLast(":"))
 
             Spacer(Modifier.height(16.dp))
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                AppOutlinedButton(
-                    text = "Cancelar",
-                    onClick = onCancel,
-                    modifier = Modifier.weight(1f),
-                    contentColor = MaterialTheme.colorScheme.error
-                )
+            val statusUpper = res.status.uppercase()
+            val canAction = statusUpper != "COMPLETED" && statusUpper != "CANCELLED"
 
-                val roleUpper = userRole?.uppercase()?.trim()
-                if (roleUpper == "SPECIALIST" || roleUpper == "PROFESSIONAL" || roleUpper == "ADMIN") {
-                    val statusUpper = res.status.uppercase()
-                    if (statusUpper != "COMPLETED" && statusUpper != "CANCELLED") {
+            if (canAction) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    AppOutlinedButton(
+                        text = "Cancelar",
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+
+                    if (isSpecialistView) {
                         Spacer(Modifier.width(8.dp))
-                        AppButton(
-                            text = "Atender",
-                            onClick = onAtender,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1.5f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AppButton(
+                                text = "Atender",
+                                onClick = onAtender,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            AppButton(
+                                text = "Cobrar y Finalizar",
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                onClick = onConfirmPayment,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -212,7 +279,13 @@ fun StatusChip(status: String) {
 }
 
 @Composable
-fun EmptyReservationsState(onNewBooking: () -> Unit) {
+fun EmptyReservationsState(
+    userRole: String?,
+    isAttentionsTab: Boolean = false,
+    onNewBooking: () -> Unit
+) {
+    val isSpecialist = userRole?.uppercase() == "SPECIALIST"
+    
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -226,21 +299,28 @@ fun EmptyReservationsState(onNewBooking: () -> Unit) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            "No tienes citas programadas",
+            if (isAttentionsTab) "No tienes atenciones pendientes" 
+            else if (isSpecialist) "Tu agenda de reservas está libre" 
+            else "No tienes citas programadas",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Cuando agendes una cita, aparecerá aquí para que puedas gestionarla.",
+            if (isAttentionsTab) "No tienes clientes agendados para este periodo."
+            else if (isSpecialist) "No tienes citas para este periodo. ¡Buen momento para descansar o promocionar tus servicios!" 
+            else "Cuando agendes una cita, aparecerá aquí para que puedas gestionarla.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        Spacer(Modifier.height(24.dp))
-        AppButton(
-            text = "Agendar mi primera cita",
-            onClick = onNewBooking
-        )
+        
+        if (!isSpecialist || !isAttentionsTab) {
+            Spacer(Modifier.height(24.dp))
+            AppButton(
+                text = "Agendar mi primera cita",
+                onClick = onNewBooking
+            )
+        }
     }
 }

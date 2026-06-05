@@ -171,19 +171,17 @@ fun AppointmentItem(res: ReservationResponseDto) {
                 }
 
                 Text(
-                    text = res.specialistName ?: "Sin nombre",
+                    text = res.specialist.name,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 // Mostrar RUT para formalidad
-                res.specialistRut?.let {
-                    Text(
-                        text = "RUT: $it",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
+                Text(
+                    text = "RUT: ${res.specialist.rut}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
 
                 Spacer(Modifier.height(4.dp))
                 

@@ -35,12 +35,13 @@ data class ServiceOffering(
     val durationMinutes: Int? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "price_unit", nullable = false)
+    @Column(name = "price_unit", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'SESSION'")
     val priceUnit: PriceUnit = PriceUnit.SESSION,
 
-    @Column(name = "is_at_home", nullable = false)
+    @Column(name = "is_at_home", nullable = false, columnDefinition = "BIT(1) DEFAULT 0")
     val isAtHome: Boolean = false,
 
+    @Column(nullable = false, columnDefinition = "BIT(1) DEFAULT 1")
     val active: Boolean = true,
 
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -8,13 +8,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object CategoryIdentityMapper {
 
     fun mapIcon(iconKey: String?): ImageVector {
-        return when (iconKey) {
-            "scissors" -> Icons.Default.ContentCut
-            "medical" -> Icons.Default.MedicalServices
-            "fitness" -> Icons.Default.FitnessCenter
-            "face" -> Icons.Default.Face
-            "spa" -> Icons.Default.SelfImprovement
-            "home" -> Icons.Default.Home
+        val key = iconKey?.lowercase()?.trim()
+        return when (key) {
+            "scissors", "barberia", "peluqueria" -> Icons.Default.ContentCut
+            "medical", "medical_services", "salud", "kinesiologia" -> Icons.Default.MedicalServices
+            "fitness", "gimnasio" -> Icons.Default.FitnessCenter
+            "face", "estetica" -> Icons.Default.Face
+            "spa", "bienestar" -> Icons.Default.SelfImprovement
+            "home", "domicilio" -> Icons.Default.Home
             else -> Icons.Default.Category
         }
     }

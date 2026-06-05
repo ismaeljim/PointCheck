@@ -115,11 +115,11 @@ class BillingService(
     }
 
     private fun BillingRecord.toResponse(): BillingRecordResponse = BillingRecordResponse(
-        id = this.id,
-        reservationId = this.reservation.id,
+        id = this.id!!,
+        reservationId = this.reservation.id!!,
         attentionId = this.attention?.id,
-        clientId = this.client.id,
-        specialistId = this.specialist.id,
+        client = this.client.toSummaryDto(),
+        specialist = this.specialist.toSummaryDto(),
         amount = this.amount,
         currency = this.currency,
         paymentMethod = this.paymentMethod,

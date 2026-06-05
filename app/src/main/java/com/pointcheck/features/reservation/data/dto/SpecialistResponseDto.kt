@@ -13,5 +13,7 @@ data class SpecialistResponseDto(
     val name: String,
     val specialty: String?,
     val city: String?,
-    val defaultSessionDurationMinutes: Int? = 30
+    val defaultSessionDurationMinutes: Int? = 30,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

@@ -60,8 +60,43 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     private val _reservations = MutableStateFlow<List<ReservationResponseDto>>(emptyList())
     val reservations: StateFlow<List<ReservationResponseDto>> = _reservations
 
+    private val _attentions = MutableStateFlow<List<ReservationResponseDto>>(emptyList())
+    val attentions: StateFlow<List<ReservationResponseDto>> = _attentions
+
     init {
         loadProfessionals()
+    }
+
+    fun loadDualAgenda(userId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            
+            // Cargar Mis Reservas (como cliente)
+            val resResult = repository.getReservationsByClient(userId)
+            // Cargar Mis Atenciones (como especialista)
+            val attResult = repository.getReservationsBySpecialist(userId)
+
+            resResult.onSuccess { list -> _reservations.value = list }
+            attResult.onSuccess { list -> _attentions.value = list }
+
+            _state.update { it.copy(isLoading = false) }
+        }
+    }
+
+    fun confirmPayment(reservationId: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            repository.confirmPayment(reservationId)
+                .onSuccess {
+                    _state.update { it.copy(isLoading = false, successMessage = "Cita finalizada y pago registrado") }
+                    val userId = prefs.userId.first()
+                    if (userId != null) loadDualAgenda(userId)
+                    onDone()
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
+        }
     }
 
     fun loadProfessionals(categoryId: String? = null) {
@@ -233,14 +268,23 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * AUDITORÍA: Motor de Validación.
      * Requisito: Especialista + Servicio + Fecha + Hora (o unidad diaria) + Método Pago.
+     * Si el servicio es a domicilio, las notas (dirección) son obligatorias.
      */
     private fun validate(s: BookingUiState): Boolean {
         val isDayUnit = s.selectedService?.priceUnit == "DAY"
-        return s.selectedProfessional != null &&
+        val isAtHome = s.selectedService?.isAtHome == true
+        
+        val basicValid = s.selectedProfessional != null &&
                s.selectedService != null &&
                s.reservationStartMillis != null &&
                s.paymentMethod != null &&
                (s.selectedSlot != null || isDayUnit)
+               
+        return if (isAtHome) {
+            basicValid && s.notes.isNotBlank()
+        } else {
+            basicValid
+        }
     }
 
     fun loadMyReservations(userId: String) {

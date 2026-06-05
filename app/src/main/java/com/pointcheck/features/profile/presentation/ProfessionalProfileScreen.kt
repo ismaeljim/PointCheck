@@ -100,291 +100,297 @@ fun ProfessionalProfileScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
-        Column(
-            modifier = Modifier
-                .padding(pad)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            if (s.profile == null && !s.isLoading && !s.isEditing) {
-                EmptyProfileState(onStart = { vm.toggleEdit() })
-            } else {
-                Text(
-                    text = if (s.isEditing) "Editando Perfil" else "Tu Perfil Profesional",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Esta información será visible para tus clientes al momento de agendar.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        if (s.isLoading) {
+            Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .padding(pad)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                if (s.profile == null && !s.isLoading && !s.isEditing) {
+                    EmptyProfileState(onStart = { vm.toggleEdit() })
+                } else {
+                    Text(
+                        text = if (s.isEditing) "Editando Perfil" else "Tu Perfil Profesional",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Esta información será visible para tus clientes al momento de agendar.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("Información de Identidad", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                        
-                        AppTextField(
-                            value = displayName,
-                            onValueChange = { displayName = it },
-                            label = "Nombre Público",
-                            leadingIcon = Icons.Default.Badge,
-                            enabled = s.isEditing
-                        )
-                        
-                        AppTextField(
-                            value = businessName,
-                            onValueChange = { businessName = it },
-                            label = "Nombre de Empresa (Opcional)",
-                            leadingIcon = Icons.Default.Business,
-                            enabled = s.isEditing
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("Especialidad y Servicios", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-
-                        // Selector de Categoría Refactorizado
-                        Box {
-                            val selectedCategory = s.categories.find { it.id == selectedCategoryId }
-                            AppSelectorField(
-                                label = "Categoría de Servicio",
-                                value = selectedCategory?.name ?: "Seleccionar Categoría",
-                                icon = Icons.Default.Category,
-                                onClick = { if (s.isEditing) expandedCategory = true },
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("Información de Identidad", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            
+                            AppTextField(
+                                value = displayName,
+                                onValueChange = { displayName = it },
+                                label = "Nombre Público",
+                                leadingIcon = Icons.Default.Badge,
                                 enabled = s.isEditing
                             )
-
-                            DropdownMenu(
-                                expanded = expandedCategory && s.isEditing,
-                                onDismissRequest = { expandedCategory = false },
-                                modifier = Modifier.fillMaxWidth(0.85f)
-                            ) {
-                                s.categories.forEach { category ->
-                                    DropdownMenuItem(
-                                        text = { Text(category.name) },
-                                        onClick = {
-                                            selectedCategoryId = category.id
-                                            expandedCategory = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        AppTextField(
-                            value = specialty,
-                            onValueChange = { specialty = it },
-                            label = "Título Profesional (Ej: Peluquero, Kinesiólogo)",
-                            leadingIcon = Icons.Default.Work,
-                            enabled = s.isEditing
-                        )
-
-                        AppTextField(
-                            value = description,
-                            onValueChange = { description = it },
-                            label = "Descripción / Bio",
-                            leadingIcon = Icons.Default.Description,
-                            enabled = s.isEditing,
-                            minLines = 3
-                        )
-                        
-                        AppTextField(
-                            value = duration,
-                            onValueChange = { duration = it },
-                            label = "Duración promedio cita (min)",
-                            leadingIcon = Icons.Default.Timer,
-                            enabled = s.isEditing,
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Mi Horario de Atención", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                        Text("Activa los días que atiendes y define tu horario.", style = MaterialTheme.typography.bodySmall)
-
-                        val daysTranslation = mapOf(
-                            "MONDAY" to "Lunes",
-                            "TUESDAY" to "Martes",
-                            "WEDNESDAY" to "Miércoles",
-                            "THURSDAY" to "Jueves",
-                            "FRIDAY" to "Viernes",
-                            "SATURDAY" to "Sábado",
-                            "SUNDAY" to "Domingo"
-                        )
-
-                        listOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY").forEach { dayKey ->
-                            val config = s.workingHours[dayKey] ?: DayConfig()
-                            DayScheduleRow(
-                                dayName = daysTranslation[dayKey] ?: dayKey,
-                                config = config,
-                                onConfigChange = { vm.updateDayConfig(dayKey, it) },
+                            
+                            AppTextField(
+                                value = businessName,
+                                onValueChange = { businessName = it },
+                                label = "Nombre de Empresa (Opcional)",
+                                leadingIcon = Icons.Default.Business,
                                 enabled = s.isEditing
                             )
                         }
                     }
-                }
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("Ubicación", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("Especialidad y Servicios", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
-                        Box {
-                            Column {
-                                AppTextField(
-                                    value = address,
-                                    onValueChange = { 
-                                        address = it
-                                        locationVm.getAddressSuggestions(it)
-                                    },
-                                    label = "Dirección de atención",
-                                    leadingIcon = Icons.Default.Place,
+                            // Selector de Categoría Refactorizado
+                            Box {
+                                val selectedCategory = s.categories.find { it.id == selectedCategoryId }
+                                AppSelectorField(
+                                    label = "Categoría de Servicio",
+                                    value = selectedCategory?.name ?: "Seleccionar Categoría",
+                                    icon = Icons.Default.Category,
+                                    onClick = { if (s.isEditing) expandedCategory = true },
                                     enabled = s.isEditing
                                 )
-                                if (s.isEditing) {
-                                    Text(
-                                        "Si trabajas a domicilio, indica tu comuna o punto de referencia principal",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
 
-                            if (locState.addressSuggestions.isNotEmpty() && s.isEditing) {
                                 DropdownMenu(
-                                    expanded = true,
-                                    onDismissRequest = { },
-                                    properties = PopupProperties(focusable = false),
-                                    modifier = Modifier.fillMaxWidth(0.9f)
+                                    expanded = expandedCategory && s.isEditing,
+                                    onDismissRequest = { expandedCategory = false },
+                                    modifier = Modifier.fillMaxWidth(0.85f)
                                 ) {
-                                    locState.addressSuggestions.forEach { suggestion ->
-                                        val fullAddress = suggestion.getAddressLine(0)
+                                    s.categories.forEach { category ->
                                         DropdownMenuItem(
-                                            text = { Text(fullAddress, style = MaterialTheme.typography.bodySmall) },
+                                            text = { Text(category.name) },
                                             onClick = {
-                                                address = fullAddress
-                                                city = suggestion.locality ?: city
-                                                latitude = suggestion.latitude
-                                                longitude = suggestion.longitude
-                                                locationVm.clearSuggestions()
+                                                selectedCategoryId = category.id
+                                                expandedCategory = false
                                             }
                                         )
                                     }
                                 }
                             }
-                        }
 
-                        AppTextField(
-                            value = city,
-                            onValueChange = { city = it },
-                            label = "Ciudad",
-                            leadingIcon = Icons.Default.LocationCity,
-                            enabled = s.isEditing
-                        )
+                            AppTextField(
+                                value = specialty,
+                                onValueChange = { specialty = it },
+                                label = "Título Profesional (Ej: Peluquero, Kinesiólogo)",
+                                leadingIcon = Icons.Default.Work,
+                                enabled = s.isEditing
+                            )
 
-                        if (s.isEditing) {
-                            AppOutlinedButton(
-                                text = "Usar mi ubicación actual (GPS)",
-                                icon = Icons.Default.MyLocation,
-                                onClick = {
-                                    locationVm.getCurrentLocation { lat, lng ->
-                                        latitude = lat
-                                        longitude = lng
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            "Ubicación activada: Ahora los clientes podrán ver tu zona de cobertura o local",
-                                            android.widget.Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                },
-                                isLoading = locState.isLocating,
-                                enabled = !locState.isLocating
+                            AppTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                label = "Descripción / Bio",
+                                leadingIcon = Icons.Default.Description,
+                                enabled = s.isEditing,
+                                minLines = 3
                             )
                             
-                            if (latitude != null && longitude != null) {
-                                Text(
-                                    "Coordenadas: ${"%.5f".format(latitude)}, ${"%.5f".format(longitude)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.secondary
+                            AppTextField(
+                                value = duration,
+                                onValueChange = { duration = it },
+                                label = "Duración promedio cita (min)",
+                                leadingIcon = Icons.Default.Timer,
+                                enabled = s.isEditing,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Mi Horario de Atención", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            Text("Activa los días que atiendes y define tu horario.", style = MaterialTheme.typography.bodySmall)
+
+                            val daysTranslation = mapOf(
+                                "MONDAY" to "Lunes",
+                                "TUESDAY" to "Martes",
+                                "WEDNESDAY" to "Miércoles",
+                                "THURSDAY" to "Jueves",
+                                "FRIDAY" to "Viernes",
+                                "SATURDAY" to "Sábado",
+                                "SUNDAY" to "Domingo"
+                            )
+
+                            listOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY").forEach { dayKey ->
+                                val config = s.workingHours[dayKey] ?: DayConfig()
+                                DayScheduleRow(
+                                    dayName = daysTranslation[dayKey] ?: dayKey,
+                                    config = config,
+                                    onConfigChange = { vm.updateDayConfig(dayKey, it) },
+                                    enabled = s.isEditing
                                 )
                             }
                         }
                     }
-                }
 
-                Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                if (s.error != null) {
-                    Text(
-                        text = s.error!!,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("Ubicación", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
-                if (s.isEditing) {
-                    AppButton(
-                        text = "Guardar Perfil Profesional",
-                        onClick = {
-                            vm.saveProfile(
-                                selectedCategoryId,
-                                displayName,
-                                businessName,
-                                specialty,
-                                description,
-                                address,
-                                city,
-                                duration.toIntOrNull() ?: 30,
-                                latitude,
-                                longitude
+                            Box {
+                                Column {
+                                    AppTextField(
+                                        value = address,
+                                        onValueChange = { 
+                                            address = it
+                                            locationVm.getAddressSuggestions(it)
+                                        },
+                                        label = "Dirección de atención",
+                                        leadingIcon = Icons.Default.Place,
+                                        enabled = s.isEditing
+                                    )
+                                    if (s.isEditing) {
+                                        Text(
+                                            "Si trabajas a domicilio, indica tu comuna o punto de referencia principal",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                if (locState.addressSuggestions.isNotEmpty() && s.isEditing) {
+                                    DropdownMenu(
+                                        expanded = true,
+                                        onDismissRequest = { },
+                                        properties = PopupProperties(focusable = false),
+                                        modifier = Modifier.fillMaxWidth(0.9f)
+                                    ) {
+                                        locState.addressSuggestions.forEach { suggestion ->
+                                            val fullAddress = suggestion.getAddressLine(0)
+                                            DropdownMenuItem(
+                                                text = { Text(fullAddress, style = MaterialTheme.typography.bodySmall) },
+                                                onClick = {
+                                                    address = fullAddress
+                                                    city = suggestion.locality ?: city
+                                                    latitude = suggestion.latitude
+                                                    longitude = suggestion.longitude
+                                                    locationVm.clearSuggestions()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            AppTextField(
+                                value = city,
+                                onValueChange = { city = it },
+                                label = "Ciudad",
+                                leadingIcon = Icons.Default.LocationCity,
+                                enabled = s.isEditing
                             )
-                        },
-                        isLoading = s.isLoading,
-                        enabled = displayName.isNotBlank() && specialty.isNotBlank() && selectedCategoryId != null
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth(), enabled = !s.isLoading) {
-                        Text("Cancelar edición")
+
+                            if (s.isEditing) {
+                                AppOutlinedButton(
+                                    text = "Usar mi ubicación actual (GPS)",
+                                    icon = Icons.Default.MyLocation,
+                                    onClick = {
+                                        locationVm.getCurrentLocation { lat, lng ->
+                                            latitude = lat
+                                            longitude = lng
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Ubicación activada: Ahora los clientes podrán ver tu zona de cobertura o local",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    },
+                                    isLoading = locState.isLocating,
+                                    enabled = !locState.isLocating
+                                )
+                                
+                                if (latitude != null && longitude != null) {
+                                    Text(
+                                        "Coordenadas: ${"%.5f".format(latitude)}, ${"%.5f".format(longitude)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
+                            }
+                        }
                     }
-                } else {
-                    AppButton(
-                        text = "Editar mi Información",
-                        onClick = { vm.toggleEdit() }, 
-                        enabled = !s.isLoading
-                    )
+
+                    Spacer(Modifier.height(32.dp))
+
+                    if (s.error != null) {
+                        Text(
+                            text = s.error!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+
+                    if (s.isEditing) {
+                        AppButton(
+                            text = "Guardar Perfil Profesional",
+                            onClick = {
+                                vm.saveProfile(
+                                    selectedCategoryId,
+                                    displayName,
+                                    businessName,
+                                    specialty,
+                                    description,
+                                    address,
+                                    city,
+                                    duration.toIntOrNull() ?: 30,
+                                    latitude,
+                                    longitude
+                                )
+                            },
+                            isLoading = s.isLoading,
+                            enabled = displayName.isNotBlank() && specialty.isNotBlank() && selectedCategoryId != null
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth(), enabled = !s.isLoading) {
+                            Text("Cancelar edición")
+                        }
+                    } else {
+                        AppButton(
+                            text = "Editar mi Información",
+                            onClick = { vm.toggleEdit() }, 
+                            enabled = !s.isLoading
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
                 }
-                
-                Spacer(Modifier.height(24.dp))
             }
         }
     }

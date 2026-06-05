@@ -169,10 +169,14 @@ fun DayScheduleRow(
                     }
                 }
             } else {
-                Text("Cerrado", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(
+                    "No disponible",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
         }
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 

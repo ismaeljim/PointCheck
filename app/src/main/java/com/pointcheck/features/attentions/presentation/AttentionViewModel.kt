@@ -43,6 +43,28 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
+     * Carga la atención asociada a una reserva si ya existe.
+     */
+    fun loadAttentionByReservation(reservationId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            repository.getAttentionsByReservation(reservationId)
+                .onSuccess { attentions ->
+                    val lastAttention = attentions.lastOrNull()
+                    _state.update { it.copy(
+                        currentAttention = lastAttention,
+                        observations = lastAttention?.observations ?: "",
+                        isLoading = false
+                    ) }
+                }
+                .onFailure { e ->
+                    // Si no hay atención aún, no es necesariamente un error crítico para el UI
+                    _state.update { it.copy(isLoading = false) }
+                }
+        }
+    }
+
+    /**
      * AUDITORÍA: Gatilla el inicio de la atención en el backend.
      * La reserva cambia a estado 'CONFIRMED'.
      */

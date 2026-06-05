@@ -68,4 +68,9 @@ class ReservationController(
     fun cancel(@PathVariable id: String): ResponseEntity<ReservationResponse> {
         return ResponseEntity.ok(reservationService.cancel(id))
     }
+
+    @PutMapping("/{id}/confirm-payment")
+    fun confirmPayment(@PathVariable id: String): ResponseEntity<ReservationResponse> {
+        return ResponseEntity.ok(reservationService.confirmPayment(id))
+    }
 }

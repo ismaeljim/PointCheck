@@ -8,7 +8,9 @@ import org.springframework.stereotype.Repository
 // CAMBIO: Hereda de String en lugar de Long
 interface ServiceOfferingRepository : JpaRepository<ServiceOffering, String> {
 
-    // CAMBIO: El parámetro ahora debe ser String para el UUID del perfil
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM ServiceOffering s JOIN FETCH s.professionalProfile pp JOIN FETCH pp.category WHERE s.professionalProfile.id = :professionalProfileId")
+    fun findByProfessionalProfile_IdWithDetails(professionalProfileId: String): List<ServiceOffering>
+
     fun findByProfessionalProfile_Id(professionalProfileId: String): List<ServiceOffering>
 
     fun findByActiveTrue(): List<ServiceOffering>

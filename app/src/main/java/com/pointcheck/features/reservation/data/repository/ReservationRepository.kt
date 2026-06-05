@@ -45,6 +45,10 @@ class ReservationRepository(private val api: ApiService) {
         return handleApiCall("Error al cancelar reserva") { api.cancelReservation(id) }
     }
 
+    suspend fun confirmPayment(id: String): Result<ReservationResponseDto> {
+        return handleApiCall("Error al confirmar pago") { api.confirmPayment(id) }
+    }
+
     suspend fun getActiveProfiles(categoryId: String? = null): Result<List<SpecialistResponseDto>> {
         return handleApiCall("Error al obtener perfiles activos") { api.getActiveProfessionalProfiles(categoryId) }
     }

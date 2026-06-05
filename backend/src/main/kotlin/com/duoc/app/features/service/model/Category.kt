@@ -33,7 +33,7 @@ data class Category(
     @Column(name = "color_hex", nullable = false, length = 7)
     val colorHex: String,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BIT(1) DEFAULT 1")
     val active: Boolean = true,
 
     @Column(name = "created_at", nullable = false, updatable = false)

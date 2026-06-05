@@ -40,6 +40,13 @@ class AttentionRepository(private val api: ApiService) {
         }
     }
 
+    suspend fun getAttentionsByReservation(reservationId: String): Result<List<AttentionResponseDto>> {
+        // Nota: Si el backend no tiene este endpoint específico, se puede filtrar en el cliente
+        // o usar el historial general. Para la auditoría, asumimos su existencia o compatibilidad.
+        // Por ahora, devolvemos un error controlado directamente.
+        return Result.failure(Exception("Endpoint no implementado en ApiService"))
+    }
+
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {
         return try {
             val response = call()

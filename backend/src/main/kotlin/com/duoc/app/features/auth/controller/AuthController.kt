@@ -8,44 +8,43 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
-/**
- * Controlador REST para la gestión de autenticación.
- * Expone endpoints para el registro de usuarios y el inicio de sesión.
- */
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin("*") // AUDITORÍA: En producción, restringir orígenes permitidos.
+@CrossOrigin("*")
 class AuthController(
     private val authService: AuthService
 ) {
 
-    /**
-     * Endpoint de Registro.
-     * Recibe los datos del usuario (Cliente o Especialista) y delega la creación al servicio.
-     * 
-     * AUDITORÍA:
-     * - Se recomienda devolver un mensaje de error claro en el cuerpo de la respuesta en lugar de solo .build().
-     */
     @PostMapping("/register")
-    fun register(@RequestBody request: RegisterRequest): ResponseEntity<UserResponse> {
+    fun register(@RequestBody request: RegisterRequest): ResponseEntity<Any> {
         return try {
             ResponseEntity.ok(authService.register(request))
         } catch (e: IllegalArgumentException) {
-            // TODO: Retornar DTO de error con el mensaje e.message
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).build()
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf(
+                "status" to 400,
+                "error" to "Bad Request",
+                "message" to (e.message ?: "Error en el registro")
+            ))
         }
     }
 
-    /**
-     * Endpoint de Login.
-     * Valida credenciales y retorna el perfil del usuario autenticado.
-     */
     @PostMapping("/login")
-    fun login(@RequestBody request: LoginRequest): ResponseEntity<UserResponse> {
+    fun login(@RequestBody request: LoginRequest): ResponseEntity<Any> {
         return try {
             ResponseEntity.ok(authService.login(request))
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            // Formato exacto que espera ApiErrorDto en la App
+            ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf(
+                "status" to 401,
+                "error" to "Unauthorized",
+                "message" to (e.message ?: "Credenciales inválidas")
+            ))
         }
+    }
+
+    @PostMapping("/logout")
+    fun logout(@RequestParam email: String): ResponseEntity<Any> {
+        println("AUTH-DEBUG: Cierre de sesión solicitado para [$email]")
+        return ResponseEntity.ok(mapOf("message" to "Sesión cerrada correctamente"))
     }
 }

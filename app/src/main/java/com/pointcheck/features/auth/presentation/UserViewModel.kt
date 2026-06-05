@@ -154,6 +154,10 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                             .onSuccess { profile ->
                                 prefs.saveProfessionalProfileId(profile.id)
                             }
+                            .onFailure { e ->
+                                // Logueamos el error pero no bloqueamos el inicio de sesión
+                                android.util.Log.e("UserViewModel", "Error cargando perfil: ${e.message}")
+                            }
                     }
 
                     s.avatarUri?.let { prefs.setAvatar(it) }
@@ -177,7 +181,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(isLoading = true, error = null) }
             authRepository.login(email.trim(), password)
                 .onSuccess { userResponse ->
-                    // Guardar sesión antes de notificar éxito
+                    // Consolidado: Usamos solo saveSession para evitar inconsistencias
                     prefs.saveSession(
                         userId = userResponse.id,
                         name = userResponse.name,
@@ -187,10 +191,14 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                         rut = userResponse.rut
                     )
                     
+                    // Si es especialista, guardamos proactivamente su ID de perfil
                     if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
                         profileRepository.getProfileByUserId(userResponse.id)
                             .onSuccess { profile ->
                                 prefs.saveProfessionalProfileId(profile.id)
+                            }
+                            .onFailure { e ->
+                                android.util.Log.e("UserViewModel", "Perfil no encontrado aún: ${e.message}")
                             }
                     }
                     
@@ -198,7 +206,7 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                     onResult(true)
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false, error = e.message ?: "Error de credenciales") }
+                    _state.update { it.copy(isLoading = false, error = e.message ?: "Credenciales inválidas") }
                     onResult(false)
                 }
         }

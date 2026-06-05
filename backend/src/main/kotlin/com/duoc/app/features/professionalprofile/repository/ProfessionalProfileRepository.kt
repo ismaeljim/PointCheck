@@ -1,6 +1,7 @@
 package com.duoc.app.features.professionalprofile.repository
 
 import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -13,6 +14,7 @@ interface ProfessionalProfileRepository : JpaRepository<ProfessionalProfile, Str
     /**
      * Recupera el perfil profesional asociado a un ID de usuario.
      */
+    @EntityGraph(attributePaths = ["user", "category"])
     fun findByUser_Id(userId: String): ProfessionalProfile?
 
     /**
@@ -23,10 +25,12 @@ interface ProfessionalProfileRepository : JpaRepository<ProfessionalProfile, Str
     /**
      * Lista todos los perfiles profesionales activos.
      */
+    @EntityGraph(attributePaths = ["user", "category"])
     fun findByActiveTrue(): List<ProfessionalProfile>
 
     /**
      * Filtra perfiles profesionales por categoría y estado activo.
      */
+    @EntityGraph(attributePaths = ["user", "category"])
     fun findByCategoryIdAndActiveTrue(categoryId: String): List<ProfessionalProfile>
 }
