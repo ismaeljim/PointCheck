@@ -262,6 +262,9 @@ interface ApiService {
     @GET("api/admin/audit-logs")
     suspend fun getAuditLogs(): Response<List<com.pointcheck.features.admin.data.dto.AuditLogDto>>
 
+    @GET("api/admin/reservations/weekly")
+    suspend fun getGlobalWeeklyReservations(): Response<List<ReservationResponseDto>>
+
     // --- External API Endpoints ---
 
     @GET("api/external/weather/{city}")

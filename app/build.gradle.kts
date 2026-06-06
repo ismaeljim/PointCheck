@@ -1,7 +1,7 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -20,8 +20,8 @@ android {
         compose = true
     }
 
-    // Nota: Ya no se necesita composeOptions { kotlinCompilerExtensionVersion } 
-    // con Kotlin 2.0+, el plugin de Kotlin lo maneja solo.
+    // Nota: Con Kotlin 2.0+, el plugin de Kotlin lo maneja solo.
+    // No se necesita composeOptions { kotlinCompilerExtensionVersion }
 
     kotlinOptions {
         jvmTarget = "17"
@@ -34,10 +34,9 @@ android {
 }
 
 dependencies {
-    // Jetpack Compose BOM
+    // Jetpack Compose BOM 2024.12.01 incluye Compose 1.7.6+
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
 
-    // Componentes base actualizados para Kotlin 2.1
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.9.3")
 
@@ -48,7 +47,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
 
-    // Navegación y ViewModel (Versiones estables para K2)
+    // Navegación y ViewModel
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")

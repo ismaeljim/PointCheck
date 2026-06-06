@@ -102,6 +102,10 @@ class DashboardRepository(private val api: ApiService) {
         return handleApiCall("Error al obtener logs de auditoría") { api.getAuditLogs() }
     }
 
+    suspend fun getGlobalWeeklyReservations(): Result<List<com.pointcheck.features.reservation.data.dto.ReservationResponseDto>> {
+        return handleApiCall("Error al obtener citas semanales") { api.getGlobalWeeklyReservations() }
+    }
+
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {
         return try {
             val response = call()

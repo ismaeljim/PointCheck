@@ -1,23 +1,23 @@
 package com.pointcheck.features.onboarding.presentation
 
 import com.pointcheck.features.auth.data.dto.ServiceOfferingDto
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.*
 import com.pointcheck.features.auth.presentation.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +29,7 @@ fun ServiceConfigurationScreen(
     vm: CategoryViewModel = viewModel()
 ) {
     val state by vm.state.collectAsState()
+    val authState by authVm.state.collectAsState()
     val selectedServices = remember { mutableStateMapOf<String, ServiceOfferingDto>() }
 
     LaunchedEffect(categoryId) {
@@ -38,30 +39,42 @@ fun ServiceConfigurationScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Configura tus Servicios",
+                title = "Configuración",
                 onBack = { nav.popBackStack() }
             )
         }
     ) { padding ->
-        if (state.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(24.dp)
+            ) {
+                Text(
+                    "Define los precios para los servicios que vas a ofrecer.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-        } else {
-            Column(Modifier.padding(padding).fillMaxSize()) {
+
+            if (state.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
                 LazyColumn(
-                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.weight(1f).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    item {
-                        Text(
-                            "Selecciona los servicios que ofreces y ajusta sus precios.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
                     items(state.templates) { template ->
-                        ServiceTemplateItem(
+                        ServiceConfigItem(
                             template = template,
                             onServiceChanged = { offering ->
                                 if (offering != null) {
@@ -74,26 +87,28 @@ fun ServiceConfigurationScreen(
                     }
                 }
 
-                AppButton(
-                    text = "Finalizar Registro",
-                    onClick = {
-                        authVm.onServicesSelected(selectedServices.values.toList())
-                        authVm.save {
-                            nav.navigate(Screen.Dashboard.route) {
-                                popUpTo(Screen.Register.route) { inclusive = true }
+                Box(Modifier.padding(16.dp)) {
+                    AppButton(
+                        text = "Finalizar Registro",
+                        onClick = {
+                            authVm.onServicesSelected(selectedServices.values.toList())
+                            authVm.save {
+                                nav.navigate(Screen.Dashboard.route) {
+                                    popUpTo(Screen.Register.route) { inclusive = true }
+                                }
                             }
-                        }
-                    },
-                    enabled = selectedServices.isNotEmpty(),
-                    modifier = Modifier.padding(16.dp)
-                )
+                        },
+                        enabled = selectedServices.isNotEmpty(),
+                        isLoading = authState.isLoading
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun ServiceTemplateItem(
+fun ServiceConfigItem(
     template: com.pointcheck.features.onboarding.presentation.dto.ServiceTemplateDto,
     onServiceChanged: (ServiceOfferingDto?) -> Unit
 ) {
@@ -108,32 +123,37 @@ fun ServiceTemplateItem(
         }
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = if (enabled) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
+    AppCard(onClick = { enabled = !enabled }) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = enabled, onCheckedChange = { enabled = it })
+            Checkbox(
+                checked = enabled, 
+                onCheckedChange = { enabled = it },
+                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+            )
             
-            Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                Text(template.name, fontWeight = FontWeight.Bold)
-                Text(template.description, style = MaterialTheme.typography.bodySmall)
+            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                Text(template.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                Text(template.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            AppTextField(
-                value = price,
-                onValueChange = { price = it },
-                label = "Precio",
-                modifier = Modifier.width(100.dp),
-                trailingIcon = { Text(if (template.unit == "SESSION") "Ses" else "Hr", modifier = Modifier.padding(end = 8.dp), style = MaterialTheme.typography.bodySmall) },
-                enabled = enabled
-            )
+            if (enabled) {
+                AppTextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = "Precio",
+                    modifier = Modifier.width(90.dp),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                )
+            } else {
+                Text(
+                    "$${template.defaultPrice}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
         }
     }
 }

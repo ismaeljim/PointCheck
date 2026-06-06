@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,11 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.*
 import com.pointcheck.features.auth.presentation.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,30 +35,44 @@ fun CategorySelectionScreen(
     Scaffold(
         topBar = { 
             AppTopBar(
-                title = "¿Cuál es tu especialidad?",
+                title = "Tu Especialidad",
                 onBack = { nav.popBackStack() }
             ) 
         }
     ) { padding ->
-        if (state.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(Modifier.padding(padding).padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(24.dp)
+            ) {
                 Text(
-                    "Selecciona la categoría que mejor describa tus servicios",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    "Selecciona la categoría que mejor describa lo que haces.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
                 )
+            }
 
+            if (state.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
+                    modifier = Modifier.padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(state.categories) { category ->
-                        CategoryCard(
+                        CategoryCardV2(
                             name = category.name,
                             iconName = category.icon,
                             colorHex = category.color,
@@ -74,7 +89,7 @@ fun CategorySelectionScreen(
 }
 
 @Composable
-fun CategoryCard(
+fun CategoryCardV2(
     name: String,
     iconName: String,
     colorHex: String,
@@ -82,31 +97,31 @@ fun CategoryCard(
 ) {
     val color = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (e: Exception) { MaterialTheme.colorScheme.primary }
     
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(140.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
-    ) {
+    AppCard(onClick = onClick) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = getIconByName(iconName),
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(40.dp)
-            )
-            Spacer(Modifier.height(12.dp))
+            Surface(
+                modifier = Modifier.size(56.dp),
+                shape = CircleShape,
+                color = color.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    imageVector = getIconByName(iconName),
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.padding(14.dp)
+                )
+            }
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = color
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

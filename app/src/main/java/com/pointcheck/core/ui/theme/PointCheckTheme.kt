@@ -4,25 +4,41 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
-// Paleta de colores para el modo claro
 private val LightColors = lightColorScheme(
-    primary = MetallicBlue,
+    primary = SlateGray,
     onPrimary = White,
-    background = LightBackground,
-    surface = White
+    primaryContainer = SlateGray.copy(alpha = 0.1f),
+    onPrimaryContainer = SlateGray,
+    secondary = MercadoPagoBlue,
+    onSecondary = White,
+    tertiary = MercadoPagoYellow,
+    onTertiary = TextPrimary,
+    background = BackgroundLight,
+    onBackground = TextPrimary,
+    surface = SurfaceLight,
+    onSurface = TextPrimary,
+    surfaceVariant = DividerColor,
+    onSurfaceVariant = TextSecondary,
+    outline = DividerColor,
+    error = ErrorRed,
+    onError = White
 )
 
-// Paleta de colores para el modo oscuro
 private val DarkColors = darkColorScheme(
-    primary = MetallicBlue,
+    primary = SlateGray,
     onPrimary = White,
-    background = DarkBackground,
-    surface = DarkBackground
+    background = Color(0xFF121212),
+    surface = Color(0xFF1E1E1E),
+    onBackground = White,
+    onSurface = White
 )
 
 @Composable
 fun PointCheckTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
+    // Forzamos modo claro para la estética de Mercado Pago si se prefiere, 
+    // pero respetaremos el parámetro por ahora.
     val colors = if (darkTheme) DarkColors else LightColors
 
     MaterialTheme(

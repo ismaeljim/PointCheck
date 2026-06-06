@@ -3,10 +3,10 @@ package com.pointcheck.core.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pointcheck.features.auth.presentation.LoginScreen
 import com.pointcheck.features.auth.presentation.RegisterScreen
@@ -77,8 +77,7 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun AppNavigation(snackbar: SnackbarHostState) {
-    val nav = rememberNavController()
+fun AppNavigation(snackbar: SnackbarHostState, nav: NavHostController) {
     val authVm: UserViewModel = viewModel()
     
     NavHost(navController = nav, startDestination = Screen.Splash.route) {

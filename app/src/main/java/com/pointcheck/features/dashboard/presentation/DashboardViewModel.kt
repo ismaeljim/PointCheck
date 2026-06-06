@@ -32,7 +32,8 @@ data class DashboardUiState(
     val adminUsers: List<com.pointcheck.features.auth.data.dto.UserResponseDto> = emptyList(),
     val financialReport: Map<String, Any>? = null,
     val adminSettings: List<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto> = emptyList(),
-    val auditLogs: List<com.pointcheck.features.admin.data.dto.AuditLogDto> = emptyList()
+    val auditLogs: List<com.pointcheck.features.admin.data.dto.AuditLogDto> = emptyList(),
+    val adminWeeklyReservations: List<com.pointcheck.features.reservation.data.dto.ReservationResponseDto> = emptyList()
 )
 
 /**
@@ -122,7 +123,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             // Cargar Logs de Auditoría
             repository.getAuditLogs()
                 .onSuccess { logs ->
-                    _state.update { it.copy(auditLogs = logs, isLoading = false) }
+                    _state.update { it.copy(auditLogs = logs) }
+                }
+
+            // Cargar Citas Semanales Globales
+            repository.getGlobalWeeklyReservations()
+                .onSuccess { reservations ->
+                    _state.update { it.copy(adminWeeklyReservations = reservations, isLoading = false) }
                 }
                 .onFailure { e ->
                     _state.update { it.copy(error = "Error Admin: ${e.message}", isLoading = false) }

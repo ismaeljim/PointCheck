@@ -1,56 +1,37 @@
 package com.pointcheck.features.reservation.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.EventBusy
-import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.prefs.UserPreferences
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppOutlinedButton
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.presentation.components.*
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * PointCheck Scheduled Screen - GESTIÓN DE AGENDA DUAL
- * 
- * ¿POR QUÉ "AGENDA DUAL"?
- * En PointCheck, un Especialista no solo atiende clientes, sino que también puede ser cliente 
- * de otros profesionales. Una agenda única causaría confusión sobre si el usuario es quien 
- * debe dar el servicio o recibirlo.
- * 
- * IMPLEMENTACIÓN:
- * 1. TAB SEPARATION: Si el rol es SPECIALIST, habilitamos pestañas ("Mis Atenciones" vs "Mis Reservas").
- * 2. ACTION LOGIC: 
- *    - En "Mis Atenciones", el profesional tiene botones de "Atender" y "Cobrar".
- *    - En "Mis Reservas", el usuario solo tiene la opción de "Cancelar", comportándose como un cliente.
- * 
- * ESTO RESOLVIÓ: La ambigüedad de roles en la misma pantalla y centralizó la gestión 
- * de tiempos del profesional en un solo lugar.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationViewModel = viewModel()) {
-    // ... resto del código
     val reservations by vm.reservations.collectAsState()
     val attentions by vm.attentions.collectAsState()
     val state by vm.state.collectAsState()
@@ -61,9 +42,7 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
 
     LaunchedEffect(Unit) {
         val userId = prefs.userId.first()
-        if (userId != null) {
-            vm.loadDualAgenda(userId)
-        }
+        if (userId != null) vm.loadDualAgenda(userId)
         userRole = prefs.role.first()
     }
 
@@ -81,18 +60,29 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
             modifier = Modifier
                 .padding(pad)
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
         ) {
             if (isSpecialist) {
-                TabRow(selectedTabIndex = selectedTab) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = Color.White
+                        )
+                    }
+                ) {
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Mis Atenciones") }
+                        text = { Text("Mis Atenciones", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Mis Reservas") }
+                        text = { Text("Mis Reservas", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
                     )
                 }
             }
@@ -102,10 +92,8 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
                 if (filter == null) rawList
                 else {
                     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    val now = Calendar.getInstance()
-                    val todayStr = sdf.format(now.time)
-                    val monthPrefix = todayStr.substring(0, 7) // "YYYY-MM"
-
+                    val todayStr = sdf.format(Date())
+                    val monthPrefix = todayStr.substring(0, 7)
                     rawList.filter { res ->
                         when (filter) {
                             "today" -> res.reservationStart.startsWith(todayStr)
@@ -121,44 +109,37 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
                     CircularProgressIndicator()
                 }
             } else if (currentList.isEmpty()) {
-                EmptyReservationsState(
-                    userRole = userRole,
-                    isAttentionsTab = isSpecialist && selectedTab == 0,
-                    onNewBooking = { nav.navigate(Screen.Booking.route) }
+                EmptyState(
+                    title = if (selectedTab == 0 && isSpecialist) "Sin atenciones" else "Sin citas",
+                    description = if (selectedTab == 0 && isSpecialist) "No tienes clientes agendados por ahora." else "Aún no tienes citas programadas.",
+                    icon = Icons.Default.EventBusy,
+                    actionText = if (userRole?.uppercase() == "CLIENT" || selectedTab == 1) "Agendar Cita" else null,
+                    onAction = { nav.navigate(Screen.Booking.route) }
                 )
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(currentList) { res ->
-                        ReservationCard(
+                        ReservationCardV2(
                             res = res,
-                            userRole = userRole,
                             isSpecialistView = isSpecialist && selectedTab == 0,
-                            onAtender = {
-                                nav.navigate(
-                                    Screen.Attention.createRoute(res.id)
-                                )
-                            },
-                            onConfirmPayment = {
-                                vm.confirmPayment(res.id) {
-                                    // Callback opcional
-                                }
-                            },
+                            onAtender = { nav.navigate(Screen.Attention.createRoute(res.id)) },
+                            onConfirmPayment = { vm.confirmPayment(res.id) {} },
                             onCancel = { vm.cancelReservation(res.id) }
                         )
                     }
                 }
                 
-                // Solo mostramos "Nueva Reserva" si el usuario es CLIENTE o está en su pestaña de reservas
                 if (userRole?.uppercase() == "CLIENT" || (isSpecialist && selectedTab == 1)) {
-                    AppButton(
-                        text = "Nueva Reserva",
-                        onClick = { nav.navigate(Screen.Booking.route) },
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Box(Modifier.padding(16.dp)) {
+                        AppButton(
+                            text = "Nueva Reserva",
+                            onClick = { nav.navigate(Screen.Booking.route) }
+                        )
+                    }
                 }
             }
         }
@@ -166,18 +147,14 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
 }
 
 @Composable
-fun ReservationCard(
+fun ReservationCardV2(
     res: ReservationResponseDto,
-    userRole: String?,
-    isSpecialistView: Boolean = false,
+    isSpecialistView: Boolean,
     onAtender: () -> Unit,
     onConfirmPayment: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    AppCard {
         Column(Modifier.padding(16.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -185,30 +162,40 @@ fun ReservationCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Cita #${res.id.takeLast(8)}",
+                    text = res.reservationStart.replace("T", " ").substringBeforeLast(":"),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
                 StatusChip(res.status)
             }
 
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                res.serviceName ?: "Servicio",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
             Spacer(Modifier.height(8.dp))
-
-            InfoRow(icon = Icons.Default.MedicalServices, text = res.serviceName ?: "Servicio sin nombre")
-            if (isSpecialistView) {
-                InfoRow(icon = Icons.Default.Person, text = "Cliente: ${res.client.name}")
-            } else {
-                InfoRow(icon = Icons.Default.Person, text = "Especialista: ${res.specialist.name}")
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (isSpecialistView) "Cliente: ${res.client.name}" else "Especialista: ${res.specialist.name}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            InfoRow(icon = Icons.Default.CalendarToday, text = res.reservationStart.replace("T", " ").substringBeforeLast(":"))
-
-            Spacer(Modifier.height(16.dp))
 
             val statusUpper = res.status.uppercase()
             val canAction = statusUpper != "COMPLETED" && statusUpper != "CANCELLED"
 
             if (canAction) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AppOutlinedButton(
                         text = "Cancelar",
                         onClick = onCancel,
@@ -217,110 +204,24 @@ fun ReservationCard(
                     )
 
                     if (isSpecialistView) {
-                        Spacer(Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1.5f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AppButton(
-                                text = "Atender",
-                                onClick = onAtender,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            AppButton(
-                                text = "Cobrar y Finalizar",
-                                containerColor = MaterialTheme.colorScheme.tertiary,
-                                onClick = onConfirmPayment,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        AppButton(
+                            text = "Atender",
+                            onClick = onAtender,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
+                }
+                
+                if (isSpecialistView && statusUpper == "CONFIRMED") {
+                    Spacer(Modifier.height(8.dp))
+                    AppButton(
+                        text = "Cobrar y Finalizar",
+                        containerColor = Color(0xFF00A650),
+                        onClick = onConfirmPayment
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-fun InfoRow(icon: ImageVector, text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 2.dp)
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.outline
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-fun StatusChip(status: String) {
-    val color = when (status.uppercase()) {
-        "PENDING", "PENDIENTE" -> MaterialTheme.colorScheme.tertiary
-        "CONFIRMED", "CONFIRMADA" -> MaterialTheme.colorScheme.primary
-        "COMPLETED", "COMPLETADA" -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.outline
-    }
-    Surface(
-        color = color.copy(alpha = 0.1f),
-        shape = MaterialTheme.shapes.extraSmall,
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
-    ) {
-        Text(
-            text = status,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-fun EmptyReservationsState(
-    userRole: String?,
-    isAttentionsTab: Boolean = false,
-    onNewBooking: () -> Unit
-) {
-    val isSpecialist = userRole?.uppercase() == "SPECIALIST"
-    
-    Column(
-        Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.EventBusy,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.outlineVariant
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            if (isAttentionsTab) "No tienes atenciones pendientes" 
-            else if (isSpecialist) "Tu agenda de reservas está libre" 
-            else "No tienes citas programadas",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            if (isAttentionsTab) "No tienes clientes agendados para este periodo."
-            else if (isSpecialist) "No tienes citas para este periodo. ¡Buen momento para descansar o promocionar tus servicios!" 
-            else "Cuando agendes una cita, aparecerá aquí para que puedas gestionarla.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-        
-        if (!isSpecialist || !isAttentionsTab) {
-            Spacer(Modifier.height(24.dp))
-            AppButton(
-                text = "Agendar mi primera cita",
-                onClick = onNewBooking
-            )
-        }
-    }
-}
