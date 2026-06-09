@@ -4,6 +4,7 @@ import com.duoc.app.features.reservation.model.Reservation
 import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.time.LocalDateTime
+import java.util.Objects
 
 @Entity
 @Table(
@@ -17,7 +18,7 @@ import java.time.LocalDateTime
         UniqueConstraint(name = "uk_attentions_reservation", columnNames = ["reservation_id"])
     ]
 )
-data class Attention(
+class Attention(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
@@ -36,22 +37,34 @@ data class Attention(
     val specialist: User,
 
     @Column(nullable = false)
-    val startedAt: LocalDateTime = LocalDateTime.now(),
+    var startedAt: LocalDateTime = LocalDateTime.now(),
 
-    val finishedAt: LocalDateTime? = null,
+    @Column(name = "finished_at")
+    var finishedAt: LocalDateTime? = null,
 
-    val durationMinutes: Int? = null,
+    @Column(name = "duration_minutes")
+    var durationMinutes: Int? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val status: AttentionStatus = AttentionStatus.IN_PROGRESS,
+    var status: AttentionStatus = AttentionStatus.IN_PROGRESS,
 
     @Column(length = 2000)
-    val observations: String? = null,
+    var observations: String? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Attention) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = Objects.hash(id)
+
+    override fun toString(): String = "Attention(id=$id, status=$status, startedAt=$startedAt)"
+}

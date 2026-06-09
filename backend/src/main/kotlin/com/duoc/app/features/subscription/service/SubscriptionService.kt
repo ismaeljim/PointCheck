@@ -47,11 +47,11 @@ class SubscriptionService(
         val current = subscriptions.first()
         
         if (current.endDate.isBefore(LocalDate.now())) {
-            val expiredSubscription = current.copy(
-                status = SubscriptionStatus.EXPIRED,
+            current.apply {
+                status = SubscriptionStatus.EXPIRED
                 updatedAt = LocalDateTime.now()
-            )
-            subscriptionRepository.save(expiredSubscription)
+            }
+            subscriptionRepository.save(current)
             return null
         }
 
@@ -64,12 +64,12 @@ class SubscriptionService(
             IllegalArgumentException("Suscripción no encontrada con ID: $id")
         }
 
-        val updatedSubscription = subscription.copy(
-            status = SubscriptionStatus.CANCELLED,
+        subscription.apply {
+            status = SubscriptionStatus.CANCELLED
             updatedAt = LocalDateTime.now()
-        )
+        }
 
-        return subscriptionRepository.save(updatedSubscription).toResponse()
+        return subscriptionRepository.save(subscription).toResponse()
     }
 
     private fun Subscription.toResponse(): SubscriptionResponse = SubscriptionResponse(

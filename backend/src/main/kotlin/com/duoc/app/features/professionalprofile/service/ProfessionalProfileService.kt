@@ -101,23 +101,23 @@ class ProfessionalProfileService(
             categoryRepository.findById(it).orElse(null)
         }
 
-        val updatedProfile = profile.copy(
-            category = category,
-            displayName = request.displayName,
-            businessName = request.businessName,
-            specialty = request.specialty,
-            description = request.description,
-            address = request.address,
-            city = request.city,
-            country = request.country,
-            latitude = request.latitude,
-            longitude = request.longitude,
-            defaultSessionDurationMinutes = request.defaultSessionDurationMinutes,
-            workingHoursJson = request.workingHoursJson,
+        profile.apply {
+            this.category = category
+            displayName = request.displayName
+            businessName = request.businessName
+            specialty = request.specialty
+            description = request.description
+            address = request.address
+            city = request.city
+            country = request.country
+            latitude = request.latitude
+            longitude = request.longitude
+            defaultSessionDurationMinutes = request.defaultSessionDurationMinutes
+            workingHoursJson = request.workingHoursJson
             updatedAt = LocalDateTime.now()
-        )
+        }
 
-        return professionalProfileRepository.save(updatedProfile).toResponse()
+        return professionalProfileRepository.save(profile).toResponse()
     }
 
     /**
@@ -129,12 +129,12 @@ class ProfessionalProfileService(
             NoSuchElementException("Perfil profesional no encontrado con id $id")
         }
 
-        val deactivatedProfile = profile.copy(
-            active = false,
+        profile.apply {
+            active = false
             updatedAt = LocalDateTime.now()
-        )
+        }
 
-        return professionalProfileRepository.save(deactivatedProfile).toResponse()
+        return professionalProfileRepository.save(profile).toResponse()
     }
 
     private fun ProfessionalProfile.toResponse(): ProfessionalProfileResponse {

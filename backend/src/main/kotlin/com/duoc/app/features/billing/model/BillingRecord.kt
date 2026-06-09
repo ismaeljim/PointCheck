@@ -6,6 +6,7 @@ import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.util.Objects
 
 @Entity
 @Table(
@@ -20,7 +21,7 @@ import java.time.LocalDateTime
         Index(name = "idx_billing_paid_at", columnList = "paid_at")
     ]
 )
-data class BillingRecord(
+class BillingRecord(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
@@ -43,29 +44,40 @@ data class BillingRecord(
     val specialist: User,
 
     @Column(nullable = false, precision = 12, scale = 2)
-    val amount: BigDecimal,
+    var amount: BigDecimal,
 
     @Column(nullable = false, length = 10)
-    val currency: String = "CLP",
+    var currency: String = "CLP",
 
     @Enumerated(EnumType.STRING)
-    val paymentMethod: PaymentMethod? = null,
+    var paymentMethod: PaymentMethod? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val status: PaymentStatus = PaymentStatus.PENDING,
+    var status: PaymentStatus = PaymentStatus.PENDING,
 
     @Column(name = "paid_at")
-    val paidAt: LocalDateTime? = null,
+    var paidAt: LocalDateTime? = null,
 
-    val externalReference: String? = null,
+    @Column(name = "external_reference")
+    var externalReference: String? = null,
 
     @Column(length = 1000)
-    val notes: String? = null,
+    var notes: String? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is BillingRecord) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = Objects.hash(id)
+
+    override fun toString(): String = "BillingRecord(id=$id, amount=$amount, status=$status)"
+}

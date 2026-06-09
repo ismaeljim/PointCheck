@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.PointCheck" parent="android:Theme.Material.Light.NoActionBar">
-        <!-- Window background - required for Compose apps -->
+    <style name="Theme.PointCheck" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/white</item>
-        <!-- Status bar configuration -->
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 </resources>

@@ -1,6 +1,7 @@
 package com.pointcheck.features.dashboard.presentation
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
@@ -50,51 +51,68 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     val state: StateFlow<DashboardUiState> = _state
 
     init {
+        Log.d("DashboardVM", "Iniciando DashboardViewModel")
         loadDashboard()
     }
 
     fun loadDashboard() {
         viewModelScope.launch {
+            Log.d("DashboardVM", "loadDashboard() ejecutado")
             _state.update { it.copy(isLoading = true, error = null) }
             
-            val userId = prefs.userId.first()
-            val role = prefs.role.first() ?: "CLIENT"
-            val name = prefs.name.first() ?: "Usuario"
+            try {
+                val userId = prefs.userId.first()
+                val role = prefs.role.first() ?: "CLIENT"
+                val name = prefs.name.first() ?: "Usuario"
+                
+                Log.d("DashboardVM", "User data: id=$userId, role=$role, name=$name")
 
-            _state.update { it.copy(userName = name, userRole = role) }
+                _state.update { it.copy(userName = name, userRole = role) }
 
-            if (userId != null) {
-                loadCategories()
+                if (userId != null) {
+                    loadCategories()
 
-                if (role == "ADMIN") {
-                    repository.getDashboardMetrics(userId, role)
-                        .onSuccess { metrics ->
-                            _state.update { it.copy(metrics = metrics) }
-                        }
-                    loadAdminData()
-                } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
-                    repository.getReportSummaryBySpecialist(userId)
-                        .onSuccess { summary ->
-                            _state.update { it.copy(reportSummary = summary, isLoading = false) }
-                        }
-                        .onFailure { e ->
-                            _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
-                        }
-                } else {
-                    repository.getClientDashboard(userId)
-                        .onSuccess { dashboard ->
-                            _state.update { it.copy(clientDashboard = dashboard, isLoading = false) }
-                            // Cargar clima si hay una cita próxima con ciudad
-                            dashboard.nextAppointment?.city?.let { city ->
-                                loadWeather(city)
+                    if (role == "ADMIN") {
+                        Log.d("DashboardVM", "Cargando datos ADMIN")
+                        repository.getDashboardMetrics(userId, role)
+                            .onSuccess { metrics ->
+                                _state.update { it.copy(metrics = metrics) }
                             }
-                        }
-                        .onFailure { e ->
-                            _state.update { it.copy(error = "Error al cargar dashboard: ${e.message}", isLoading = false) }
-                        }
+                        loadAdminData()
+                    } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
+                        Log.d("DashboardVM", "Cargando datos SPECIALIST")
+                        repository.getReportSummaryBySpecialist(userId)
+                            .onSuccess { summary ->
+                                Log.d("DashboardVM", "Reporte cargado con éxito")
+                                _state.update { it.copy(reportSummary = summary, isLoading = false) }
+                            }
+                            .onFailure { e ->
+                                Log.e("DashboardVM", "Error en reporte: ${e.message}")
+                                _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
+                            }
+                    } else {
+                        Log.d("DashboardVM", "Cargando datos CLIENT")
+                        repository.getClientDashboard(userId)
+                            .onSuccess { dashboard ->
+                                Log.d("DashboardVM", "Dashboard cliente cargado")
+                                _state.update { it.copy(clientDashboard = dashboard, isLoading = false) }
+                                // Cargar clima si hay una cita próxima con ciudad
+                                dashboard.nextAppointment?.city?.let { city ->
+                                    loadWeather(city)
+                                }
+                            }
+                            .onFailure { e ->
+                                Log.e("DashboardVM", "Error en dashboard cliente: ${e.message}")
+                                _state.update { it.copy(error = "Error al cargar dashboard: ${e.message}", isLoading = false) }
+                            }
+                    }
+                } else {
+                    Log.w("DashboardVM", "No hay userId en preferencias")
+                    _state.update { it.copy(isLoading = false) }
                 }
-            } else {
-                _state.update { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                Log.e("DashboardVM", "Excepción fatal en loadDashboard: ${e.message}", e)
+                _state.update { it.copy(isLoading = false, error = "Error inesperado: ${e.message}") }
             }
         }
     }

@@ -6,11 +6,13 @@ springboot = "3.3.1"
 lifecycle = "2.8.7"
 activity = "1.9.3"
 navigation = "2.8.4"
+room-runtime-android = "2.8.4"
 
 [libraries]
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
 androidx-lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
+androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "room-runtime-android" }
 
 [plugins]
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

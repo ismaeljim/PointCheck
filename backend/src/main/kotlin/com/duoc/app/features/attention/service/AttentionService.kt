@@ -62,11 +62,9 @@ class AttentionService(
         )
 
         if (reservation.status == ReservationStatus.PENDING) {
-            val updatedReservation = reservation.copy(
-                status = ReservationStatus.CONFIRMED,
-                updatedAt = LocalDateTime.now()
-            )
-            reservationRepository.save(updatedReservation)
+            reservation.status = ReservationStatus.CONFIRMED
+            reservation.updatedAt = LocalDateTime.now()
+            reservationRepository.save(reservation)
         }
 
         return attentionRepository.save(attention).toResponse()
@@ -91,25 +89,21 @@ class AttentionService(
         val finishedAt = LocalDateTime.now()
         val duration = request.durationMinutes ?: Duration.between(attention.startedAt, finishedAt).toMinutes().toInt()
 
-        val updatedAttention = attention.copy(
-            finishedAt = finishedAt,
-            durationMinutes = duration,
-            status = AttentionStatus.FINISHED,
-            observations = request.observations ?: attention.observations,
-            updatedAt = LocalDateTime.now()
-        )
+        attention.finishedAt = finishedAt
+        attention.durationMinutes = duration
+        attention.status = AttentionStatus.FINISHED
+        attention.observations = request.observations ?: attention.observations
+        attention.updatedAt = LocalDateTime.now()
 
         val reservation = reservationRepository.findById(attention.reservation.id!!).orElseThrow {
             IllegalStateException("Reserva no encontrada para la atención: ${attention.id}")
         }
         
-        val updatedReservation = reservation.copy(
-            status = ReservationStatus.COMPLETED,
-            updatedAt = LocalDateTime.now()
-        )
-        reservationRepository.save(updatedReservation)
+        reservation.status = ReservationStatus.COMPLETED
+        reservation.updatedAt = LocalDateTime.now()
+        reservationRepository.save(reservation)
 
-        val savedAttention = attentionRepository.save(updatedAttention)
+        val savedAttention = attentionRepository.save(attention)
 
         // AUDITORÍA: El registro financiero nace de la oferta de servicio original.
         reservation.service?.let { service ->

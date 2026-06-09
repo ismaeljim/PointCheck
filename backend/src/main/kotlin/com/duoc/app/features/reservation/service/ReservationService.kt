@@ -222,11 +222,11 @@ class ReservationService(
             IllegalArgumentException("Reserva no encontrada con ID: $id")
         }
 
-        val updatedReservation = reservation.copy(
-            status = status,
-            updatedAt = LocalDateTime.now()
-        )
-        val saved = reservationRepository.save(updatedReservation)
+        reservation.apply {
+            this.status = status
+            this.updatedAt = LocalDateTime.now()
+        }
+        val saved = reservationRepository.save(reservation)
 
         if (status == ReservationStatus.CANCELLED) {
             notificationService.createNotification(
@@ -256,24 +256,24 @@ class ReservationService(
         }
 
         // 1. Actualizar estado de la reserva
-        val updatedReservation = reservation.copy(
-            status = ReservationStatus.COMPLETED,
+        reservation.apply {
+            status = ReservationStatus.COMPLETED
             updatedAt = LocalDateTime.now()
-        )
-        val saved = reservationRepository.save(updatedReservation)
+        }
+        val saved = reservationRepository.save(reservation)
 
         // 2. Gestionar el registro de facturación (BillingRecord)
         // Buscamos si ya existe uno vinculado a esta reserva
         val existingBilling = billingRecordRepository.findByReservation_Id(id).firstOrNull()
 
         if (existingBilling != null) {
-            val updatedBilling = existingBilling.copy(
-                status = com.duoc.app.features.billing.model.PaymentStatus.PAID,
-                paidAt = LocalDateTime.now(),
-                paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH,
+            existingBilling.apply {
+                status = com.duoc.app.features.billing.model.PaymentStatus.PAID
+                paidAt = LocalDateTime.now()
+                paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH
                 updatedAt = LocalDateTime.now()
-            )
-            billingRecordRepository.save(updatedBilling)
+            }
+            billingRecordRepository.save(existingBilling)
         } else {
             // Si no existe, lo creamos como pagado (flujo simplificado para efectivo)
             val servicePrice = reservation.service?.price ?: java.math.BigDecimal.ZERO
@@ -294,7 +294,7 @@ class ReservationService(
     }
 
     /**
-     * SENIOR MAPPING LOGIC: Conversión de Entidad a DTO.
+     * Conversión de Entidad a DTO.
      * 
      * ¿POR QUÉ ESTO?:
      * Anteriormente, este mapeador realizaba llamadas al professionalProfileRepository 
@@ -311,13 +311,13 @@ class ReservationService(
         val profile = this.service?.professionalProfile
 
         return ReservationResponse(
-            id = this.id!!,
+            id = this.id ?: "",
             client = this.client.toSummaryDto(),
             specialist = this.specialist.toSummaryDto(),
             city = profile?.city,
             address = profile?.address,
-            serviceId = this.service?.id,
-            serviceName = this.service?.name,
+            serviceId = this.service?.id ?: "",
+            serviceName = this.service?.name ?: "Servicio no especificado",
             categoryIcon = profile?.category?.iconKey,
             categoryColor = profile?.category?.colorHex,
             isAtHome = this.service?.isAtHome ?: false,

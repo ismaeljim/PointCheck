@@ -23,15 +23,15 @@ class CategoryService(
     }
 
     private fun Category.toResponse() = CategoryResponse(
-        id = this.id,
+        id = this.id ?: "",
         name = this.name,
         iconKey = this.iconKey,
         colorHex = this.colorHex
     )
 
     private fun ServiceTemplate.toResponse() = ServiceTemplateResponse(
-        id = this.id,
-        categoryId = this.category.id,
+        id = this.id ?: "",
+        categoryId = this.category.id ?: "",
         name = this.name,
         defaultPrice = this.defaultPrice,
         defaultDuration = this.defaultDuration

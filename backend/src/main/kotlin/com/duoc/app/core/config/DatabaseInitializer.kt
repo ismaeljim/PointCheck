@@ -10,9 +10,7 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import javax.sql.DataSource
 
 /**
- * SENIOR ARCHITECTURE SOLUTION: Inicialización Controlada e Idempotente.
- * 
- * ¿POR QUÉ ESTO?: 
+ *
  * Anteriormente, Spring Boot ejecutaba data.sql en cada inicio (spring.sql.init.mode=always), 
  * lo que generaba ráfagas de errores "Duplicate entry" en los logs al intentar re-insertar 
  * registros existentes. Esto ocultaba errores reales y degradaba la experiencia de depuración.

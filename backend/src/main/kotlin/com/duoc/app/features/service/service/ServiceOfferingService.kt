@@ -57,7 +57,7 @@ class ServiceOfferingService(
     }
 
     /**
-     * AUDITORÍA: El método utiliza 'copy' de Data Class para inmutabilidad parcial.
+     * AUDITORÍA: El método utiliza 'apply' para actualizaciones mutables sobre la entidad JPA.
      * Se garantiza que el servicio deje de ser elegible para nuevas reservas sin borrar historial.
      */
     fun deactivate(id: String): ServiceOfferingResponse {
@@ -65,12 +65,12 @@ class ServiceOfferingService(
             IllegalArgumentException("Servicio no encontrado con ID: $id")
         }
         
-        val updatedService = serviceOffering.copy(
-            active = false,
+        serviceOffering.apply {
+            active = false
             updatedAt = LocalDateTime.now()
-        )
+        }
         
-        return serviceOfferingRepository.save(updatedService).toResponse()
+        return serviceOfferingRepository.save(serviceOffering).toResponse()
     }
 
     private fun ServiceOffering.toResponse(): ServiceOfferingResponse = ServiceOfferingResponse(

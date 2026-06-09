@@ -1,5 +1,6 @@
 package com.pointcheck.features.auth.presentation
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -21,20 +23,13 @@ import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.AppTopBar
 
-/**
- * Pantalla de Inicio de Sesión.
- * Proporciona la interfaz de usuario para que clientes y especialistas accedan al sistema.
- * 
- * AUDITORÍA:
- * - El estado de carga (s.isLoading) bloquea correctamente las interacciones.
- * - Se utiliza AppTopBar y AppTextField para mantener consistencia visual.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     nav: NavController,
     vm: UserViewModel = viewModel()
 ) {
+    Log.d("LoginScreen", "Renderizando LoginScreen real")
     val s by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -63,7 +58,7 @@ fun LoginScreen(
         ) {
             Text(
                 "PointCheck",
-                style = MaterialTheme.typography.displayMedium,
+                style = MaterialTheme.typography.displayLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )

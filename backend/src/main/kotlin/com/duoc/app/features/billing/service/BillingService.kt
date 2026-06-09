@@ -72,16 +72,16 @@ class BillingService(
             IllegalArgumentException("Registro de cobro no encontrado con ID: $id")
         }
 
-        val updatedRecord = billingRecord.copy(
-            status = PaymentStatus.PAID,
-            paidAt = LocalDateTime.now(),
-            paymentMethod = request.paymentMethod,
-            externalReference = request.externalReference,
-            notes = request.notes ?: billingRecord.notes,
+        billingRecord.apply {
+            status = PaymentStatus.PAID
+            paidAt = LocalDateTime.now()
+            paymentMethod = request.paymentMethod
+            externalReference = request.externalReference
+            notes = request.notes ?: notes
             updatedAt = LocalDateTime.now()
-        )
+        }
 
-        return billingRecordRepository.save(updatedRecord).toResponse()
+        return billingRecordRepository.save(billingRecord).toResponse()
     }
 
     @Transactional
@@ -90,12 +90,12 @@ class BillingService(
             IllegalArgumentException("Registro de cobro no encontrado con ID: $id")
         }
 
-        val updatedRecord = billingRecord.copy(
-            status = PaymentStatus.CANCELLED,
+        billingRecord.apply {
+            status = PaymentStatus.CANCELLED
             updatedAt = LocalDateTime.now()
-        )
+        }
 
-        return billingRecordRepository.save(updatedRecord).toResponse()
+        return billingRecordRepository.save(billingRecord).toResponse()
     }
 
     fun getBySpecialist(specialistId: String): List<BillingRecordResponse> {

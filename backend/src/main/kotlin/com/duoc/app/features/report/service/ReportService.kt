@@ -16,19 +16,6 @@ import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 import java.util.*
 
-/**
- * AUDITORÍA TÉCNICA: Motor de Inteligencia de Negocio y Reportabilidad
- * 
- * Este servicio procesa grandes volúmenes de datos de reservas, atenciones y facturación
- * para generar métricas clave de desempeño (KPIs) para los especialistas.
- * 
- * Hallazgos de Implementación:
- * 1. [OK] Granularidad Temporal: Soporte para reportes Diarios, Semanales y Mensuales con 'offsets'.
- * 2. [OK] Lógica de Negocio: Cálculo de ingresos reales vs adeudados y promedios de duración de atención.
- * 3. [INFO] Rendimiento: El cálculo se realiza en memoria sobre colecciones filtradas. 
- *    Para grandes volúmenes de datos históricos, se recomienda migrar a agregaciones a nivel de base de datos (SQL native queries).
- * 4. [OK] Exportabilidad: Generación nativa de formato CSV para interoperabilidad con Excel/Sheets.
- */
 @Service
 class ReportService(
     private val reservationRepository: ReservationRepository,
@@ -37,16 +24,11 @@ class ReportService(
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
-    /**
-     * AUDITORÍA: Dashboard de Resumen.
-     * Consolida métricas del mes en curso para una visualización rápida.
-     */
     fun getSummaryBySpecialist(userId: String): ReportSummaryResponse {
         val now = LocalDateTime.now()
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN)
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX)
 
-        // AUDITORÍA: Migración a conteos directos en SQL para performance
         val totalReservations = reservationRepository.countBySpecialist_IdAndReservationStartBetween(userId, monthStart, monthEnd).toInt()
         val completedAttentionsCount = attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
             userId, monthStart, monthEnd, AttentionStatus.FINISHED
@@ -75,7 +57,6 @@ class ReportService(
             userId, today.atStartOfDay(), today.atTime(LocalTime.MAX)
         ).toInt()
 
-        // AUDITORÍA: Uso de agregación SQL para montos financieros
         val totalCharged = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
             userId, monthStart, monthEnd, PaymentStatus.PAID
         ) ?: BigDecimal.ZERO
@@ -104,15 +85,11 @@ class ReportService(
         )
     }
 
-    /**
-     * AUDITORÍA: Desglose Semanal con Filtro de Servicio.
-     * Permite comparar ingresos del periodo actual vs el anterior.
-     */
     fun getWeeklyReport(userId: String, weekOffset: Long = 0, serviceId: String? = null): WeeklyReportResponse {
-        val profile = professionalProfileRepository.findByUser_Id(userId)
-            ?: return WeeklyReportResponse(0, 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
+        if (professionalProfileRepository.findByUser_Id(userId) == null) {
+            return WeeklyReportResponse(0, 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
+        }
         
-        val specialistUserId = profile.user.id!!
         val now = LocalDate.now().minusWeeks(weekOffset)
         val weekFields = WeekFields.of(Locale.getDefault())
         val firstDayOfWeek = now.with(weekFields.dayOfWeek(), 1L)
@@ -121,29 +98,28 @@ class ReportService(
         val start = firstDayOfWeek.atStartOfDay()
         val end = lastDayOfWeek.atTime(LocalTime.MAX)
 
-        // AUDITORÍA: Uso de filtros optimizados en DB
         val reservations = if (serviceId != null) {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(specialistUserId, start, end, serviceId)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(userId, start, end, serviceId)
         } else {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistUserId, start, end)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetween(userId, start, end)
         }
 
         val billing = if (serviceId != null) {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetweenAndReservation_Service_Id(specialistUserId, start, end, serviceId)
+            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetweenAndReservation_Service_Id(userId, start, end, serviceId)
         } else {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(specialistUserId, start, end)
+            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(userId, start, end)
         }
 
         val prevStart = firstDayOfWeek.minusWeeks(1).atStartOfDay()
         val prevEnd = lastDayOfWeek.minusWeeks(1).atTime(LocalTime.MAX)
         
-        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(specialistUserId, prevStart, prevEnd, PaymentStatus.PAID)
+        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(userId, prevStart, prevEnd, PaymentStatus.PAID)
             ?: BigDecimal.ZERO
 
         val totalMinutes = (attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
-            specialistUserId, start, end, AttentionStatus.FINISHED
+            userId, start, end, AttentionStatus.FINISHED
         ) ?: 0L) + (reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
-            specialistUserId, start, end, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+            userId, start, end, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
         ) ?: 0L)
 
         val dailyMetrics = mutableListOf<DailyMetricDto>()
@@ -179,37 +155,36 @@ class ReportService(
     }
 
     fun getMonthlyReport(userId: String, monthOffset: Long = 0, serviceId: String? = null): MonthlyReportResponse {
-        val profile = professionalProfileRepository.findByUser_Id(userId)
-            ?: return MonthlyReportResponse("N/A", 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
+        if (professionalProfileRepository.findByUser_Id(userId) == null) {
+            return MonthlyReportResponse("N/A", 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
+        }
         
-        val specialistUserId = profile.user.id!!
         val now = LocalDate.now().minusMonths(monthOffset)
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay()
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX)
 
-        // AUDITORÍA: Uso de filtros optimizados en DB para reportes mensuales
         val reservations = if (serviceId != null) {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(specialistUserId, monthStart, monthEnd, serviceId)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(userId, monthStart, monthEnd, serviceId)
         } else {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistUserId, monthStart, monthEnd)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetween(userId, monthStart, monthEnd)
         }
 
         val billing = if (serviceId != null) {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetweenAndReservation_Service_Id(specialistUserId, monthStart, monthEnd, serviceId)
+            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetweenAndReservation_Service_Id(userId, monthStart, monthEnd, serviceId)
         } else {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(specialistUserId, monthStart, monthEnd)
+            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(userId, monthStart, monthEnd)
         }
 
         val prevStart = monthStart.minusMonths(1)
         val prevEnd = monthEnd.minusMonths(1)
 
-        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(specialistUserId, prevStart, prevEnd, PaymentStatus.PAID)
+        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(userId, prevStart, prevEnd, PaymentStatus.PAID)
             ?: BigDecimal.ZERO
 
         val totalMinutes = (attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
-            specialistUserId, monthStart, monthEnd, AttentionStatus.FINISHED
+            userId, monthStart, monthEnd, AttentionStatus.FINISHED
         ) ?: 0L) + (reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
-            specialistUserId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+            userId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
         ) ?: 0L)
 
         val weeklySummaries = mutableListOf<WeeklySummaryDto>()
@@ -253,10 +228,6 @@ class ReportService(
         )
     }
 
-    /**
-     * AUDITORÍA: Generador CSV.
-     * Implementa formato semi-colon (;) común en regiones latinas para correcta apertura en Excel.
-     */
     fun exportWeeklyCSV(userId: String, weekOffset: Long, serviceId: String? = null): String {
         val report = getWeeklyReport(userId, weekOffset, serviceId)
         val sb = StringBuilder()

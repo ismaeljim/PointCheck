@@ -4,6 +4,7 @@ import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import jakarta.persistence.*
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.util.Objects
 
 @Entity
 @Table(
@@ -14,7 +15,7 @@ import java.time.LocalDateTime
         Index(name = "idx_subscriptions_end_date", columnList = "endDate")
     ]
 )
-data class Subscription(
+class Subscription(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
@@ -25,21 +26,31 @@ data class Subscription(
     val professionalProfile: ProfessionalProfile,
 
     @Column(nullable = false)
-    val planName: String,
+    var planName: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val status: SubscriptionStatus = SubscriptionStatus.ACTIVE,
+    var status: SubscriptionStatus = SubscriptionStatus.ACTIVE,
 
     @Column(nullable = false)
-    val startDate: LocalDate,
+    var startDate: LocalDate,
 
     @Column(nullable = false)
-    val endDate: LocalDate,
+    var endDate: LocalDate,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Subscription) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = Objects.hash(id)
+
+    override fun toString(): String = "Subscription(id=$id, planName=$planName, status=$status)"
+}

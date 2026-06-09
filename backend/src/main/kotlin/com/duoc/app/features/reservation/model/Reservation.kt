@@ -5,6 +5,7 @@ import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
 import java.time.LocalDateTime
+import java.util.Objects
 
 @Entity
 @Table(
@@ -19,9 +20,9 @@ import java.time.LocalDateTime
         Index(name = "idx_reservations_client_date", columnList = "client_id,reservationStart")
     ]
 )
-data class Reservation(
+class Reservation(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID) // Genera UUID automáticamente como String
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
     val id: String? = null,
 
@@ -38,24 +39,35 @@ data class Reservation(
     val service: ServiceOffering? = null,
 
     @Column(nullable = false)
-    val reservationStart: LocalDateTime,
+    var reservationStart: LocalDateTime,
 
-    val reservationEnd: LocalDateTime? = null,
+    @Column(name = "reservation_end")
+    var reservationEnd: LocalDateTime? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
-    val status: ReservationStatus = ReservationStatus.PENDING,
+    var status: ReservationStatus = ReservationStatus.PENDING,
 
     @Column(length = 1000)
-    val notes: String? = null,
+    var notes: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method")
-    val paymentMethod: PaymentMethod? = null,
+    var paymentMethod: PaymentMethod? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Reservation) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = Objects.hash(id)
+
+    override fun toString(): String = "Reservation(id=$id, start=$reservationStart, status=$status)"
+}

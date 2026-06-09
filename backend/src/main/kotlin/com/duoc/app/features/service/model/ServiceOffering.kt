@@ -4,6 +4,7 @@ import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.util.Objects
 
 @Entity
 @Table(
@@ -13,7 +14,7 @@ import java.time.LocalDateTime
         Index(name = "idx_services_active", columnList = "active")
     ]
 )
-data class ServiceOffering(
+class ServiceOffering(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
@@ -24,29 +25,40 @@ data class ServiceOffering(
     val professionalProfile: ProfessionalProfile,
 
     @Column(nullable = false)
-    val name: String,
+    var name: String,
 
     @Column(length = 500)
-    val description: String? = null,
+    var description: String? = null,
 
     @Column(precision = 10, scale = 2)
-    val price: BigDecimal? = null,
+    var price: BigDecimal? = null,
 
-    val durationMinutes: Int? = null,
+    @Column(name = "duration_minutes")
+    var durationMinutes: Int? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "price_unit", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'SESSION'")
-    val priceUnit: PriceUnit = PriceUnit.SESSION,
+    var priceUnit: PriceUnit = PriceUnit.SESSION,
 
     @Column(name = "is_at_home", nullable = false, columnDefinition = "BIT(1) DEFAULT 0")
-    val isAtHome: Boolean = false,
+    var isAtHome: Boolean = false,
 
     @Column(nullable = false, columnDefinition = "BIT(1) DEFAULT 1")
-    val active: Boolean = true,
+    var active: Boolean = true,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime? = null
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ServiceOffering) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = Objects.hash(id)
+
+    override fun toString(): String = "ServiceOffering(id=$id, name=$name)"
+}
