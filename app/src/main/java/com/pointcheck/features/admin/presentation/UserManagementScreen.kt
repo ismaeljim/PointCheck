@@ -20,6 +20,15 @@ import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.auth.data.dto.UserResponseDto
 
+/**
+ * Pantalla para la gestión administrativa de usuarios.
+ * 
+ * Permite a los administradores buscar usuarios por nombre, email o RUT y alternar
+ * su estado de activación (banear o activar cuentas).
+ * 
+ * @param onBack Callback para navegar a la pantalla anterior.
+ * @param viewModel ViewModel que gestiona el estado administrativo y la lista de usuarios.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserManagementScreen(
@@ -69,6 +78,12 @@ fun UserManagementScreen(
     }
 }
 
+/**
+ * Renders an individual user item in the management list.
+ *
+ * @param user The user data to display.
+ * @param onToggleStatus Callback triggered when the activation toggle is clicked.
+ */
 @Composable
 fun UserItem(user: UserResponseDto, onToggleStatus: () -> Unit) {
     Card(

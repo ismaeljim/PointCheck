@@ -47,6 +47,21 @@ import java.util.*
  * ESTO RESOLVIÓ: La ambigüedad de roles en la misma pantalla y centralizó la gestión 
  * de tiempos del profesional en un solo lugar.
  */
+/**
+ * Screen for managing scheduled appointments and client service sessions.
+ *
+ * This screen implements a "Dual Agenda" logic:
+ * 1. For Specialists/Professionals: It provides two tabs—"Mis Atenciones" (services they provide)
+ *    and "Mis Reservas" (services they receive).
+ * 2. For Clients: It displays a single list of their upcoming appointments.
+ *
+ * The screen allows specialists to initiate service sessions ("Atender") or confirm payments,
+ * while clients can view details and cancel reservations.
+ *
+ * @param nav [NavController] for navigating between screens (e.g., to Attention or Booking).
+ * @param filter Optional string to filter appointments by time (e.g., "today", "month").
+ * @param vm [ReservationViewModel] providing the agenda data and management actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationViewModel = viewModel()) {

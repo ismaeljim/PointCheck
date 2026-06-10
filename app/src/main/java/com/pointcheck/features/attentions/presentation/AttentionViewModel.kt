@@ -12,16 +12,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * AUDITORÍA TÉCNICA: Gestión de la Sesión de Atención (Especialista)
- * 
- * Este ViewModel controla el estado de la prestación del servicio en tiempo real.
- * Permite al especialista iniciar la sesión, registrar observaciones y finalizarla.
- * 
- * Hallazgos:
- * 1. [OK] Ciclo de Vida: Manejo claro de estados 'Start' y 'Finish'.
- * 2. [OK] Persistencia de Observaciones: Las notas se actualizan reactivamente en el UI State.
- * 3. [INFO] Integración Backend: El cierre de atención gatilla automáticamente la facturación en el servidor.
- * 4. [MEJORA] Temporizador: Se podría agregar un cronómetro visual para que el especialista vea la duración real.
+ * Representa el estado de la interfaz de usuario para el seguimiento de una atención en curso.
+ *
+ * @property currentAttention Detalles de la atención actual (si existe).
+ * @property observations Notas u observaciones ingresadas por el especialista.
+ * @property isLoading Indica si hay una operación asíncrona en curso.
+ * @property error Mensaje de error a mostrar.
+ * @property successMessage Mensaje de éxito a mostrar.
  */
 data class AttentionUiState(
     val currentAttention: AttentionResponseDto? = null,
@@ -31,6 +28,13 @@ data class AttentionUiState(
     val successMessage: String? = null
 )
 
+/**
+ * ViewModel encargado de gestionar el ciclo de vida de una atención técnica o médica.
+ * Permite al especialista iniciar la sesión, registrar observaciones en tiempo real y finalizar el servicio,
+ * lo que habitualmente desencadena procesos de facturación.
+ *
+ * @param application Contexto de la aplicación.
+ */
 class AttentionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AttentionRepository(ApiClient.instance)
@@ -38,12 +42,19 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     private val _state = MutableStateFlow(AttentionUiState())
     val state: StateFlow<AttentionUiState> = _state
 
+    /**
+     * Actualiza las observaciones locales del especialista.
+     *
+     * @param value Texto de la observación.
+     */
     fun setObservations(value: String) {
         _state.update { it.copy(observations = value) }
     }
 
     /**
-     * Carga la atención asociada a una reserva si ya existe.
+     * Carga la atención asociada a una reserva específica si ya existe en el sistema.
+     *
+     * @param reservationId ID de la reserva.
      */
     fun loadAttentionByReservation(reservationId: String) {
         viewModelScope.launch {
@@ -65,8 +76,10 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * AUDITORÍA: Gatilla el inicio de la atención en el backend.
-     * La reserva cambia a estado 'CONFIRMED'.
+     * Gatilla el inicio oficial de la prestación del servicio.
+     * Actualiza el estado de la reserva y crea un registro de atención.
+     *
+     * @param reservationId ID de la reserva vinculada.
      */
     fun startAttention(reservationId: String) {
         viewModelScope.launch {
@@ -86,8 +99,8 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * AUDITORÍA: Gatilla el fin de la atención.
-     * La reserva cambia a 'COMPLETED' y se genera el cobro (BillingRecord).
+     * Finaliza la prestación del servicio.
+     * Persiste las observaciones finales y cambia el estado de la reserva a 'COMPLETED'.
      */
     fun finishAttention() {
         val attentionId = _state.value.currentAttention?.id ?: return
@@ -107,10 +120,14 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
     
+    /** Reinicia el estado de la atención a sus valores por defecto. */
     fun resetState() {
         _state.value = AttentionUiState()
     }
 
+    /** Limpia el mensaje de error del estado. */
     fun clearError() = _state.update { it.copy(error = null) }
+    
+    /** Limpia el mensaje de éxito del estado. */
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

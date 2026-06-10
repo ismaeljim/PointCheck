@@ -15,6 +15,21 @@ import java.math.BigDecimal
 
 import com.duoc.app.features.dashboard.dto.ReportSummaryResponse
 
+/**
+ * Servicio central para la generación de métricas, estadísticas y estados del Tablero (Dashboard).
+ *
+ * Provee datos agregados y resúmenes de actividad para los tres roles principales del ecosistema:
+ * Cliente, Especialista y Administrador. Para maximizar el rendimiento, el servicio utiliza
+ * consultas de agregación directas en la base de datos (COUNT, SUM, AVG) en lugar de procesar
+ * colecciones de objetos en memoria.
+ *
+ * @property reservationRepository Repositorio para métricas de citas.
+ * @property attentionRepository Repositorio para métricas de atenciones en curso/finalizadas.
+ * @property billingRecordRepository Repositorio para indicadores financieros.
+ * @property profileRepository Repositorio para acceder a datos de especialidad y ubicación.
+ * @property userRepository Repositorio para estadísticas de crecimiento de usuarios.
+ * @property notificationService Servicio para integrar alertas recientes en la vista del dashboard.
+ */
 @Service
 class DashboardService(
     private val reservationRepository: ReservationRepository,
@@ -25,6 +40,15 @@ class DashboardService(
     private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
 
+    /**
+     * Genera un resumen detallado de desempeño para un especialista, usualmente para la sección de Reportes.
+     *
+     * Calcula métricas clave como volumen de reservas, atenciones completadas, promedio de
+     * duración de citas e indicadores financieros (pagado vs pendiente) del mes en curso.
+     *
+     * @param userId ID del usuario especialista.
+     * @return [ReportSummaryResponse] con la consolidación de métricas de productividad y finanzas.
+     */
     fun getReportSummary(userId: String): com.duoc.app.features.report.dto.ReportSummaryResponse {
         val now = LocalDateTime.now()
         val todayStart = now.toLocalDate().atStartOfDay()
@@ -33,7 +57,7 @@ class DashboardService(
 
         val profile = profileRepository.findByUser_Id(userId)
         
-        // Optimizamos usando conteos directos en DB en lugar de traer listas completas
+        // Optimizamos usando conteos directos en DB
         val totalReservations = reservationRepository.countBySpecialist_Id(userId)
         val todayReservations = reservationRepository.countBySpecialist_IdAndReservationStartBetween(userId, todayStart, todayEnd)
         
@@ -82,6 +106,17 @@ class DashboardService(
         )
     }
 
+    /**
+     * Obtiene métricas generales optimizadas según el rol del usuario solicitante.
+     *
+     * - **ADMIN**: Estadísticas globales del ecosistema (crecimiento de usuarios, ingresos totales del sistema).
+     * - **CLIENT**: Resumen de su actividad personal (citas próximas y historial reciente).
+     * - **SPECIALIST**: Indicadores de rendimiento operativo (citas del día, facturación mensual, tiempos promedio).
+     *
+     * @param userId ID del usuario autenticado.
+     * @param role Rol del usuario (ADMIN, CLIENT, SPECIALIST).
+     * @return [DashboardMetricsResponse] con los KPIs correspondientes al contexto del usuario.
+     */
     fun getMetrics(userId: String, role: String): DashboardMetricsResponse {
         val now = LocalDateTime.now()
         
@@ -118,9 +153,8 @@ class DashboardService(
                 val todayStart = now.toLocalDate().atStartOfDay()
                 val todayEnd = now.toLocalDate().atTime(LocalTime.MAX)
                 val monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-                val monthEnd = todayEnd // Hasta el final del día de hoy
 
-                // 1. Métricas de Reservas (Hoy y Mes) - CONSULTAS DE CONTEO DIRECTO
+                // 1. Métricas de Reservas (Hoy y Mes)
                 val appointmentsToday = reservationRepository.countBySpecialist_IdAndReservationStartBetween(
                     userId, todayStart, todayEnd
                 ).toInt()
@@ -129,7 +163,7 @@ class DashboardService(
                     userId, monthStart, todayEnd.plusDays(30)
                 ).toInt()
 
-                // 2. Métricas de Atención y Duración (SQL SUM/AVG)
+                // 2. Métricas de Atención y Duración
                 val completedAttentionsCount = attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
                     userId, monthStart, todayEnd, com.duoc.app.features.attention.model.AttentionStatus.FINISHED
                 )
@@ -151,7 +185,7 @@ class DashboardService(
                     (totalDurationAttentions + totalDurationReservations).toDouble() / totalPerformed
                 } else 0.0
 
-                // 3. Métricas Financieras (SQL SUM directa)
+                // 3. Métricas Financieras
                 val pendingAmount = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
                     userId, monthStart, todayEnd, PaymentStatus.PENDING
                 )?.toDouble() ?: 0.0
@@ -174,14 +208,26 @@ class DashboardService(
         }
     }
 
+    /**
+     * Construye la vista consolidada del tablero para la aplicación móvil del cliente.
+     *
+     * Proporciona acceso rápido a la cita más próxima, una lista de especialistas frecuentes
+     * basada en el historial de reservas para facilitar la re-contratación, y las 3 notificaciones
+     * más recientes.
+     *
+     * @param userId ID del usuario cliente.
+     * @return [ClientDashboardResponse] con la información de contexto para la Home de la App.
+     */
     fun getClientDashboard(userId: String): com.duoc.app.features.dashboard.dto.ClientDashboardResponse {
         val now = LocalDateTime.now()
         
+        // Obtenemos la cita futura más cercana que no esté cancelada
         val nextAppointment = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
             .filter { it.status != com.duoc.app.features.reservation.model.ReservationStatus.CANCELLED }
             .minByOrNull { it.reservationStart }
             ?.toResponse()
 
+        // Identificamos especialistas recurrentes para sugerencias
         val favoriteSpecialists = reservationRepository.findByClient_Id(userId)
             .groupBy { it.specialist }
             .map { (specialist, reservations) ->
@@ -196,6 +242,7 @@ class DashboardService(
             .sortedByDescending { it.visitCount }
             .take(3)
 
+        // Resumen de notificaciones recientes para la campana de alertas
         val recentNotifications = notificationService.getRecentNotifications(userId, 3)
             .map { 
                 com.duoc.app.features.dashboard.dto.NotificationSummaryDto(

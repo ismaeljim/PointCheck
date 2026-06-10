@@ -20,10 +20,12 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * AUDITORÍA TÉCNICA: Motor de Reservas y Disponibilidad
- * 
- * Este componente es el núcleo del negocio. Gestiona la intersección entre 
- * la agenda del especialista y las necesidades del cliente.
+ * Motor de Reservas y Disponibilidad.
+ *
+ * Este componente es el núcleo del negocio. Gestiona la intersección entre
+ * la agenda del especialista y las necesidades del cliente. Se encarga de
+ * calcular horarios disponibles, gestionar el ciclo de vida de las citas
+ * y coordinar con el sistema de notificaciones y facturación.
  */
 @Service
 class ReservationService(
@@ -37,6 +39,19 @@ class ReservationService(
 
     private val objectMapper = jacksonObjectMapper()
 
+    /**
+     * Calcula los bloques de tiempo disponibles para un especialista en una fecha específica.
+     *
+     * La lógica incluye:
+     * - Normalización de días de la semana (soporte multi-idioma para configuración JSON).
+     * - Validación de horas de trabajo configuradas en el perfil profesional.
+     * - Exclusión de bloques ya reservados o en conflicto.
+     * - Cálculo dinámico basado en la duración predeterminada de la sesión.
+     *
+     * @param specialistId ID del especialista o del usuario asociado.
+     * @param date Fecha para la cual se consulta la disponibilidad.
+     * @return [AvailabilityResponse] con la lista de horarios (HH:mm) disponibles.
+     */
     fun getAvailability(specialistId: String, date: LocalDate): AvailabilityResponse {
         val profile = professionalProfileRepository.findById(specialistId)
             .orElseGet { professionalProfileRepository.findByUser_Id(specialistId) }
@@ -134,6 +149,19 @@ class ReservationService(
         return AvailabilityResponse(specialistId, date, availableSlots)
     }
 
+    /**
+     * Crea una nueva reservación en el sistema.
+     *
+     * Realiza validaciones críticas:
+     * - Existencia y estado del cliente y especialista.
+     * - Pertenencia del servicio al especialista seleccionado.
+     * - Detección de traslapes (overlaps) horarios para evitar citas duplicadas.
+     *
+     * @param request Datos de la reservación a crear.
+     * @return [ReservationResponse] con la reservación persistida.
+     * @throws IllegalArgumentException si los IDs no existen o el servicio no es válido.
+     * @throws IllegalStateException si existe un conflicto de horario.
+     */
     @Transactional
     fun create(request: ReservationRequest): ReservationResponse {
         val client = userRepository.findById(request.clientId).orElseThrow {
@@ -196,14 +224,32 @@ class ReservationService(
         return savedReservation.toResponse()
     }
 
+    /**
+     * Obtiene el historial completo de reservaciones de un cliente.
+     *
+     * @param clientId ID del cliente.
+     * @return Lista de [ReservationResponse].
+     */
     fun getByClient(clientId: String): List<ReservationResponse> {
         return reservationRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 
+    /**
+     * Obtiene todas las reservaciones asignadas a un especialista.
+     *
+     * @param specialistId ID del especialista.
+     * @return Lista de [ReservationResponse].
+     */
     fun getBySpecialist(specialistId: String): List<ReservationResponse> {
         return reservationRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
     }
 
+    /**
+     * Recupera las citas programadas para el día actual para un especialista.
+     *
+     * @param specialistId ID del especialista.
+     * @return Lista de reservaciones filtradas por el rango del día de hoy.
+     */
     fun getTodayBySpecialist(specialistId: String): List<ReservationResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
@@ -211,11 +257,24 @@ class ReservationService(
             .map { it.toResponse() }
     }
 
+    /**
+     * Obtiene las próximas reservaciones (futuras) de un cliente.
+     *
+     * @param clientId ID del cliente.
+     * @return Lista de reservaciones con fecha de inicio posterior a la actual.
+     */
     fun getUpcomingByClient(clientId: String): List<ReservationResponse> {
         return reservationRepository.findByClient_IdAndReservationStartAfter(clientId, LocalDateTime.now())
             .map { it.toResponse() }
     }
 
+    /**
+     * Actualiza el estado de una reservación y notifica al cliente si es necesario.
+     *
+     * @param id ID de la reservación.
+     * @param status Nuevo estado a aplicar.
+     * @return Reservación actualizada.
+     */
     @Transactional
     fun updateStatus(id: String, status: ReservationStatus): ReservationResponse {
         val reservation = reservationRepository.findById(id).orElseThrow {
@@ -240,11 +299,29 @@ class ReservationService(
         return saved.toResponse()
     }
 
+    /**
+     * Cancela una reservación existente.
+     *
+     * @param id ID de la reservación.
+     * @return Reservación con estado [ReservationStatus.CANCELLED].
+     */
     @Transactional
     fun cancel(id: String): ReservationResponse {
         return updateStatus(id, ReservationStatus.CANCELLED)
     }
 
+    /**
+     * Confirma el pago de una reservación y la marca como completada.
+     *
+     * Este método gestiona:
+     * 1. Cambio de estado de la reservación a COMPLETED.
+     * 2. Creación o actualización del registro de facturación (BillingRecord) asociado.
+     * 3. Registro del método de pago y fecha de transacción.
+     *
+     * @param id ID de la reservación.
+     * @return Reservación actualizada con el pago confirmado.
+     * @throws IllegalStateException si la reserva ya está cancelada.
+     */
     @Transactional
     fun confirmPayment(id: String): ReservationResponse {
         val reservation = reservationRepository.findById(id).orElseThrow {

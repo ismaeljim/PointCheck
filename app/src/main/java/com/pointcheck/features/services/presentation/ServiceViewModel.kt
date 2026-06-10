@@ -14,6 +14,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Representa el estado de la interfaz de usuario para la gestión del catálogo de servicios.
+ *
+ * @property services Lista de servicios configurados por el profesional.
+ * @property isLoading Indica si hay una operación de carga o mutación en curso.
+ * @property error Mensaje de error para mostrar en la interfaz.
+ * @property successMessage Mensaje de éxito tras crear o eliminar un servicio.
+ */
 data class ServiceUiState(
     val services: List<ServiceResponseDto> = emptyList(),
     val isLoading: Boolean = false,
@@ -21,6 +29,12 @@ data class ServiceUiState(
     val successMessage: String? = null
 )
 
+/**
+ * ViewModel que gestiona el catálogo de servicios ofrecidos por un profesional.
+ * Permite listar, agregar y eliminar servicios vinculados al perfil del usuario autenticado.
+ *
+ * @param application Contexto de la aplicación.
+ */
 class ServiceViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = ServiceRepository(ApiClient.instance)
@@ -33,6 +47,10 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
         loadServices()
     }
 
+    /**
+     * Recupera la lista de servicios asociados al perfil profesional del usuario.
+     * Si el ID de perfil no está en caché local, intenta recuperarlo del servidor usando el ID de usuario.
+     */
     fun loadServices() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
@@ -66,6 +84,14 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Registra un nuevo servicio en el catálogo del profesional.
+     *
+     * @param name Nombre del servicio.
+     * @param description Descripción detallada.
+     * @param price Precio base.
+     * @param duration Duración estimada en minutos.
+     */
     fun addService(name: String, description: String, price: Double, duration: Int) {
         viewModelScope.launch {
             val profileId = prefs.professionalProfileId.first() ?: run {
@@ -83,6 +109,11 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Elimina permanentemente un servicio del catálogo.
+     *
+     * @param id Identificador único (UUID) del servicio a eliminar.
+     */
     fun deleteService(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
@@ -95,6 +126,8 @@ class ServiceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Limpia el mensaje de error del estado. */
     fun clearError() = _state.update { it.copy(error = null) }
+    /** Limpia el mensaje de éxito del estado. */
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

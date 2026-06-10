@@ -21,16 +21,23 @@ import java.util.Calendar
 import java.util.Locale
 
 /**
- * AUDITORÍA TÉCNICA: Gestión de Reservas (UI State Management)
- * 
- * Este ViewModel orquestra el flujo multipaso de reserva:
- * Selección Especialista -> Servicio -> Fecha/Hora -> Confirmación.
- * 
- * Hallazgos:
- * 1. [OK] Reactividad: Uso de StateFlow para manejar el estado de la UI (BookingUiState).
- * 2. [OK] Validación Centralizada: Método 'validate' garantiza integridad antes de habilitar el botón de reserva.
- * 3. [MEJORA] Inyección de Dependencias: El repositorio se instancia directamente; se recomienda Hilt/Koin.
- * 4. [OK] UX - Feedback: Manejo de estados de carga (isLoading) y mensajes de éxito/error.
+ * Representa el estado de la interfaz de usuario para el proceso de reserva.
+ *
+ * @property professionals Lista de especialistas disponibles.
+ * @property services Lista de servicios ofrecidos por el profesional seleccionado.
+ * @property selectedProfessional Especialista seleccionado para la reserva.
+ * @property selectedService Servicio seleccionado para la reserva.
+ * @property weather Información climática de la ciudad del profesional.
+ * @property reservationStartMillis Fecha y hora de inicio de la reserva en milisegundos.
+ * @property availableSlots Bloques horarios disponibles para la fecha seleccionada.
+ * @property selectedSlot Bloque horario seleccionado (ej. "09:00").
+ * @property paymentMethod Método de pago elegido (ej. "CASH", "TRANSFER").
+ * @property notes Notas adicionales o dirección para servicios a domicilio.
+ * @property isLoading Indica si se está realizando una operación de carga general.
+ * @property isAvailabilityLoading Indica si se está consultando la disponibilidad horaria.
+ * @property isValid Indica si todos los campos requeridos para la reserva están completos.
+ * @property error Mensaje de error a mostrar en la interfaz.
+ * @property successMessage Mensaje de éxito tras una operación exitosa.
  */
 data class BookingUiState(
     val professionals: List<SpecialistResponseDto> = emptyList(),
@@ -50,6 +57,15 @@ data class BookingUiState(
     val successMessage: String? = null
 )
 
+/**
+ * ViewModel encargado de orquestar el flujo de reserva de citas.
+ * Gestiona la selección de profesional, servicio, fecha y hora, además de la confirmación de pagos
+ * y la visualización de la agenda (reservas y atenciones).
+ *
+ * Implementa un flujo multipaso: Selección Especialista -> Servicio -> Fecha/Hora -> Confirmación.
+ *
+ * @param app Instancia de la aplicación para acceso a recursos y preferencias.
+ */
 class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = ReservationRepository(ApiClient.instance)
     private val prefs = UserPreferences(app)
@@ -67,6 +83,12 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         loadProfessionals()
     }
 
+    /**
+     * Carga tanto las reservas del cliente como las atenciones del especialista para un usuario.
+     * Utilizado para alimentar la vista de agenda dual.
+     *
+     * @param userId Identificador del usuario.
+     */
     fun loadDualAgenda(userId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -83,6 +105,12 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Confirma el pago de una reserva y finaliza la cita.
+     *
+     * @param reservationId Identificador de la reserva.
+     * @param onDone Callback ejecutado tras completar la operación con éxito.
+     */
     fun confirmPayment(reservationId: String, onDone: () -> Unit) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -99,6 +127,11 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Carga la lista de profesionales activos del sistema, opcionalmente filtrados por categoría.
+     *
+     * @param categoryId ID de la categoría para filtrar (opcional).
+     */
     fun loadProfessionals(categoryId: String? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -113,8 +146,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * AUDITORÍA: Selección de Especialista.
-     * Gatilla carga asíncrona de servicios y clima local para mejorar la UX.
+     * Selecciona un profesional para la reserva y carga sus servicios y el clima local.
+     *
+     * @param professional Objeto del especialista seleccionado.
      */
     fun selectProfessional(professional: SpecialistResponseDto) {
         _state.update { it.copy(
@@ -128,6 +162,13 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         loadAvailabilityIfPossible()
     }
 
+    /**
+     * Selecciona un profesional basado en su ID (o ID de usuario).
+     * Si el profesional no está en la lista cargada, lo busca en el repositorio.
+     *
+     * @param id ID del profesional o del usuario.
+     * @param categoryId Categoría de filtro si es necesario recargar la lista.
+     */
     fun selectProfessionalById(id: String?, categoryId: String? = null) {
         if (id.isNullOrBlank() || id == "null") {
             loadProfessionals(categoryId)
@@ -183,6 +224,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Carga la información climática de una ciudad para informar al usuario sobre condiciones externas.
+     */
     private fun loadWeather(city: String?) {
         if (city == null) return
         viewModelScope.launch {
@@ -191,6 +235,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Carga el catálogo de servicios de un perfil profesional específico.
+     */
     private fun loadServicesForProfessional(professionalProfileId: String) {
         viewModelScope.launch {
             repository.getServices(professionalProfileId)
@@ -200,14 +247,18 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Selecciona un servicio del catálogo del profesional.
+     */
     fun selectService(service: ServiceResponseDto) {
         _state.update { s -> s.copy(selectedService = service).let { it.copy(isValid = validate(it)) } }
         loadAvailabilityIfPossible()
     }
 
     /**
-     * AUDITORÍA: Gestión de Tiempo.
-     * Al seleccionar fecha, se limpian slots previos y se gatilla consulta de disponibilidad.
+     * Establece la fecha de la reserva y gatilla la consulta de disponibilidad horaria.
+     *
+     * @param millis Fecha seleccionada en milisegundos.
      */
     fun setReservationDateTime(millis: Long) {
         val cal = Calendar.getInstance()
@@ -222,6 +273,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         loadAvailabilityIfPossible()
     }
 
+    /**
+     * Consulta al backend los horarios disponibles para el profesional y fecha seleccionados.
+     */
     private fun loadAvailabilityIfPossible() {
         val s = _state.value
         if (s.selectedProfessional != null && s.reservationStartMillis != null) {
@@ -239,6 +293,11 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Actualiza la hora de inicio de la reserva basándose en el slot seleccionado (HH:mm).
+     *
+     * @param slot Horario seleccionado en formato string.
+     */
     fun updateReservationTimeFromSlot(slot: String) {
         val s = _state.value
         val currentMillis = s.reservationStartMillis ?: return
@@ -257,18 +316,22 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         ).let { it.copy(isValid = validate(it)) } }
     }
 
+    /**
+     * Establece notas adicionales para la reserva (como dirección o requerimientos).
+     */
     fun setNotes(notes: String) {
         _state.update { it.copy(notes = notes) }
     }
 
+    /**
+     * Establece el método de pago seleccionado por el usuario.
+     */
     fun setPaymentMethod(method: String) {
         _state.update { s -> s.copy(paymentMethod = method).let { it.copy(isValid = validate(it)) } }
     }
 
     /**
-     * AUDITORÍA: Motor de Validación.
-     * Requisito: Especialista + Servicio + Fecha + Hora (o unidad diaria) + Método Pago.
-     * Si el servicio es a domicilio, las notas (dirección) son obligatorias.
+     * Valida que el formulario de reserva esté completo según las reglas de negocio.
      */
     private fun validate(s: BookingUiState): Boolean {
         val isDayUnit = s.selectedService?.priceUnit == "DAY"
@@ -287,6 +350,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Carga las reservas históricas y futuras de un cliente.
+     */
     fun loadMyReservations(userId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -301,6 +367,11 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Ejecuta la petición para crear una nueva reserva en el sistema.
+     *
+     * @param onDone Callback ejecutado tras el éxito de la creación.
+     */
     fun createReservation(onDone: () -> Unit) {
         val s = _state.value
         if (!validate(s)) return
@@ -332,6 +403,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Cancela una reserva existente.
+     */
     fun cancelReservation(reservationId: String) {
         viewModelScope.launch {
             repository.cancelReservation(reservationId)
@@ -346,6 +420,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Confirma el pago en efectivo y completa la reserva.
+     */
     fun confirmCashPayment(reservationId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -361,6 +438,9 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Limpia el error actual del estado. */
     fun clearError() = _state.update { it.copy(error = null) }
+    
+    /** Limpia el mensaje de éxito del estado. */
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

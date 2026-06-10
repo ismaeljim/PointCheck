@@ -14,6 +14,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 
+/**
+ * Pantalla para la visualización de los registros de auditoría del sistema.
+ * 
+ * Presenta una lista cronológica de las acciones administrativas realizadas en el sistema,
+ * permitiendo rastrear cambios de estado de usuarios y otras operaciones críticas.
+ * 
+ * @param onBack Callback para navegar a la pantalla anterior.
+ * @param viewModel ViewModel que gestiona el estado administrativo y los datos de auditoría.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuditLogScreen(
@@ -49,6 +58,11 @@ fun AuditLogScreen(
     }
 }
 
+/**
+ * Renderiza una entrada individual del log de auditoría.
+ *
+ * @param log Los datos del log de auditoría a mostrar.
+ */
 @Composable
 fun AuditLogItem(log: AuditLogDto) {
     Card(

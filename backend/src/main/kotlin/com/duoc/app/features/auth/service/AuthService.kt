@@ -11,8 +11,16 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
 /**
- * Servicio encargado de la gestión de identidad y acceso.
- * Implementa la lógica de registro dual (Cliente/Especialista) y validación de credenciales.
+ * Servicio encargado de la gestión de identidad, autenticación y registro de usuarios.
+ *
+ * Implementa la lógica de "Registro Dual", permitiendo la creación de cuentas tanto para
+ * Clientes como para Especialistas. En el caso de los especialistas, automatiza la
+ * creación de su perfil profesional base y la asociación con una categoría de servicio.
+ *
+ * @property userRepository Repositorio para la persistencia de usuarios.
+ * @property professionalProfileRepository Repositorio para la gestión de perfiles de especialistas.
+ * @property categoryRepository Repositorio para validar y asignar categorías de servicio.
+ * @property passwordEncoder Componente de seguridad para el cifrado y validación de contraseñas.
  */
 @Service
 class AuthService(
@@ -23,12 +31,15 @@ class AuthService(
 ) {
 
     /**
-     * Registra un nuevo usuario en el sistema.
-     * Si el rol es SPECIALIST, crea automáticamente un perfil profesional vinculado.
-     * 
-     * AUDITORÍA: 
-     * - Falta implementar hashing de contraseñas (BCrypt).
-     * - Se debe agregar validación de longitud de teléfono.
+     * Registra un nuevo usuario en la plataforma PointCheck.
+     *
+     * Realiza validaciones críticas de unicidad (email y RUT) y formatea el RUT chileno
+     * antes de la persistencia. Si el rol solicitado es `SPECIALIST`, se crea de forma
+     * transaccional un `ProfessionalProfile` asociado, asegurando la integridad de los datos.
+     *
+     * @param request DTO con los datos de registro (nombre, email, password, RUT, teléfono, rol, etc.).
+     * @return [UserResponse] con los datos del usuario creado, incluyendo el ID de categoría si aplica.
+     * @throws IllegalArgumentException Si el email/RUT ya existen, el RUT es inválido o la categoría no existe.
      */
     @org.springframework.transaction.annotation.Transactional
     fun register(request: RegisterRequest): UserResponse {
@@ -37,7 +48,7 @@ class AuthService(
             throw IllegalArgumentException("El email ya está registrado.")
         }
 
-        // Validación y formateo de RUT chileno
+        // Validación y formateo de RUT chileno mediante utilidad centralizada
         val formattedRut = RutUtils.formatRut(request.rut)
         if (!RutUtils.validateRut(formattedRut)) {
             throw IllegalArgumentException("El RUT ingresado no es válido.")
@@ -47,7 +58,7 @@ class AuthService(
             throw IllegalArgumentException("El RUT ya está registrado.")
         }
 
-        // Creación del objeto de dominio User con contraseña cifrada
+        // Creación del objeto de dominio User con contraseña cifrada (BCrypt)
         val user = User(
             name = request.name,
             email = request.email,
@@ -61,7 +72,7 @@ class AuthService(
 
         var assignedCategoryId: String? = null
 
-        // LÓGICA DE ESPECIALISTA: Automatiza la creación del perfil base
+        // LÓGICA DE ESPECIALISTA: Automatiza la creación del perfil profesional base
         if (request.role == com.duoc.app.features.user.model.UserRole.SPECIALIST) {
             val category = request.categoryId?.let { cid: String ->
                 categoryRepository.findById(cid).orElseThrow {
@@ -84,25 +95,30 @@ class AuthService(
     }
 
     /**
-     * Valida credenciales y retorna la información básica del usuario.
-     * Incluye el categoryId si el usuario es un especialista para navegación directa en App.
+     * Autentica a un usuario verificando sus credenciales contra la base de datos.
+     *
+     * Incluye lógica de limpieza de entrada (trim) y validación de estado de cuenta (active).
+     * Utiliza `findByEmailWithProfile` para cargar el perfil profesional en una sola consulta,
+     * optimizando la respuesta para la navegación inicial de la App.
+     *
+     * @param request DTO con email y contraseña.
+     * @return [UserResponse] con la información del usuario y su contexto profesional (si es especialista).
+     * @throws IllegalArgumentException Si el usuario no existe, la contraseña es incorrecta o la cuenta está desactivada.
      */
     fun login(request: LoginRequest): UserResponse {
         val cleanEmail = request.email.trim()
-        val cleanPassword = request.password.trim() // Limpieza de seguridad
+        val cleanPassword = request.password.trim()
         
         println("AUTH-DEBUG: Intento de login para email: [$cleanEmail]")
-        println("AUTH-DEBUG: Longitud password recibida: ${cleanPassword.length}")
         
+        // Se utiliza EntityGraph o Fetch Join internamente para evitar N+1
         val user = userRepository.findByEmailWithProfile(cleanEmail)
         if (user == null) {
             println("AUTH-DEBUG: USUARIO NO ENCONTRADO en la DB: [$cleanEmail]")
             throw IllegalArgumentException("Usuario no encontrado: $cleanEmail")
         }
 
-        println("AUTH-DEBUG: Usuario encontrado. Comparando password...")
-        
-        // Validación de seguridad mediante BCrypt
+        // Validación de seguridad mediante PasswordEncoder (BCrypt)
         if (!passwordEncoder.matches(cleanPassword, user.password)) {
             println("AUTH-DEBUG: PASSWORD INCORRECTO para [$cleanEmail]")
             throw IllegalArgumentException("Contraseña incorrecta para este usuario.")
@@ -115,12 +131,17 @@ class AuthService(
 
         println("AUTH-DEBUG: LOGIN EXITOSO para [${request.email}]")
 
-        // OPTIMIZACIÓN SENIOR: Usamos la relación ya cargada por JOIN FETCH
+        // Obtención eficiente del categoryId desde la relación ya cargada
         val categoryId = user.professionalProfile?.category?.id
 
         return user.toResponse(categoryId)
     }
 
+    /**
+     * Mapea una entidad [User] a su representación de respuesta [UserResponse].
+     * 
+     * @param categoryId ID opcional de la categoría si el usuario es un profesional.
+     */
     private fun User.toResponse(categoryId: String? = null): UserResponse = UserResponse(
         id = this.id!!,
         name = this.name,

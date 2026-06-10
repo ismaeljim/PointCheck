@@ -17,6 +17,15 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
 import kotlin.coroutines.resume
 
+/**
+ * Representa el estado de la interfaz de usuario para la geolocalización.
+ *
+ * @property lastKnownLat Última latitud conocida del dispositivo.
+ * @property lastKnownLng Última longitud conocida del dispositivo.
+ * @property addressSuggestions Lista de direcciones sugeridas obtenidas por geocodificación inversa.
+ * @property isLocating Indica si se está realizando una operación de obtención de ubicación.
+ * @property error Mensaje de error en caso de fallo al localizar o geocodificar.
+ */
 data class LocationUiState(
     val lastKnownLat: Double? = null,
     val lastKnownLng: Double? = null,
@@ -26,10 +35,11 @@ data class LocationUiState(
 )
 
 /**
- * AUDITORÍA: Motor de Geolocalización y Geocodificación.
+ * Motor de Geolocalización y Geocodificación.
  * Utiliza Google Play Services (FusedLocation) para precisión y eficiencia energética.
- * Hallazgo: Se implementa compatibilidad con API 33+ (Tiramisu) mediante GeocodeListener asíncrono.
- * Brecha: No se gestiona la lógica de 'Rationale' para permisos, se asume que la Activity los maneja.
+ * Se implementa compatibilidad con API 33+ (Tiramisu) mediante GeocodeListener asíncrono.
+ *
+ * @param application Contexto de la aplicación para inicializar servicios de ubicación.
  */
 class LocationViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -39,6 +49,11 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     private val _state = MutableStateFlow(LocationUiState())
     val state: StateFlow<LocationUiState> = _state
 
+    /**
+     * Solicita la ubicación actual del dispositivo con alta precisión.
+     *
+     * @param onSuccess Callback que se ejecuta al obtener las coordenadas exitosamente.
+     */
     @SuppressLint("MissingPermission")
     fun getCurrentLocation(onSuccess: (Double, Double) -> Unit) {
         _state.update { it.copy(isLocating = true, error = null) }
@@ -66,6 +81,12 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * Obtiene sugerencias de direcciones basadas en una cadena de búsqueda (Geocoding).
+     * Requiere al menos 5 caracteres para iniciar la búsqueda.
+     *
+     * @param query Dirección parcial o nombre de lugar a buscar.
+     */
     fun getAddressSuggestions(query: String) {
         if (query.length < 5) {
             _state.update { it.copy(addressSuggestions = emptyList()) }
@@ -94,10 +115,17 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Limpia la lista de sugerencias de direcciones actuales. */
     fun clearSuggestions() {
         _state.update { it.copy(addressSuggestions = emptyList()) }
     }
 
+    /**
+     * Convierte una dirección de texto en coordenadas geográficas (Lat/Lng).
+     *
+     * @param address Dirección completa en texto.
+     * @return Par de Latitud y Longitud, o null si no se pudo geocodificar.
+     */
     suspend fun getLatLngFromAddress(address: String): Pair<Double, Double>? = suspendCancellableCoroutine { continuation ->
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

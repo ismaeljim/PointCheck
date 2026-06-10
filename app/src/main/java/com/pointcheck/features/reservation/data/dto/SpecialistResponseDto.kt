@@ -3,12 +3,21 @@ package com.pointcheck.features.reservation.data.dto
 import com.google.gson.annotations.SerializedName
 
 /**
- * Representa un profesional o especialista disponible para reservas.
- * Mapeado desde professional_profiles del backend.
+ * Objeto de transferencia de datos (DTO) que representa a un profesional o especialista disponible para ser reservado.
+ * Mapeado desde la entidad professional_profiles del backend.
+ * 
+ * @property id Identificador único del perfil profesional (UUID).
+ * @property userId Identificador único del usuario base asociado.
+ * @property name Nombre para mostrar del profesional.
+ * @property specialty Descripción de la especialidad o rubro.
+ * @property city Ciudad donde presta servicios.
+ * @property defaultSessionDurationMinutes Duración estándar de una sesión en minutos.
+ * @property latitude Coordenada de latitud de la ubicación del servicio.
+ * @property longitude Coordenada de longitud de la ubicación del servicio.
  */
 data class SpecialistResponseDto(
-    val id: String,        // Profile ID
-    val userId: String,    // User ID
+    val id: String,
+    val userId: String,
     @SerializedName("displayName")
     val name: String,
     val specialty: String?,

@@ -35,6 +35,15 @@ import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.core.util.RutUtils
 import com.pointcheck.core.util.RutVisualTransformation
 
+/**
+ * Pantalla para el registro de nuevos usuarios.
+ *
+ * Soporta el registro tanto para Clientes regulares como para Especialistas. Para los especialistas,
+ * captura detalles adicionales de la ubicación del negocio antes de proceder a la selección de categoría.
+ *
+ * @param nav Controlador de navegación para las transiciones entre pantallas.
+ * @param vm ViewModel que gestiona el estado y la lógica del registro.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(

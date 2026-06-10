@@ -19,17 +19,19 @@ import com.pointcheck.features.services.data.dto.ServiceResponseDto
 enum class ReportPeriod { WEEKLY, MONTHLY }
 
 /**
- * AUDITORÍA TÉCNICA: Inteligencia de Negocio en Dispositivos Móviles
- * 
- * Este ViewModel gestiona la visualización de métricas de desempeño y la exportación de datos.
- * 
- * Hallazgos:
- * 1. [OK] Polimorfismo de Reportes: Maneja estados tanto semanales como mensuales de forma unificada.
- * 2. [OK] Estrategia de Filtros: Permite filtrar por tipo de servicio, lo que ayuda al especialista 
- *    a identificar qué prestaciones son más rentables.
- * 3. [OK] Navegación Temporal: Implementa 'offsets' para que el usuario pueda navegar hacia atrás en la historia.
- * 4. [BRECHA] Persistencia de CSV: La exportación genera un String (CSV); se recomienda el uso de 
- *    'FileProvider' o 'MediaStore' para guardar el archivo físicamente en el dispositivo.
+ * Representa el estado de la interfaz de usuario para los reportes de rendimiento y BI.
+ *
+ * @property report Datos del reporte semanal.
+ * @property monthlyReport Datos del reporte mensual.
+ * @property summary Resumen general de métricas.
+ * @property services Lista de servicios del profesional para filtrado.
+ * @property selectedServiceId ID del servicio seleccionado para filtrar el reporte.
+ * @property isLoading Indica si el reporte se está generando o descargando.
+ * @property error Mensaje de error a mostrar.
+ * @property weekOffset Desplazamiento de semanas hacia atrás desde la fecha actual.
+ * @property monthOffset Desplazamiento de meses hacia atrás.
+ * @property period Tipo de reporte visualizado (Semanal o Mensual).
+ * @property exportContent Contenido en formato CSV listo para ser guardado o compartido.
  */
 data class WeeklyReportUiState(
     val report: WeeklyReportResponseDto? = null,
@@ -45,6 +47,12 @@ data class WeeklyReportUiState(
     val exportContent: String? = null
 )
 
+/**
+ * ViewModel especializado en la analítica de negocio para el profesional.
+ * Gestiona reportes temporales, filtrado por servicios y la exportación de datos financieros.
+ *
+ * @param application Contexto de la aplicación.
+ */
 class WeeklyReportViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = DashboardRepository(ApiClient.instance)
@@ -73,8 +81,8 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
     }
 
     /**
-     * AUDITORÍA: Carga Dinámica de Reportes.
-     * Alterna entre API Semanal y Mensual basándose en el estado del 'period'.
+     * Carga el reporte correspondiente basándose en el periodo (Semanal/Mensual) y filtros actuales.
+     * Soporta navegación temporal mediante offsets.
      */
     fun loadReport() {
         viewModelScope.launch {
@@ -107,16 +115,28 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /**
+     * Aplica un filtro por servicio específico al reporte.
+     * @param serviceId ID del servicio o null para ver todos.
+     */
     fun setServiceFilter(serviceId: String?) {
         _state.update { it.copy(selectedServiceId = serviceId) }
         loadReport()
     }
 
+    /**
+     * Cambia la escala temporal del reporte.
+     * @param period Periodo deseado (WEEKLY o MONTHLY).
+     */
     fun setPeriod(period: ReportPeriod) {
         _state.update { it.copy(period = period) }
         loadReport()
     }
 
+    /**
+     * Navega en el tiempo (atrás o adelante) según el periodo actual.
+     * @param delta Cantidad de periodos a desplazar (ej. -1 para la semana anterior).
+     */
     fun changeOffset(delta: Int) {
         _state.update { 
             if (it.period == ReportPeriod.WEEKLY) {
@@ -129,8 +149,8 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
     }
 
     /**
-     * AUDITORÍA: Exportación de Datos.
-     * Solicita al backend el formato CSV del reporte actual.
+     * Solicita al backend la versión exportable (CSV) del reporte visualizado.
+     * El contenido resultante se guarda en [WeeklyReportUiState.exportContent].
      */
     fun exportReport() {
         viewModelScope.launch {
@@ -157,9 +177,11 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /** Limpia el contenido exportado del estado. */
     fun clearExport() {
         _state.update { it.copy(exportContent = null) }
     }
 
+    /** Limpia el mensaje de error del estado. */
     fun clearError() = _state.update { it.copy(error = null) }
 }

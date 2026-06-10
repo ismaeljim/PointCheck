@@ -12,9 +12,15 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 /**
- * Servicio de lógica de negocio para la gestión de Perfiles Profesionales.
- * Maneja el ciclo de vida del perfil del especialista, validaciones de rol y 
- * asignación de categorías.
+ * Servicio de lógica de negocio encargado de la gestión integral de Perfiles Profesionales.
+ *
+ * El perfil profesional es la extensión del usuario con rol `SPECIALIST` que contiene
+ * su información comercial, ubicación geográfica, especialidad técnica y configuración
+ * de agenda (horarios de trabajo y duración de sesiones por defecto).
+ *
+ * @property professionalProfileRepository Repositorio para la persistencia de perfiles.
+ * @property userRepository Repositorio para validar la existencia y rol de los usuarios.
+ * @property categoryRepository Repositorio para la asociación de perfiles con categorías de servicio.
  */
 @Service
 class ProfessionalProfileService(
@@ -24,11 +30,14 @@ class ProfessionalProfileService(
 ) {
 
     /**
-     * Crea un nuevo perfil profesional para un usuario con rol SPECIALIST.
-     * 
-     * AUDITORÍA:
-     * - Valida que el usuario exista y tenga el rol correcto.
-     * - Previene la creación de perfiles duplicados para el mismo usuario.
+     * Crea un nuevo perfil profesional vinculado a un usuario.
+     *
+     * Valida rigurosamente que el usuario tenga el rol `SPECIALIST` y que no posea un perfil
+     * previo, garantizando la relación 1:1 entre Usuario y Perfil Profesional.
+     *
+     * @param request DTO con los datos del perfil (nombre comercial, especialidad, ubicación, etc.).
+     * @return [ProfessionalProfileResponse] con la información del perfil persistido.
+     * @throws IllegalArgumentException Si el usuario no es especialista, no existe o ya posee un perfil.
      */
     @Transactional
     fun create(request: ProfessionalProfileRequest): ProfessionalProfileResponse {
@@ -69,7 +78,13 @@ class ProfessionalProfileService(
     }
 
     /**
-     * Obtiene perfiles activos, opcionalmente filtrados por categoría.
+     * Recupera una lista de perfiles profesionales activos, permitiendo filtrado por categoría.
+     *
+     * Esta función es clave para el buscador de la aplicación móvil, permitiendo a los clientes
+     * encontrar especialistas según su rubro.
+     *
+     * @param categoryId ID opcional de la categoría para filtrar resultados.
+     * @return Lista de [ProfessionalProfileResponse] que cumplen con el criterio.
      */
     fun getActive(categoryId: String? = null): List<ProfessionalProfileResponse> {
         return if (categoryId != null) {
@@ -80,7 +95,11 @@ class ProfessionalProfileService(
     }
 
     /**
-     * Recupera el perfil profesional por el ID del usuario propietario.
+     * Obtiene el perfil profesional asociado a un identificador de usuario único.
+     *
+     * @param userId ID del usuario (especialista) cuyo perfil se requiere.
+     * @return [ProfessionalProfileResponse] correspondiente al usuario.
+     * @throws NoSuchElementException Si el usuario no tiene un perfil configurado.
      */
     fun getByUserId(userId: String): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId)
@@ -89,7 +108,15 @@ class ProfessionalProfileService(
     }
 
     /**
-     * Actualiza la información del perfil profesional.
+     * Actualiza la información detallada de un perfil profesional existente.
+     *
+     * Permite la modificación de campos dinámicos como `workingHoursJson` (Agenda) y
+     * `defaultSessionDurationMinutes`, que impactan directamente en el motor de reservas.
+     *
+     * @param id ID único del perfil profesional (GUID).
+     * @param request DTO con la información actualizada.
+     * @return [ProfessionalProfileResponse] con los cambios aplicados y fecha de actualización.
+     * @throws NoSuchElementException Si el perfil especificado no existe.
      */
     @Transactional
     fun update(id: String, request: ProfessionalProfileRequest): ProfessionalProfileResponse {
@@ -121,7 +148,14 @@ class ProfessionalProfileService(
     }
 
     /**
-     * Desactiva lógicamente un perfil profesional.
+     * Desactiva lógicamente un perfil profesional del sistema.
+     *
+     * Realiza un "Soft-Delete" para preservar la integridad referencial en reservas
+     * históricas y registros financieros, pero oculta al profesional de nuevas búsquedas.
+     *
+     * @param id ID del perfil a desactivar.
+     * @return Perfil actualizado con estado inactivo.
+     * @throws NoSuchElementException Si el perfil no existe.
      */
     @Transactional
     fun deactivate(id: String): ProfessionalProfileResponse {

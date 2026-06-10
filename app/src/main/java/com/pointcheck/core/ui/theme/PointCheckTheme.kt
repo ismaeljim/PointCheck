@@ -21,6 +21,13 @@ private val DarkColors = darkColorScheme(
     surface = DarkBackground
 )
 
+/**
+ * Configuración del tema principal de la aplicación PointCheck.
+ * Implementa el sistema de diseño Material3 con soporte para modos claro y oscuro.
+ * 
+ * @param darkTheme Indica si se debe aplicar el esquema de colores oscuro.
+ * @param content Composable que se renderizará bajo este tema.
+ */
 @Composable
 fun PointCheckTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
     val colors = if (darkTheme) DarkColors else LightColors

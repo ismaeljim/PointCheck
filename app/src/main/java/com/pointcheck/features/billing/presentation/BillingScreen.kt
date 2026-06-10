@@ -21,6 +21,20 @@ import com.pointcheck.core.presentation.components.AppOutlinedButton
 import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.AppTopBar
 
+/**
+ * Screen for managing the billing process for a service attention.
+ *
+ * It allows specialists to:
+ * - Create a billing record with an amount and payment method.
+ * - View the summary of a transaction.
+ * - Mark a pending billing as paid by providing an external reference.
+ * - Cancel or void a billing record.
+ *
+ * @param nav Navigation controller.
+ * @param reservationId The ID of the reservation associated with the billing.
+ * @param attentionId The optional ID of the attention session.
+ * @param vm ViewModel managing the billing state and operations.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BillingScreen(
@@ -257,6 +271,13 @@ fun BillingScreen(
     }
 }
 
+/**
+ * Modal dialog for selecting a payment method.
+ *
+ * @param amount The total amount to be paid.
+ * @param onSelectMethod Callback triggered when a payment method is selected.
+ * @param onDismiss Callback to close the modal.
+ */
 @Composable
 fun PaymentSelectionModal(
     amount: Double,
@@ -279,6 +300,14 @@ fun PaymentSelectionModal(
     )
 }
 
+/**
+ * Represents an individual payment option within the selection modal.
+ *
+ * @param id Unique identifier for the payment method.
+ * @param label Human-readable name of the payment method.
+ * @param icon Icon representing the payment method.
+ * @param onSelect Callback triggered when this option is selected.
+ */
 @Composable
 fun PaymentOptionItem(id: String, label: String, icon: ImageVector, onSelect: (String) -> Unit) {
     Surface(
@@ -297,6 +326,14 @@ fun PaymentOptionItem(id: String, label: String, icon: ImageVector, onSelect: (S
     }
 }
 
+/**
+ * Displays a single row of information in the billing summary.
+ *
+ * @param icon Icon for the information type.
+ * @param label Label for the data.
+ * @param value The actual data value.
+ * @param color Optional text color for the value.
+ */
 @Composable
 fun BillingInfoRow(icon: ImageVector, label: String, value: String, color: Color = Color.Unspecified) {
     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

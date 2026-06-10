@@ -24,6 +24,22 @@ import com.pointcheck.core.presentation.components.AppOutlinedButton
 import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 
+/**
+ * Pantalla para la gestión del plan de suscripción comercial del usuario.
+ *
+ * Esta pantalla permite a los usuarios ver el estado de su suscripción actual, cancelar un plan activo,
+ * o seleccionar un nuevo plan (Básico o Premium). Se integra con [SubscriptionViewModel] para
+ * manejar la lógica de negocio y el estado.
+ *
+ * Características:
+ * - Visualización de detalles de la suscripción actual (nombre del plan, estado, fechas de vigencia).
+ * - Selección de nuevos planes con descripciones detalladas y precios.
+ * - Integración con snackbar para notificaciones de error y éxito.
+ * - Aviso de gestión básica respecto a los cobros automáticos.
+ *
+ * @param nav [NavController] para navegar de regreso a las pantallas anteriores.
+ * @param vm [SubscriptionViewModel] que proporciona el estado y las acciones de la pantalla.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel()) {

@@ -1,13 +1,19 @@
 package com.pointcheck.core.util
 
 /**
- * Utilidades para la gestión de RUT chileno en Android.
- * Versión Flexible: Permite cualquier entrada y valida la lógica.
+ * Objeto de utilidad para el manejo y validación de RUT (Rol Único Tributario) chileno.
+ *
+ * Provee métodos para limpiar, formatear y validar cadenas de RUT según el algoritmo
+ * de módulo 11. Está diseñado para ser flexible, aceptando varios formatos de entrada
+ * y normalizándolos para la comunicación con el servidor o la visualización en la UI.
  */
 object RutUtils {
 
     /**
-     * Limpia el RUT para enviarlo al servidor en formato estándar 12345678-9.
+     * Normaliza una cadena de RUT al formato estándar "cuerpo-dv" (ej: 12345678-K).
+     *
+     * @param rut La cadena de RUT original a ser formateada.
+     * @return Una cadena formateada apta para la transmisión vía API.
      */
     fun formatForServer(rut: String): String {
         val clean = rut.replace(Regex("[^0-9kK]"), "").uppercase()
@@ -18,7 +24,10 @@ object RutUtils {
     }
 
     /**
-     * Valida la lógica del RUT sin importar el formato.
+     * Valida la integridad lógica de un RUT utilizando el algoritmo de módulo 11.
+     *
+     * @param rut La cadena de RUT a validar (puede incluir puntos, guiones o espacios).
+     * @return `true` si el RUT es válido, `false` en caso contrario.
      */
     fun validateRut(rut: String): Boolean {
         try {
@@ -34,6 +43,12 @@ object RutUtils {
         }
     }
 
+    /**
+     * Calcula el dígito verificador para un cuerpo de RUT dado.
+     * 
+     * @param rutBody El cuerpo numérico del RUT.
+     * @return El dígito verificador calculado (0-9 o K).
+     */
     private fun calculateDV(rutBody: String): String {
         var sum = 0
         var multiplier = 2

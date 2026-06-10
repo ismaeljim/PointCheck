@@ -9,17 +9,20 @@ import com.pointcheck.features.auth.data.dto.UserResponseDto
 
 /**
  * Repositorio de Autenticación.
- * Gestiona la comunicación con el backend para los procesos de Login y Registro.
- * 
- * AUDITORÍA:
- * - Se delega el manejo de errores a NetworkHandler.
- * - Centraliza las llamadas a la API mediante ApiService.
+ * Gestiona la comunicación con el backend para los procesos de inicio de sesión y registro de usuarios.
+ * Centraliza el manejo de respuestas de red y excepciones a través de [NetworkHandler].
+ *
+ * @property apiService Servicio de API de Retrofit para realizar las peticiones de autenticación.
  */
 class AuthRepository(
     private val apiService: ApiService = ApiClient.instance
 ) {
     /**
-     * Realiza el inicio de sesión del usuario.
+     * Realiza el inicio de sesión del usuario utilizando sus credenciales.
+     *
+     * @param email Correo electrónico del usuario.
+     * @param password Contraseña del usuario.
+     * @return [Result] que contiene [UserResponseDto] si el inicio de sesión es exitoso, o una falla en caso contrario.
      */
     suspend fun login(email: String, password: String): Result<UserResponseDto> {
         return try {
@@ -31,7 +34,10 @@ class AuthRepository(
     }
 
     /**
-     * Registra un nuevo usuario (Cliente o Especialista).
+     * Registra un nuevo usuario en el sistema (Cliente o Profesional).
+     *
+     * @param request Objeto [RegisterRequestDto] con los datos necesarios para el registro.
+     * @return [Result] que contiene [UserResponseDto] del usuario recién creado, o una falla.
      */
     suspend fun register(request: RegisterRequestDto): Result<UserResponseDto> {
         return try {

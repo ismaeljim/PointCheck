@@ -5,6 +5,13 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 
+/**
+ * Implementación de [VisualTransformation] para aplicar formato de RUT chileno en tiempo real.
+ *
+ * Transforma una entrada numérica (ej: 12345678K) en una representación visual con puntos
+ * y guion (ej: 12.345.678-K). Maneja dinámicamente el mapeo de offsets para que el cursor
+ * del TextField se comporte correctamente a pesar de los caracteres añadidos.
+ */
 class RutVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val cleanText = text.text.replace(".", "").replace("-", "")
@@ -30,6 +37,9 @@ class RutVisualTransformation : VisualTransformation {
             out.append(dv)
         }
 
+        /**
+         * Mapeador de posición del cursor entre el texto original y el transformado.
+         */
         val rutOffsetMapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int {
                 if (offset <= 0) return 0

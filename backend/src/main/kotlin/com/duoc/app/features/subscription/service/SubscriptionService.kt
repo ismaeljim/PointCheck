@@ -11,12 +11,25 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/**
+ * Servicio encargado de gestionar las suscripciones de los profesionales.
+ *
+ * Controla el ciclo de vida de los planes de pago, incluyendo la creación,
+ * verificación de vigencia y cancelación de suscripciones.
+ */
 @Service
 class SubscriptionService(
     private val subscriptionRepository: SubscriptionRepository,
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
+    /**
+     * Registra una nueva suscripción para un perfil profesional.
+     *
+     * @param request Datos de la suscripción (ID de perfil, plan, fechas).
+     * @return [SubscriptionResponse] con la suscripción creada.
+     * @throws IllegalArgumentException si el perfil no existe o no está activo.
+     */
     @Transactional
     fun create(request: SubscriptionRequest): SubscriptionResponse {
         val profile = professionalProfileRepository.findById(request.professionalProfileId).orElseThrow {
@@ -38,6 +51,15 @@ class SubscriptionService(
         return subscriptionRepository.save(subscription).toResponse()
     }
 
+    /**
+     * Recupera la suscripción activa actual para un perfil profesional.
+     *
+     * Incluye lógica de validación de expiración: si la suscripción ha superado
+     * su fecha de fin, se marca automáticamente como EXPIRED.
+     *
+     * @param professionalProfileId ID del perfil profesional.
+     * @return [SubscriptionResponse] si existe una suscripción activa y vigente, null en caso contrario.
+     */
     @Transactional
     fun getCurrentByProfessionalProfile(professionalProfileId: String): SubscriptionResponse? {
         val subscriptions = subscriptionRepository.findByProfessionalProfile_IdAndStatus(professionalProfileId, SubscriptionStatus.ACTIVE)
@@ -58,6 +80,12 @@ class SubscriptionService(
         return current.toResponse()
     }
 
+    /**
+     * Cancela una suscripción activa de forma inmediata.
+     *
+     * @param id ID de la suscripción.
+     * @return Suscripción actualizada con estado [SubscriptionStatus.CANCELLED].
+     */
     @Transactional
     fun cancel(id: String): SubscriptionResponse {
         val subscription = subscriptionRepository.findById(id).orElseThrow {

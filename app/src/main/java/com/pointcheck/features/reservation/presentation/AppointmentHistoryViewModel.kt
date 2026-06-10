@@ -13,6 +13,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Estado de la interfaz de usuario para la pantalla de Historial de Citas.
+ *
+ * @property appointments Lista de reservas obtenidas del servidor.
+ * @property isLoading Indica si hay una solicitud de red en curso.
+ * @property error Mensaje de error a mostrar si una operación falla.
+ * @property successMessage Mensaje a mostrar tras operaciones exitosas.
+ * @property type El tipo de filtro para las citas (ej., "recent", "upcoming", "history").
+ */
 data class AppointmentHistoryUiState(
     val appointments: List<ReservationResponseDto> = emptyList(),
     val isLoading: Boolean = false,
@@ -21,14 +30,30 @@ data class AppointmentHistoryUiState(
     val type: String = "recent" // "recent", "upcoming", "history"
 )
 
+/**
+ * ViewModel responsable de gestionar y obtener el historial de reservas de un cliente.
+ *
+ * Proporciona funcionalidad para filtrar citas por estado (próximas o historial pasado)
+ * basado en el usuario actualmente autenticado.
+ *
+ * @param application El contexto de la aplicación.
+ */
 class AppointmentHistoryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = ReservationRepository(ApiClient.instance)
     private val prefs = UserPreferences(application)
 
     private val _state = MutableStateFlow(AppointmentHistoryUiState())
+    /**
+     * Estado observable para la interfaz de usuario del Historial de Citas.
+     */
     val state: StateFlow<AppointmentHistoryUiState> = _state
 
+    /**
+     * Carga la lista de citas para el usuario actual basada en el tipo especificado.
+     *
+     * @param type La categoría de citas a cargar: "upcoming", "recent" o "history".
+     */
     fun loadAppointments(type: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null, type = type) }
@@ -52,6 +77,14 @@ class AppointmentHistoryViewModel(application: Application) : AndroidViewModel(a
         }
     }
 
+    /**
+     * Limpia el mensaje de error actual del estado.
+     */
     fun clearError() = _state.update { it.copy(error = null) }
+
+    /**
+     * Limpia el mensaje de éxito actual del estado.
+     */
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }
+

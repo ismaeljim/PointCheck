@@ -7,14 +7,30 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 
+/**
+ * Programador de recordatorios locales utilizando [AlarmManager].
+ * 
+ * Permite agendar notificaciones exactas en el tiempo (epoch millis). Maneja las restricciones
+ * de Android 12+ sobre alarmas exactas y asegura que la aplicación no sufra cierres inesperados
+ * por falta de permisos de sistema.
+ *
+ * @property context Contexto de la aplicación necesario para acceder a los servicios del sistema.
+ */
 class ReminderScheduler(private val context: Context) {
+
+    /**
+     * Programa una notificación para ser disparada en un momento específico.
+     *
+     * @param epochMillis Tiempo en milisegundos cuando se debe activar la alarma.
+     * @param title Título de la notificación.
+     * @param text Cuerpo del mensaje de la notificación.
+     */
     fun scheduleAt(epochMillis: Long, title: String, text: String) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        // En Android 12 y superior, se necesita un permiso especial para alarmas exactas.
+        // Validación de permisos para alarmas exactas (Requerido en Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!am.canScheduleExactAlarms()) {
-                // No tenemos permiso, así que no hacemos nada. La app no se cerrará.
                 Log.w("ReminderScheduler", "No se pueden programar alarmas exactas. Permiso denegado.")
                 return
             }
@@ -25,14 +41,15 @@ class ReminderScheduler(private val context: Context) {
             putExtra("text", text)
         }
 
+        // Se usa el remanente de epochMillis como ID único para el PendingIntent
         val req = (epochMillis % Int.MAX_VALUE).toInt()
         val pi = PendingIntent.getBroadcast(context, req, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         try {
-            // Envolvemos la llamada en un try-catch para máxima seguridad.
+            // Se utiliza setExactAndAllowWhileIdle para asegurar que el recordatorio suene 
+            // incluso si el dispositivo está en modo Doze (ahorro de energía).
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, epochMillis, pi)
         } catch (e: SecurityException) {
-            // Si el sistema operativo deniega la alarma, lo capturamos y evitamos el crash.
             Log.e("ReminderScheduler", "Error de seguridad al programar la alarma.", e)
         }
     }

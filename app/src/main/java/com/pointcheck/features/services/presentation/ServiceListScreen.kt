@@ -23,6 +23,22 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
+/**
+ * Screen for managing the catalog of services offered by a professional.
+ *
+ * This screen provides a list of all services registered by the current user. It allows
+ * adding new services through a dialog and deleting existing ones. It observes the
+ * state from [ServiceViewModel].
+ *
+ * Features:
+ * - Lazy list of services with name, description, price, and duration.
+ * - Floating action button to trigger the "Add Service" dialog.
+ * - Integrated error and success message handling via Snackbar.
+ * - Empty state illustration when no services are configured.
+ *
+ * @param nav [NavController] used for navigating back.
+ * @param vm [ServiceViewModel] that manages the service data and operations.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceListScreen(

@@ -15,6 +15,17 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 
+/**
+ * Componente de mapa basado en Google Maps para mostrar la ubicación de un servicio.
+ * 
+ * Configura automáticamente la cámara para centrarse en las coordenadas proporcionadas
+ * con un nivel de zoom adecuado para visualización urbana (15f).
+ *
+ * @param latitude Latitud de la ubicación.
+ * @param longitude Longitud de la ubicación.
+ * @param title Título que se mostrará en el marcador del mapa.
+ * @param modifier Modificador para personalizar el tamaño o layout del contenedor.
+ */
 @Composable
 fun PointCheckMapView(
     latitude: Double,

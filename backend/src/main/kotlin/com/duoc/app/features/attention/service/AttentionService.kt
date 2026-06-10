@@ -17,18 +17,12 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * AUDITORÍA TÉCNICA: Flujo de Ejecución de Atenciones
- * 
- * Este servicio gestiona el ciclo de vida operativo de una cita desde que el especialista
- * inicia la sesión hasta que se genera el registro financiero.
- * 
- * Hallazgos de Implementación:
- * 1. [OK] Atomicidad: Uso de @Transactional para garantizar que el cambio de estado de la reserva, 
- *    la atención y la facturación ocurran como una única unidad de trabajo.
- * 2. [OK] Trazabilidad: Registro automático de 'startedAt' y 'finishedAt'.
- * 3. [OK] Integración de Cobro: Gatillado automático de 'billingService' al finalizar la atención.
- * 4. [BRECHA] Cálculo de Duración: Si no se provee 'durationMinutes', se calcula por diferencia de tiempo,
- *    lo cual es correcto para métricas de eficiencia del especialista.
+ * Servicio encargado de gestionar el flujo de ejecución de las atenciones.
+ *
+ * Controla el ciclo de vida operativo de una cita desde que el especialista
+ * inicia la sesión hasta que se genera el registro financiero. Garantiza la
+ * atomicidad entre el estado de la reserva, el registro de atención y la
+ * facturación.
  */
 @Service
 class AttentionService(
@@ -38,9 +32,14 @@ class AttentionService(
 ) {
 
     /**
-     * AUDITORÍA: Inicio de Atención.
-     * Cambia el estado de la reserva a CONFIRMED si estaba PENDING.
-     * Evita duplicidad de atenciones para una misma reserva.
+     * Inicia formalmente una sesión de atención vinculada a una reserva.
+     *
+     * - Valida que no exista ya una atención en curso para esa reserva.
+     * - Cambia el estado de la reserva a CONFIRMED.
+     * - Registra la marca de tiempo de inicio.
+     *
+     * @param request Datos de inicio (ID de reserva y observaciones iniciales).
+     * @return [AttentionResponse] con la atención en estado IN_PROGRESS.
      */
     @Transactional
     fun start(request: StartAttentionRequest): AttentionResponse {
@@ -71,10 +70,15 @@ class AttentionService(
     }
 
     /**
-     * AUDITORÍA: Finalización y Facturación Automática.
-     * 1. Marca la atención como FINISHED.
-     * 2. Actualiza el estado de la reserva a COMPLETED.
-     * 3. Crea el registro de facturación basado en el precio del servicio contratado.
+     * Finaliza una sesión de atención y gatilla el proceso de facturación.
+     *
+     * 1. Marca la atención como FINISHED y calcula la duración real.
+     * 2. Actualiza el estado de la reserva vinculada a COMPLETED.
+     * 3. Crea automáticamente un registro de cobro (BillingRecord) basado en el precio del servicio.
+     *
+     * @param attentionId ID de la atención a finalizar.
+     * @param request Datos de cierre (duración manual opcional y observaciones finales).
+     * @return [AttentionResponse] con la atención finalizada.
      */
     @Transactional
     fun finish(attentionId: String, request: FinishAttentionRequest): AttentionResponse {
@@ -123,6 +127,12 @@ class AttentionService(
         return savedAttention.toResponse()
     }
 
+    /**
+     * Obtiene las atenciones realizadas o en curso por un especialista para el día de hoy.
+     *
+     * @param specialistId ID del especialista.
+     * @return Lista de atenciones del día actual.
+     */
     fun getTodayBySpecialist(specialistId: String): List<AttentionResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
@@ -130,6 +140,12 @@ class AttentionService(
             .map { it.toResponse() }
     }
 
+    /**
+     * Recupera el historial de todas las atenciones recibidas por un cliente.
+     *
+     * @param clientId ID del cliente.
+     * @return Lista histórica de atenciones.
+     */
     fun getHistoryByClient(clientId: String): List<AttentionResponse> {
         return attentionRepository.findByClient_Id(clientId).map { it.toResponse() }
     }

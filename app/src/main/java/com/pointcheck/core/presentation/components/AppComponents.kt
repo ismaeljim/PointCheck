@@ -19,10 +19,14 @@ import androidx.compose.ui.unit.sp
 import com.pointcheck.features.profile.presentation.DayConfig
 
 /**
- * AUDITORÍA: Biblioteca de componentes atómicos del sistema.
- * Se utiliza Material3 como estándar visual.
- * Brecha detectada: Falta implementación de estados 'Loading' consistentes en todos los inputs
- * para prevenir interacción durante procesos asíncronos.
+ * Barra superior de la aplicación (TopAppBar).
+ * 
+ * Configurada con el estilo visual de Material3, soporta navegación hacia atrás
+ * y acciones personalizadas en el extremo derecho.
+ *
+ * @param title Título a mostrar en la barra.
+ * @param onBack Acción opcional para el botón de retroceso. Si es null, no se muestra el botón.
+ * @param actions Composable con las acciones adicionales (iconos de acción).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,9 +53,18 @@ fun AppTopBar(
 }
 
 /**
- * AUDITORÍA: Componente de selección tipo Card.
- * Utilizado para flujos de reserva y selección de servicios.
- * Diseño optimizado para touch targets amplios.
+ * Campo de selección estilizado tipo tarjeta (Card).
+ * 
+ * Utilizado para flujos donde el usuario debe elegir una opción de una lista (ej: categorías, servicios).
+ * Presenta un diseño de objetivo táctil amplio optimizado para dispositivos móviles.
+ *
+ * @param label Etiqueta descriptiva sobre el campo.
+ * @param value Texto que representa la opción seleccionada actualmente.
+ * @param icon Icono descriptivo a la izquierda.
+ * @param onClick Acción a ejecutar al presionar el campo.
+ * @param modifier Modificador de Compose para personalización de layout.
+ * @param enabled Define si el campo está activo para interacción.
+ * @param isError Indica si el campo debe mostrar un estado de error visual.
  */
 @Composable
 fun AppSelectorField(
@@ -110,9 +123,15 @@ fun AppSelectorField(
 }
 
 /**
- * AUDITORÍA: Selector de horario con integración nativa de TimePickerDialog.
- * Detectada brecha: La validación de 'start < end' se delega al backend. 
- * Recomendación: Añadir validación reactiva en UI.
+ * Fila de configuración para un día de la semana.
+ * 
+ * Permite activar/desactivar el día y seleccionar el rango horario (inicio/fin)
+ * mediante un selector nativo (TimePickerDialog).
+ *
+ * @param dayName Nombre del día (ej: "Lunes").
+ * @param config Configuración actual del día (estado activo y horas).
+ * @param onConfigChange Callback para notificar cambios en la configuración.
+ * @param enabled Define si la fila es interactuable.
  */
 @Composable
 fun DayScheduleRow(
@@ -180,6 +199,17 @@ fun DayScheduleRow(
     }
 }
 
+/**
+ * Botón principal de la aplicación con soporte para estado de carga.
+ *
+ * @param text Texto a mostrar en el botón.
+ * @param onClick Acción al presionar.
+ * @param modifier Modificador para el layout.
+ * @param enabled Estado de habilitación.
+ * @param isLoading Si es true, muestra un indicador de carga en lugar del texto.
+ * @param containerColor Color de fondo del botón.
+ * @param contentColor Color del contenido (texto/icono).
+ */
 @Composable
 fun AppButton(
     text: String,
@@ -223,6 +253,9 @@ fun AppButton(
     }
 }
 
+/**
+ * Botón secundario con estilo Outlined.
+ */
 @Composable
 fun AppOutlinedButton(
     text: String,
@@ -263,6 +296,15 @@ fun AppOutlinedButton(
     }
 }
 
+/**
+ * Campo de texto estándar configurado con el estilo de la aplicación.
+ *
+ * @param value Valor actual del texto.
+ * @param onValueChange Callback para cambios en el texto.
+ * @param label Etiqueta flotante.
+ * @param leadingIcon Icono opcional al inicio.
+ * @param trailingIcon Composable opcional al final (ej: botón para ver contraseña).
+ */
 @Composable
 fun AppTextField(
     value: String,

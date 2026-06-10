@@ -16,6 +16,16 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Representa el estado de la interfaz de usuario para la gestión de suscripciones.
+ *
+ * @property professionalProfileId Identificador del perfil profesional asociado.
+ * @property currentSubscription Detalles de la suscripción activa o reciente, si existe.
+ * @property isLoading Indica si hay una operación de carga en curso.
+ * @property error Mensaje de error a mostrar en caso de fallo.
+ * @property successMessage Mensaje de éxito a mostrar tras una operación exitosa.
+ * @property hasActiveSubscription Indica si el profesional tiene una suscripción con estado activo.
+ */
 data class SubscriptionUiState(
     val professionalProfileId: String? = null,
     val currentSubscription: SubscriptionResponseDto? = null,
@@ -25,6 +35,12 @@ data class SubscriptionUiState(
     val hasActiveSubscription: Boolean = false
 )
 
+/**
+ * ViewModel encargado de la lógica de negocio para la gestión de suscripciones de profesionales.
+ * Permite cargar la suscripción actual, crear nuevas suscripciones y cancelarlas.
+ *
+ * @param application Contexto de la aplicación para acceder a preferencias de usuario.
+ */
 class SubscriptionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = SubscriptionRepository(ApiClient.instance)
@@ -37,6 +53,10 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         loadCurrentSubscription()
     }
 
+    /**
+     * Carga la suscripción actual vinculada al perfil profesional del usuario autenticado.
+     * Si no se encuentra una suscripción activa, se maneja el estado correspondiente.
+     */
     fun loadCurrentSubscription() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
@@ -67,6 +87,12 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /**
+     * Crea una nueva suscripción para un plan específico.
+     * Calcula automáticamente las fechas de inicio y fin (30 días de duración).
+     *
+     * @param planName Nombre del plan de suscripción a activar (ej. "BASIC", "PREMIUM").
+     */
     fun createSubscription(planName: String) {
         val profileId = _state.value.professionalProfileId ?: return
         
@@ -102,6 +128,10 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /**
+     * Cancela la suscripción actualmente activa del profesional.
+     * Actualiza el estado local tras confirmar la cancelación en el backend.
+     */
     fun cancelSubscription() {
         val subId = _state.value.currentSubscription?.id ?: return
         
@@ -122,6 +152,9 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
+    /** Limpia el mensaje de error del estado. */
     fun clearError() = _state.update { it.copy(error = null) }
+
+    /** Limpia el mensaje de éxito del estado. */
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }

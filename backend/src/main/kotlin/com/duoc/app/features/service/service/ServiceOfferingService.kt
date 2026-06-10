@@ -9,15 +9,10 @@ import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 
 /**
- * AUDITORÍA TÉCNICA: Gestión de Oferta de Servicios
- * 
- * Este servicio centraliza el catálogo de prestaciones que los especialistas pueden ofrecer.
- * 
- * Hallazgos de Implementación:
- * 1. [OK] Desacoplamiento de Entidad/DTO: Se utiliza el patrón Mapper para no exponer el modelo de datos.
- * 2. [OK] Validaciones de Negocio: Se verifica la existencia y el estado activo del perfil profesional antes de crear el servicio.
- * 3. [MEJORA] Soft-Delete: Implementado mediante el campo 'active'. Se recomienda auditoría de cambios para el historial de precios.
- * 4. [BRECHA] Validación de Precios: Falta validación de rango de precios permitidos (ej. no negativos).
+ * Servicio para la gestión de la oferta de servicios (catálogo).
+ *
+ * Permite a los especialistas definir las prestaciones que ofrecen, incluyendo
+ * precios, duración y modalidad (a domicilio o presencial).
  */
 @Service
 class ServiceOfferingService(
@@ -25,6 +20,13 @@ class ServiceOfferingService(
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
+    /**
+     * Crea un nuevo servicio en el catálogo del especialista.
+     *
+     * @param request Detalle del servicio a ofrecer.
+     * @return [ServiceOfferingResponse] con el servicio persistido.
+     * @throws IllegalArgumentException si el perfil profesional no existe o no está activo.
+     */
     fun create(request: ServiceOfferingRequest): ServiceOfferingResponse {
         // AUDITORÍA: Verificación de integridad referencial manual antes de persistencia.
         val profile = professionalProfileRepository.findById(request.professionalProfileId).orElseThrow {
@@ -48,17 +50,33 @@ class ServiceOfferingService(
         return serviceOfferingRepository.save(serviceOffering).toResponse()
     }
 
+    /**
+     * Recupera todos los servicios configurados por un especialista específico.
+     *
+     * @param professionalProfileId ID del perfil profesional.
+     * @return Lista de servicios asociados.
+     */
     fun getByProfessionalProfile(professionalProfileId: String): List<ServiceOfferingResponse> {
         return serviceOfferingRepository.findByProfessionalProfile_Id(professionalProfileId).map { it.toResponse() }
     }
 
+    /**
+     * Obtiene el listado global de todos los servicios marcados como activos en la plataforma.
+     *
+     * @return Lista de servicios disponibles para reserva.
+     */
     fun getActive(): List<ServiceOfferingResponse> {
         return serviceOfferingRepository.findByActiveTrue().map { it.toResponse() }
     }
 
     /**
-     * AUDITORÍA: El método utiliza 'apply' para actualizaciones mutables sobre la entidad JPA.
-     * Se garantiza que el servicio deje de ser elegible para nuevas reservas sin borrar historial.
+     * Desactiva un servicio del catálogo (Soft-Delete).
+     *
+     * El servicio dejará de estar disponible para nuevas reservas, pero se mantiene
+     * en la base de datos para preservar la integridad referencial del historial.
+     *
+     * @param id ID del servicio a desactivar.
+     * @return Servicio actualizado con estado inactivo.
      */
     fun deactivate(id: String): ServiceOfferingResponse {
         val serviceOffering = serviceOfferingRepository.findById(id).orElseThrow {

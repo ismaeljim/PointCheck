@@ -23,24 +23,37 @@ import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.AppTopBar
 
+/**
+ * Pantalla de inicio de sesión para la autenticación de usuarios.
+ *
+ * Proporciona campos para el correo electrónico y la contraseña, y maneja la navegación
+ * al panel de control (Dashboard) tras un inicio de sesión exitoso.
+ *
+ * @param nav Controlador de navegación para las transiciones entre pantallas.
+ * @param vm ViewModel que gestiona el estado y la lógica de la autenticación.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     nav: NavController,
     vm: UserViewModel = viewModel()
 ) {
-    Log.d("LoginScreen", "Renderizando LoginScreen real")
+    Log.d("LoginScreen", "Renderizando LoginScreen - Punto de control de acceso")
+    
+    // Observamos el estado del ViewModel (isLoading, error, etc.)
     val s by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
+    // Estados locales para el formulario
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    // Efecto para reaccionar a errores provenientes del backend (ej: 401 Unauthorized)
     LaunchedEffect(s.error) {
         s.error?.let {
             snackbarHostState.showSnackbar(it)
-            vm.clearError()
+            vm.clearError() // Limpiamos para evitar que el mensaje se repita en recomposiciones
         }
     }
 
@@ -56,6 +69,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Branding de la aplicación
             Text(
                 "PointCheck",
                 style = MaterialTheme.typography.displayLarge,
@@ -70,6 +84,7 @@ fun LoginScreen(
             
             Spacer(Modifier.height(40.dp))
 
+            // Tarjeta contenedora del formulario de login
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -83,6 +98,7 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     
+                    // Input de Correo con validación de tipo teclado
                     AppTextField(
                         value = email,
                         onValueChange = { email = it },
@@ -93,6 +109,7 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     
+                    // Input de Contraseña con toggle de visibilidad
                     AppTextField(
                         value = password,
                         onValueChange = { password = it },
@@ -105,18 +122,21 @@ fun LoginScreen(
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = null
+                                    contentDescription = "Cambiar visibilidad de contraseña"
                                 )
                             }
                         }
                     )
                     Spacer(Modifier.height(24.dp))
                     
+                    // Botón de acción principal
                     AppButton(
                         text = "Iniciar Sesión",
                         onClick = {
+                            // Trim en email para evitar errores de espacios accidentales
                             vm.login(email.trim(), password) { ok ->
                                 if (ok) {
+                                    // Navegación al Dashboard limpiando el stack de login
                                     nav.navigate(Screen.Dashboard.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }
@@ -131,6 +151,7 @@ fun LoginScreen(
             
             Spacer(Modifier.height(16.dp))
             
+            // Link para registro de nuevos usuarios
             TextButton(onClick = { nav.navigate(Screen.Register.route) }, enabled = !s.isLoading) {
                 Text("¿No tienes cuenta? Regístrate aquí")
             }

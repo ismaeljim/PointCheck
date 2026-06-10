@@ -19,6 +19,25 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Representa el estado de la interfaz de usuario para el panel de control principal (Dashboard).
+ * El contenido de este estado varía significativamente según el rol del usuario (Cliente, Profesional, Admin).
+ *
+ * @property metrics Métricas de alto nivel (total usuarios, citas, etc.).
+ * @property clientDashboard Datos específicos para el rol de cliente (próximas citas, notificaciones).
+ * @property reportSummary Resumen de actividad y desempeño para el rol de profesional.
+ * @property weather Información climática basada en la ubicación de la próxima cita.
+ * @property isLoading Indica si los datos principales están en proceso de carga.
+ * @property isLoadingWeather Indica si la información del clima se está recuperando.
+ * @property error Mensaje de error a mostrar en caso de fallos en la red o el servidor.
+ * @property userName Nombre del usuario autenticado para personalización de la UI.
+ * @property userRole Rol del usuario para determinar qué componentes mostrar.
+ * @property categories Lista de categorías de servicios disponibles.
+ * @property adminUsers Lista de usuarios para gestión administrativa (solo ADMIN).
+ * @property financialReport Datos de facturación y ganancias globales (solo ADMIN).
+ * @property adminSettings Configuraciones globales del sistema (solo ADMIN).
+ * @property auditLogs Registro de eventos críticos del sistema (solo ADMIN).
+ */
 data class DashboardUiState(
     val metrics: DashboardMetricsDto = DashboardMetricsDto(),
     val clientDashboard: ClientDashboardResponseDto? = null,
@@ -37,9 +56,11 @@ data class DashboardUiState(
 )
 
 /**
- * AUDITORÍA: Gestor de estado del Dashboard.
- * Implementa la carga reactiva de datos según el rol del usuario persistido en DataStore.
- * Flujo: Carga de métricas core -> Carga de datos específicos de rol -> Carga de clima asíncrona.
+ * ViewModel central para la gestión del panel de control.
+ * Implementa una carga de datos polimórfica basada en el rol del usuario.
+ * Orquestra la recuperación de métricas, reportes, clima y notificaciones en una única fuente de verdad.
+ *
+ * @param application Contexto de la aplicación.
  */
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -55,6 +76,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         loadDashboard()
     }
 
+    /**
+     * Coordina la carga de datos del Dashboard.
+     * Determina el rol del usuario desde las preferencias y dispara las peticiones correspondientes
+     * (Admin, Profesional o Cliente).
+     */
     fun loadDashboard() {
         viewModelScope.launch {
             Log.d("DashboardVM", "loadDashboard() ejecutado")
@@ -117,6 +143,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Carga datos extendidos para usuarios con rol de Administrador.
+     */
     private fun loadAdminData() {
         viewModelScope.launch {
             // Cargar usuarios para auditoría
@@ -148,6 +177,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Actualiza una configuración global del sistema (Solo Admin).
+     *
+     * @param key Clave de la configuración.
+     * @param value Nuevo valor.
+     */
     fun updateSetting(key: String, value: String) {
         viewModelScope.launch {
             repository.updateSetting(key, value)
@@ -155,6 +190,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Cambia el estado de activación de un usuario (Solo Admin).
+     *
+     * @param userId ID del usuario.
+     */
     fun toggleUserStatus(userId: String) {
         viewModelScope.launch {
             repository.toggleUserStatus(userId)
@@ -162,6 +202,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Obtiene el catálogo de categorías para visualización en el Dashboard.
+     */
     private fun loadCategories() {
         viewModelScope.launch {
             try {
@@ -173,6 +216,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Consulta el clima actual para una ciudad.
+     *
+     * @param city Nombre de la ciudad.
+     */
     private fun loadWeather(city: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingWeather = true) }
@@ -186,6 +234,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Marca una notificación como leída tanto en el servidor como en el estado local.
+     *
+     * @param notificationId ID de la notificación.
+     */
     fun markAsRead(notificationId: String) {
         viewModelScope.launch {
             repository.markNotificationAsRead(notificationId)
@@ -204,5 +257,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Limpia el mensaje de error del estado. */
     fun clearError() = _state.update { it.copy(error = null) }
 }

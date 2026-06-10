@@ -1,8 +1,11 @@
 package com.pointcheck.features.auth.data.dto
 
 /**
- * DTO de red para la solicitud de inicio de sesión.
- * No es una entidad de Room.
+ * Objeto de transferencia de datos (DTO) para la solicitud de inicio de sesión.
+ * Contiene las credenciales necesarias para autenticar a un usuario en el sistema.
+ * 
+ * @property email Correo electrónico registrado del usuario.
+ * @property password Contraseña en texto plano (será transmitida de forma segura sobre HTTPS).
  */
 data class LoginRequestDto(
     val email: String,

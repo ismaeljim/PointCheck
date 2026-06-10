@@ -34,6 +34,13 @@ class UserPreferences(private val context: Context) {
 
     /**
      * Guarda la sesión completa del usuario obtenida del backend tras un login o registro exitoso.
+     *
+     * @param userId Identificador único del usuario (UUID).
+     * @param name Nombre completo del usuario.
+     * @param email Correo electrónico.
+     * @param role Rol asignado (ej: "CLIENT", "SPECIALIST").
+     * @param phone Teléfono de contacto.
+     * @param rut RUT del usuario.
      */
     suspend fun saveSession(
         userId: String,
@@ -54,14 +61,29 @@ class UserPreferences(private val context: Context) {
         }
     }
 
+    /**
+     * Guarda la URI del avatar seleccionado por el usuario.
+     *
+     * @param uri Cadena que representa la URI del archivo de imagen.
+     */
     suspend fun setAvatar(uri: String) {
         context.dataStore.edit { it[UserPrefsKeys.AVATAR_URI] = uri }
     }
 
+    /**
+     * Almacena el ID del perfil profesional una vez que el usuario se registra como tal.
+     *
+     * @param id Identificador único del perfil profesional (UUID).
+     */
     suspend fun saveProfessionalProfileId(id: String) {
         context.dataStore.edit { it[UserPrefsKeys.PROFESSIONAL_PROFILE_ID] = id }
     }
 
+    /**
+     * Actualiza el estado de la suscripción del usuario en las preferencias locales.
+     *
+     * @param status Nuevo estado (ej: "ACTIVE", "CANCELLED").
+     */
     suspend fun saveSubscriptionStatus(status: String) {
         context.dataStore.edit { it[UserPrefsKeys.SUBSCRIPTION_STATUS] = status }
     }

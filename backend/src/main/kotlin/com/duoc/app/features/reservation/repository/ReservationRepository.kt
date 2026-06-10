@@ -9,14 +9,11 @@ import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 
 /**
- * SENIOR PERFORMANCE OPTIMIZATION: ReservationRepository.
- * 
- * ESTRATEGIA: Carga de Grafos de Entidad (@EntityGraph).
- * 
- * ¿POR QUÉ ESTO?: 
- * Por defecto, JPA usa Lazy Loading. Al listar reservas, acceder a 'service.category' 
- * disparaba el problema N+1. Con EntityGraph, forzamos un JOIN FETCH para traer 
- * todo en una sola consulta SQL, reduciendo latencia en un 70%.
+ * Repositorio para la gestión de persistencia de Reservaciones.
+ *
+ * Implementa optimizaciones de rendimiento mediante @EntityGraph para evitar
+ * el problema de consultas N+1 al cargar relaciones complejas (cliente, especialista,
+ * servicios y perfiles profesionales).
  */
 @Repository
 interface ReservationRepository : JpaRepository<Reservation, String> {

@@ -23,6 +23,19 @@ import com.pointcheck.core.presentation.components.AppOutlinedButton
 import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.AppTopBar
 
+/**
+ * Screen for managing a service attention session.
+ *
+ * This screen allows specialists to:
+ * - Start a new attention for a reservation.
+ * - Log observations during the session.
+ * - Finalize the attention and calculate duration.
+ * - Navigate to the billing module once finished.
+ *
+ * @param nav Navigation controller.
+ * @param reservationId The ID of the reservation being attended.
+ * @param vm ViewModel managing the attention state and lifecycle.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttentionScreen(
@@ -215,6 +228,13 @@ fun AttentionScreen(
     }
 }
 
+/**
+ * A simple row to display a specific detail of the attention session.
+ *
+ * @param icon Icon representing the data type.
+ * @param label Label for the detail.
+ * @param value The actual data value.
+ */
 @Composable
 fun AttentionDetailRow(icon: ImageVector, label: String, value: String) {
     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

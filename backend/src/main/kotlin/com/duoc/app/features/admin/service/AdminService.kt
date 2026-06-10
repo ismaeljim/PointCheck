@@ -12,6 +12,13 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
+/**
+ * Servicio de administración global de la plataforma.
+ *
+ * Provee herramientas para la supervisión de usuarios, generación de reportes
+ * financieros consolidados, gestión de configuraciones del sistema y
+ * visualización del registro de auditoría.
+ */
 @Service
 class AdminService(
     private val userRepository: UserRepository,
@@ -20,8 +27,22 @@ class AdminService(
     private val auditLogRepository: AuditLogRepository
 ) {
 
+    /**
+     * Recupera la lista completa de usuarios registrados en el sistema.
+     *
+     * @return Lista de todos los usuarios (Clientes, Especialistas y Admins).
+     */
     fun getAllUsers(): List<User> = userRepository.findAll()
 
+    /**
+     * Activa o desactiva la cuenta de un usuario.
+     *
+     * Registra la acción en el log de auditoría detallando quién realizó el cambio.
+     *
+     * @param userId ID del usuario a modificar.
+     * @param adminEmail Email del administrador que ejecuta la acción.
+     * @return Usuario con el estado actualizado.
+     */
     @Transactional
     fun toggleUserStatus(userId: String, adminEmail: String): User {
         val user = userRepository.findById(userId).orElseThrow { RuntimeException("User not found") }
@@ -39,6 +60,13 @@ class AdminService(
         return savedUser
     }
 
+    /**
+     * Genera un reporte financiero resumido de toda la plataforma.
+     *
+     * Calcula ingresos totales cobrados, montos pendientes y volumen de transacciones.
+     *
+     * @return Mapa con métricas financieras clave.
+     */
     fun getFinancialReport(): Map<String, Any> {
         val billing = billingRecordRepository.findAll()
         val totalRevenue = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() }
@@ -53,8 +81,21 @@ class AdminService(
         )
     }
 
+    /**
+     * Obtiene todas las configuraciones globales del sistema.
+     */
     fun getSettings(): List<GlobalSettings> = settingsRepository.findAll()
 
+    /**
+     * Actualiza el valor de una configuración global.
+     *
+     * Crea un registro de auditoría indicando el cambio del valor anterior al nuevo.
+     *
+     * @param key Clave única de la configuración.
+     * @param value Nuevo valor a asignar.
+     * @param adminEmail Email del administrador responsable.
+     * @return Configuración actualizada.
+     */
     @Transactional
     fun updateSetting(key: String, value: String, adminEmail: String): GlobalSettings {
         val setting = settingsRepository.findByKey(key).orElseGet {
@@ -76,5 +117,9 @@ class AdminService(
         return saved
     }
 
+    /**
+     * Recupera el historial completo de acciones administrativas (Audit Log)
+     * ordenado por fecha descendente.
+     */
     fun getAuditLogs(): List<AuditLog> = auditLogRepository.findAllByOrderByTimestampDesc()
 }

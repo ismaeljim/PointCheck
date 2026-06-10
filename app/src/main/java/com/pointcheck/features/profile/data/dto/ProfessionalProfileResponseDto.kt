@@ -1,7 +1,25 @@
 package com.pointcheck.features.profile.data.dto
 
 /**
- * Respuesta del backend con el perfil profesional completo.
+ * Objeto de transferencia de datos (DTO) que representa un perfil profesional completo.
+ * 
+ * @property id Identificador único del perfil (UUID).
+ * @property userId Identificador del usuario base.
+ * @property categoryId Identificador de la categoría asignada.
+ * @property displayName Nombre público mostrado en la aplicación.
+ * @property businessName Razón social o nombre de fantasía.
+ * @property specialty Área de especialización.
+ * @property description Información bibliográfica y de servicios.
+ * @property address Ubicación física registrada.
+ * @property city Ciudad de prestación de servicios.
+ * @property country País de residencia.
+ * @property latitude Latitud para geolocalización.
+ * @property longitude Longitud para geolocalización.
+ * @property isVerified Indica si el perfil ha sido validado por administración.
+ * @property rating Calificación promedio otorgada por clientes.
+ * @property workingHoursJson Estructura JSON de los horarios de disponibilidad.
+ * @property defaultSessionDurationMinutes Duración base de cada bloque de atención.
+ * @property active Estado de visibilidad del perfil en el sistema.
  */
 data class ProfessionalProfileResponseDto(
     val id: String,

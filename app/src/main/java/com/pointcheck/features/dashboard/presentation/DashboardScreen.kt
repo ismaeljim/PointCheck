@@ -46,10 +46,20 @@ import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 
 /**
- * AUDITORÍA: Orquestador principal de la interfaz de usuario.
- * Implementa un Dashboard polimórfico basado en roles (ADMIN, SPECIALIST, CLIENT).
- * Hallazgo: Uso extensivo de BottomSheets para acciones administrativas agiliza la navegación
- * pero incrementa la complejidad del estado en un solo archivo.
+ * Pantalla principal del tablero que muestra contenido de forma adaptativa según el rol del usuario.
+ *
+ * Actúa como el centro neurálgico de la aplicación, proporcionando:
+ * - Controles de administración para la supervisión de la plataforma.
+ * - Métricas profesionales y gestión de agenda para especialistas.
+ * - Exploración de servicios y próximas citas para clientes.
+ *
+ * Puntos de integración:
+ * - Datos climáticos en tiempo real para las próximas citas.
+ * - Integración con mapas para navegación.
+ * - Gestión de notificaciones mediante BottomSheets.
+ *
+ * @param nav Controlador de navegación para las transiciones entre pantallas.
+ * @param vm ViewModel que gestiona el estado del tablero y la obtención de datos basada en el rol.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,6 +182,12 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
     }
 }
 
+/**
+ * Muestra una lista de notificaciones recientes en una hoja modal inferior (bottom sheet).
+ *
+ * @param notifications Lista de resúmenes de notificaciones a mostrar.
+ * @param onDismiss Callback para cerrar la hoja modal.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationBottomSheet(
@@ -210,6 +226,12 @@ fun NotificationBottomSheet(
     }
 }
 
+/**
+ * Renderiza un elemento individual de notificación.
+ *
+ * @param notification Los datos de la notificación.
+ * @param onClick Callback que se dispara cuando se toca la notificación.
+ */
 @Composable
 fun NotificationItem(
     notification: com.pointcheck.features.dashboard.data.dto.NotificationSummaryDto,
@@ -260,6 +282,15 @@ fun NotificationItem(
     }
 }
 
+/**
+ * Diseño del tablero adaptado para usuarios de tipo Cliente.
+ *
+ * Muestra las próximas citas con integración de clima, especialistas favoritos
+ * y una cuadrícula de categorías de servicios para exploración.
+ *
+ * @param s Estado actual de la UI del tablero.
+ * @param nav Controlador de navegación.
+ */
 @Composable
 fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
     val d = s.clientDashboard
@@ -331,10 +362,14 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
 }
 
 /**
- * AUDITORÍA: Integración de servicios externos (Clima y Mapas).
- * - Clima: Se consume dinámicamente según la ciudad de la cita próxima.
- * - Mapas: Uso de Intent implícito con esquema 'geo:' para interoperabilidad con Google Maps/Waze.
- * Brecha: No hay manejo de permisos de ubicación en este nivel si la ciudad no viene en el DTO.
+ * Una tarjeta prominente que destaca la próxima cita programada.
+ *
+ * Integra datos climáticos externos para la ubicación de la cita y proporciona
+ * acciones rápidas para navegación y visualización de detalles.
+ *
+ * @param appointment Los datos de la reservación.
+ * @param weather Datos climáticos en tiempo real para la ciudad de la cita.
+ * @param nav Controlador de navegación.
  */
 @Composable
 fun FeaturedAppointmentCard(

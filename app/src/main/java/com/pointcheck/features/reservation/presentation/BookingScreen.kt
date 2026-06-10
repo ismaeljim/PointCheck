@@ -58,6 +58,27 @@ import androidx.compose.material.icons.filled.LocationOn
  *    objetos ya hidratados desde el backend (Zero N+1), asegurando que los iconos de categoría 
  *    se pinten instantáneamente sin parpadeos.
  */
+/**
+ * Advanced Booking Screen for scheduling appointments with professionals.
+ *
+ * This screen implements a multi-step booking process:
+ * 1. Specialist and Service selection.
+ * 2. Location management (Dual logic: Input for home services or Map for on-site services).
+ * 3. Date and Time selection with dynamic availability slots and weather forecasting.
+ * 4. Payment method and additional notes.
+ *
+ * Key features:
+ * - Map integration using [ModalBottomSheet] for improved performance.
+ * - Dynamic slot loading based on professional availability.
+ * - Integration with OpenWeatherMap API for context-aware scheduling.
+ * - Sophisticated date picker with restrictions for past dates.
+ *
+ * @param nav [NavController] for navigation after booking or on back press.
+ * @param snackbar [SnackbarHostState] for displaying feedback and errors.
+ * @param preSelectedSpecialistId Optional ID to pre-fill the specialist selection.
+ * @param preSelectedCategoryId Optional ID to filter specialists by category.
+ * @param vm [ReservationViewModel] that encapsulates the complex booking logic.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BookingScreen(
