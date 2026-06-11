@@ -14,6 +14,7 @@ import com.pointcheck.features.profile.data.repository.ProfessionalProfileReposi
 import com.pointcheck.core.util.RutUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.util.Log
@@ -53,7 +54,8 @@ data class RegisterUiState(
     val avatarUri: String? = null,
     val isValid: Boolean = false,
     val error: String? = null,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val userAddress: String? = null
 )
 
 /**
@@ -83,6 +85,37 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
             prefs.role.collect { role ->
                 _state.update { it.copy(role = role ?: "CLIENT") }
             }
+        }
+        viewModelScope.launch {
+            prefs.address.collect { address ->
+                _state.update { it.copy(userAddress = address) }
+            }
+        }
+    }
+
+    /**
+     * Actualiza la dirección del usuario autenticado.
+     */
+    fun updateAddress(newAddress: String) {
+        viewModelScope.launch {
+            val userId = prefs.userId.first() ?: return@launch
+            _state.update { it.copy(isLoading = true) }
+            authRepository.updateUserAddress(userId, newAddress)
+                .onSuccess { user ->
+                    prefs.saveSession(
+                        userId = user.id,
+                        name = user.name,
+                        email = user.email,
+                        role = user.role,
+                        phone = user.phone,
+                        rut = user.rut,
+                        address = user.address
+                    )
+                    _state.update { it.copy(isLoading = false, userAddress = user.address) }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
         }
     }
 
@@ -186,7 +219,8 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                         email = userResponse.email,
                         role = userResponse.role,
                         phone = userResponse.phone,
-                        rut = userResponse.rut
+                        rut = userResponse.rut,
+                        address = userResponse.address
                     )
                     
                     // Si es especialista, intentamos vincular el ID de perfil profesional inmediatamente
@@ -231,7 +265,8 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                         email = userResponse.email,
                         role = userResponse.role,
                         phone = userResponse.phone,
-                        rut = userResponse.rut
+                        rut = userResponse.rut,
+                        address = userResponse.address
                     )
                     
                     // Recuperación proactiva del ID de especialista para facilitar navegación en el Dashboard

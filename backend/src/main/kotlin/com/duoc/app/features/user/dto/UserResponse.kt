@@ -11,6 +11,7 @@ data class UserResponse(
     val email: String,
     val rut: String,
     val phone: String,
+    val address: String? = null,
     val role: UserRole,
     val active: Boolean,
     val categoryId: String? = null // ID de categoría si el usuario es un Especialista

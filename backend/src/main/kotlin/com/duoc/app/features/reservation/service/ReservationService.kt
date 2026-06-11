@@ -164,6 +164,13 @@ class ReservationService(
      */
     @Transactional
     fun create(request: ReservationRequest): ReservationResponse {
+        val now = LocalDateTime.now()
+        
+        // 1. Validar que la reserva no sea en el pasado
+        if (request.reservationStart.isBefore(now.plusMinutes(5))) { // Margen de 5 min
+            throw IllegalArgumentException("No se pueden realizar reservas para una fecha/hora pasada.")
+        }
+
         val client = userRepository.findById(request.clientId).orElseThrow {
             IllegalArgumentException("El cliente con ID ${request.clientId} no existe.")
         }
@@ -173,6 +180,21 @@ class ReservationService(
             ?: throw IllegalArgumentException("Perfil profesional no encontrado para el especialista.")
 
         val specialist = profile.user
+
+        // 2. Validar que el cliente no se reserve a sí mismo
+        if (client.id == specialist.id) {
+            throw IllegalArgumentException("Un especialista no puede agendar citas consigo mismo.")
+        }
+
+        // 3. Validar Perfil Completo del especialista (Regla de Negocio)
+        val hasServices = serviceOfferingRepository.findByProfessionalProfile_Id(profile.id!!).isNotEmpty()
+        val isProfileComplete = !specialist.rut.isNullOrBlank() && 
+                               !specialist.phone.isNullOrBlank() && 
+                               hasServices
+        
+        if (!isProfileComplete) {
+            throw IllegalStateException("El especialista seleccionado no tiene su perfil completo y no puede recibir reservas.")
+        }
 
         var service: ServiceOffering? = null
         if (request.serviceId != null) {
@@ -191,14 +213,21 @@ class ReservationService(
 
         val reservationEnd = request.reservationEnd ?: request.reservationStart.plusMinutes(service?.durationMinutes?.toLong() ?: 60L)
 
-        val hasConflict = reservationRepository.existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThan(
+        // 4. Validar traslapes ignorando citas canceladas
+        val hasConflict = reservationRepository.existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThanAndStatusNot(
             specialist.id!!,
             reservationEnd,
-            request.reservationStart
+            request.reservationStart,
+            ReservationStatus.CANCELLED
         )
 
         if (hasConflict) {
             throw IllegalStateException("El especialista ya tiene una cita agendada en este horario.")
+        }
+
+        // 5. Validar dirección para servicios a domicilio
+        if (service?.isAtHome == true && client.address.isNullOrBlank()) {
+            throw IllegalArgumentException("Debes configurar una dirección en tu perfil para solicitar servicios a domicilio.")
         }
 
         val reservation = Reservation(
@@ -303,29 +332,40 @@ class ReservationService(
      * Cancela una reservación existente.
      *
      * @param id ID de la reservación.
+     * @param requesterId ID del usuario que solicita la cancelación (Seguridad).
      * @return Reservación con estado [ReservationStatus.CANCELLED].
      */
     @Transactional
-    fun cancel(id: String): ReservationResponse {
+    fun cancel(id: String, requesterId: String): ReservationResponse {
+        val reservation = reservationRepository.findById(id).orElseThrow {
+            IllegalArgumentException("Reserva no encontrada con ID: $id")
+        }
+
+        // BLINDAJE: Solo el cliente o el especialista pueden cancelar
+        if (reservation.client.id != requesterId && reservation.specialist.id != requesterId) {
+            throw IllegalStateException("No tienes permiso para cancelar esta reserva.")
+        }
+
         return updateStatus(id, ReservationStatus.CANCELLED)
     }
 
     /**
      * Confirma el pago de una reservación y la marca como completada.
      *
-     * Este método gestiona:
-     * 1. Cambio de estado de la reservación a COMPLETED.
-     * 2. Creación o actualización del registro de facturación (BillingRecord) asociado.
-     * 3. Registro del método de pago y fecha de transacción.
-     *
      * @param id ID de la reservación.
+     * @param requesterId ID del usuario que confirma el pago (Seguridad - Solo especialista).
      * @return Reservación actualizada con el pago confirmado.
-     * @throws IllegalStateException si la reserva ya está cancelada.
+     * @throws IllegalStateException si la reserva ya está cancelada o el usuario no tiene permiso.
      */
     @Transactional
-    fun confirmPayment(id: String): ReservationResponse {
+    fun confirmPayment(id: String, requesterId: String): ReservationResponse {
         val reservation = reservationRepository.findById(id).orElseThrow {
             IllegalArgumentException("Reserva no encontrada con ID: $id")
+        }
+
+        // BLINDAJE: Solo el especialista asignado puede confirmar el pago
+        if (reservation.specialist.id != requesterId) {
+            throw IllegalStateException("Solo el especialista puede confirmar el pago de esta reserva.")
         }
 
         if (reservation.status == ReservationStatus.CANCELLED) {

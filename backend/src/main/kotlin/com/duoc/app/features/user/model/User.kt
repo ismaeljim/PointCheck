@@ -42,6 +42,9 @@ class User(
     @Column(nullable = false)
     var phone: String,
     
+    @Column(nullable = true)
+    var address: String? = null,
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'CLIENT'")
     var role: UserRole = UserRole.CLIENT,

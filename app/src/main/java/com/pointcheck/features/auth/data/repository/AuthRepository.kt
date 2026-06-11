@@ -47,5 +47,29 @@ class AuthRepository(
             NetworkHandler.handleException(e)
         }
     }
+
+    /**
+     * Obtiene un usuario por su ID.
+     */
+    suspend fun getUserById(id: String): Result<UserResponseDto> {
+        return try {
+            val response = apiService.getUserById(id)
+            NetworkHandler.handleResponse(response, "Error al obtener usuario")
+        } catch (e: Exception) {
+            NetworkHandler.handleException(e)
+        }
+    }
+
+    /**
+     * Actualiza la dirección del usuario.
+     */
+    suspend fun updateUserAddress(id: String, address: String): Result<UserResponseDto> {
+        return try {
+            val response = apiService.updateUserAddress(id, address)
+            NetworkHandler.handleResponse(response, "Error al actualizar dirección")
+        } catch (e: Exception) {
+            NetworkHandler.handleException(e)
+        }
+    }
 }
 

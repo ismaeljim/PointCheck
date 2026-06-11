@@ -46,5 +46,10 @@ interface ReservationRepository : JpaRepository<Reservation, String> {
     @Query("SELECT SUM(r.service.durationMinutes) FROM Reservation r WHERE r.specialist.id = :specialistId AND r.reservationStart BETWEEN :start AND :end AND r.status = :status")
     fun sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(specialistId: String, start: LocalDateTime, end: LocalDateTime, status: ReservationStatus): Long?
 
-    fun existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThan(specialistId: String, end: LocalDateTime, start: LocalDateTime): Boolean
+    fun existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThanAndStatusNot(
+        specialistId: String,
+        end: LocalDateTime,
+        start: LocalDateTime,
+        status: ReservationStatus
+    ): Boolean
 }

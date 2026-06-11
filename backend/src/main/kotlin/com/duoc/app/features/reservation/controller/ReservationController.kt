@@ -123,21 +123,29 @@ class ReservationController(
      * Cancela una reservación existente.
      *
      * @param id ID de la reservación a cancelar.
+     * @param userId ID del usuario que solicita la cancelación (Header de seguridad).
      * @return Reservación cancelada.
      */
     @PutMapping("/{id}/cancel")
-    fun cancel(@PathVariable id: String): ResponseEntity<ReservationResponse> {
-        return ResponseEntity.ok(reservationService.cancel(id))
+    fun cancel(
+        @PathVariable id: String,
+        @RequestHeader("X-User-Id") userId: String
+    ): ResponseEntity<ReservationResponse> {
+        return ResponseEntity.ok(reservationService.cancel(id, userId))
     }
 
     /**
      * Confirma el pago de una reservación.
      *
      * @param id ID de la reservación pagada.
+     * @param userId ID del usuario que confirma el pago (Header de seguridad).
      * @return Reservación con estado de pago actualizado.
      */
     @PutMapping("/{id}/confirm-payment")
-    fun confirmPayment(@PathVariable id: String): ResponseEntity<ReservationResponse> {
-        return ResponseEntity.ok(reservationService.confirmPayment(id))
+    fun confirmPayment(
+        @PathVariable id: String,
+        @RequestHeader("X-User-Id") userId: String
+    ): ResponseEntity<ReservationResponse> {
+        return ResponseEntity.ok(reservationService.confirmPayment(id, userId))
     }
 }

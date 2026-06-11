@@ -278,8 +278,15 @@ fun NotificationItem(
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(notification.message, style = MaterialTheme.typography.bodyMedium)
+            
+            val displayDate = try {
+                notification.createdAt.replace("T", " ").substringBeforeLast(":")
+            } catch (_: Exception) {
+                "Recientemente"
+            }
+            
             Text(
-                notification.createdAt.replace("T", " ").substringBeforeLast(":"),
+                displayDate,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -416,8 +423,15 @@ fun FeaturedAppointmentCard(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
+                        
+                        val displayDateTime = try {
+                            appointment.reservationStart.replace("T", " ").substringBeforeLast(":")
+                        } catch (_: Exception) {
+                            "Fecha no disponible"
+                        }
+
                         Text(
-                            appointment.reservationStart.replace("T", " ").substringBeforeLast(":"),
+                            displayDateTime,
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(

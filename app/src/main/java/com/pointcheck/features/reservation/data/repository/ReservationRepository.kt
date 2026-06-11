@@ -89,21 +89,23 @@ class ReservationRepository(private val api: ApiService) {
     /**
      * Cancela una reserva.
      *
+     * @param userId ID del usuario que solicita la cancelación (Seguridad Anti-IDOR).
      * @param id Identificador único de la reserva a cancelar.
      * @return [Result] con la reserva cancelada.
      */
-    suspend fun cancelReservation(id: String): Result<ReservationResponseDto> {
-        return handleApiCall("Error al cancelar reserva") { api.cancelReservation(id) }
+    suspend fun cancelReservation(userId: String, id: String): Result<ReservationResponseDto> {
+        return handleApiCall("Error al cancelar reserva") { api.cancelReservation(userId, id) }
     }
 
     /**
      * Confirma que el pago de una reserva ha sido realizado.
      *
+     * @param userId ID del usuario que confirma el pago.
      * @param id Identificador único de la reserva.
      * @return [Result] con la reserva actualizada.
      */
-    suspend fun confirmPayment(id: String): Result<ReservationResponseDto> {
-        return handleApiCall("Error al confirmar pago") { api.confirmPayment(id) }
+    suspend fun confirmPayment(userId: String, id: String): Result<ReservationResponseDto> {
+        return handleApiCall("Error al confirmar pago") { api.confirmPayment(userId, id) }
     }
 
     /**

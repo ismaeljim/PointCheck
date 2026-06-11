@@ -50,8 +50,11 @@ data class BookingUiState(
     val selectedSlot: String? = null,
     val paymentMethod: String? = null,
     val notes: String = "",
+    val searchQuery: String = "",
+    val filteredProfessionals: List<SpecialistResponseDto> = emptyList(),
     val isLoading: Boolean = false,
     val isAvailabilityLoading: Boolean = false,
+    val isAtHomeAddressMissing: Boolean = false,
     val isValid: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
@@ -81,6 +84,18 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         loadProfessionals()
+        observeUserAddress()
+    }
+
+    private var userAddress: String? = null
+
+    private fun observeUserAddress() {
+        viewModelScope.launch {
+            prefs.address.collect { address ->
+                userAddress = address
+                _state.update { it.copy(isValid = validate(it)) }
+            }
+        }
     }
 
     /**
@@ -106,26 +121,27 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Confirma el pago de una reserva y finaliza la cita.
-     *
-     * @param reservationId Identificador de la reserva.
-     * @param onDone Callback ejecutado tras completar la operación con éxito.
+     * Confirma el pago (ya sea efectivo o digital) y completa la reserva.
+     * Utiliza el endpoint transaccional del backend para asegurar la facturación.
      */
-    fun confirmPayment(reservationId: String, onDone: () -> Unit) {
+    fun confirmPayment(reservationId: String, onDone: () -> Unit = {}) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            repository.confirmPayment(reservationId)
+            val userId = prefs.userId.first() ?: return@launch
+            repository.confirmPayment(userId, reservationId)
                 .onSuccess {
-                    _state.update { it.copy(isLoading = false, successMessage = "Cita finalizada y pago registrado") }
-                    val userId = prefs.userId.first()
-                    if (userId != null) loadDualAgenda(userId)
+                    _state.update { it.copy(isLoading = false, successMessage = "Cita completada y pago registrado con éxito") }
+                    loadDualAgenda(userId)
+                    loadMyReservations(userId)
                     onDone()
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false, error = e.message) }
+                    _state.update { it.copy(isLoading = false, error = "Error al confirmar pago: ${e.message}") }
                 }
         }
     }
+
+    /** Limpia el error actual del estado. */
 
     /**
      * Carga la lista de profesionales activos del sistema, opcionalmente filtrados por categoría.
@@ -137,12 +153,43 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(isLoading = true) }
             repository.getActiveProfiles(categoryId)
                 .onSuccess { list ->
-                    _state.update { it.copy(professionals = list, isLoading = false) }
+                    _state.update { it.copy(
+                        professionals = list, 
+                        filteredProfessionals = list,
+                        isLoading = false 
+                    ) }
+                    filterProfessionals()
                 }
                 .onFailure { e ->
                     _state.update { it.copy(error = e.message, isLoading = false) }
                 }
         }
+    }
+
+    /**
+     * Actualiza el término de búsqueda y filtra la lista de profesionales.
+     */
+    fun onSearchQueryChange(query: String) {
+        _state.update { it.copy(searchQuery = query) }
+        filterProfessionals()
+    }
+
+    /**
+     * Filtra los profesionales basándose en el nombre o especialidad.
+     */
+    private fun filterProfessionals() {
+        val query = _state.value.searchQuery.trim().lowercase()
+        val all = _state.value.professionals
+        
+        val filtered = if (query.isEmpty()) {
+            all
+        } else {
+            all.filter { 
+                it.name.lowercase().contains(query) || 
+                (it.specialty?.lowercase()?.contains(query) == true)
+            }
+        }
+        _state.update { it.copy(filteredProfessionals = filtered) }
     }
 
     /**
@@ -344,8 +391,12 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
                (s.selectedSlot != null || isDayUnit)
                
         return if (isAtHome) {
-            basicValid && s.notes.isNotBlank()
+            val hasAddress = !userAddress.isNullOrBlank()
+            _state.update { it.copy(isAtHomeAddressMissing = !hasAddress) }
+            // Para servicios a domicilio, debe tener dirección en perfil O en notas
+            basicValid && (hasAddress || s.notes.trim().length >= 5)
         } else {
+            _state.update { it.copy(isAtHomeAddressMissing = false) }
             basicValid
         }
     }
@@ -408,32 +459,14 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun cancelReservation(reservationId: String) {
         viewModelScope.launch {
-            repository.cancelReservation(reservationId)
+            val userId = prefs.userId.first() ?: return@launch
+            repository.cancelReservation(userId, reservationId)
                 .onSuccess {
-                    val userId = prefs.userId.first()
-                    if (userId != null) loadMyReservations(userId)
+                    loadMyReservations(userId)
                     _state.update { it.copy(successMessage = "Reserva cancelada") }
                 }
                 .onFailure { e ->
                     _state.update { it.copy(error = e.message) }
-                }
-        }
-    }
-
-    /**
-     * Confirma el pago en efectivo y completa la reserva.
-     */
-    fun confirmCashPayment(reservationId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            repository.updateReservationStatus(reservationId, "COMPLETED")
-                .onSuccess {
-                    _state.update { it.copy(isLoading = false, successMessage = "Pago en efectivo confirmado") }
-                    val userId = prefs.userId.first()
-                    if (userId != null) loadMyReservations(userId)
-                }
-                .onFailure { e ->
-                    _state.update { it.copy(isLoading = false, error = "Error al confirmar: ${e.message}") }
                 }
         }
     }

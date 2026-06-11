@@ -101,13 +101,19 @@ interface ApiService {
      * Cancela una reserva específica.
      */
     @PUT("api/reservations/{id}/cancel")
-    suspend fun cancelReservation(@Path("id") id: String): Response<ReservationResponseDto>
+    suspend fun cancelReservation(
+        @Header("X-User-Id") userId: String,
+        @Path("id") id: String
+    ): Response<ReservationResponseDto>
 
     /**
      * Confirma el pago de una reserva.
      */
     @PUT("api/reservations/{id}/confirm-payment")
-    suspend fun confirmPayment(@Path("id") id: String): Response<ReservationResponseDto>
+    suspend fun confirmPayment(
+        @Header("X-User-Id") userId: String,
+        @Path("id") id: String
+    ): Response<ReservationResponseDto>
 
     /**
      * Consulta la disponibilidad de horarios de un especialista para una fecha dada.
@@ -407,6 +413,23 @@ interface ApiService {
      */
     @GET("api/admin/audit-logs")
     suspend fun getAuditLogs(): Response<List<com.pointcheck.features.admin.data.dto.AuditLogDto>>
+
+    // --- Endpoints de Usuarios ---
+
+    /**
+     * Obtiene un usuario por su ID.
+     */
+    @GET("api/users/{id}")
+    suspend fun getUserById(@Path("id") id: String): Response<UserResponseDto>
+
+    /**
+     * Actualiza la dirección de un usuario.
+     */
+    @PUT("api/users/{id}/address")
+    suspend fun updateUserAddress(
+        @Path("id") id: String,
+        @Query("address") address: String
+    ): Response<UserResponseDto>
 
     // --- Endpoints de Servicios Externos ---
 

@@ -30,6 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.AddLocation
 import androidx.compose.material.icons.filled.Payments
 import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.core.presentation.components.AppSelectorField
@@ -40,6 +43,9 @@ import com.pointcheck.core.presentation.components.PointCheckMapView
 
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * PointCheck Booking UX - REFACTORIZACIÓN DE NIVEL SENIOR
@@ -165,13 +171,65 @@ fun BookingScreen(
                 .verticalScroll(scrollState)
                 .padding(16.dp)
         ) {
+            if (s.isAtHomeAddressMissing) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null)
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "Falta dirección de domicilio",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "No tienes una dirección registrada en tu perfil. Puedes ingresarla abajo para esta reserva o actualizar tu perfil.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
+
             // PASO 1: Selección de Especialista y Servicio
-            // Optimización: Los dropdowns usan datos precargados vía ViewModel para evitar parpadeos.
             Text("Paso 1: Selección", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
+                    // Campo de Búsqueda Dinámica
+                    OutlinedTextField(
+                        value = s.searchQuery,
+                        onValueChange = { vm.onSearchQueryChange(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Buscar profesional o especialidad...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (s.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { vm.onSearchQueryChange("") }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Limpiar")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
                     AppSelectorField(
                         label = "Profesional",
                         value = s.selectedProfessional?.name ?: "Seleccionar especialista",
@@ -185,7 +243,14 @@ fun BookingScreen(
                         onDismissRequest = { professionalExpanded = false },
                         modifier = Modifier.fillMaxWidth(0.85f)
                     ) {
-                        s.professionals.forEach { prof ->
+                        if (s.filteredProfessionals.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No se encontraron resultados") },
+                                onClick = { },
+                                enabled = false
+                            )
+                        }
+                        s.filteredProfessionals.forEach { prof ->
                             DropdownMenuItem(
                                 text = { Text("${prof.name} - ${prof.specialty ?: "General"}") },
                                 onClick = {
@@ -249,24 +314,42 @@ fun BookingScreen(
             // Lógica Dual: Si es a domicilio, pedimos dirección. Si no, mostramos ubicación fija en Modal.
             if (isAtHome) {
                 Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "Dirección para el servicio a domicilio",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (s.isAtHomeAddressMissing) Icons.Default.AddLocation else Icons.Default.Home,
+                        contentDescription = null,
+                        tint = if (s.isAtHomeAddressMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Dirección para el servicio a domicilio",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (s.isAtHomeAddressMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 AppTextField(
-                    value = s.notes, // Podríamos usar un campo específico para dirección si existiera en el estado
+                    value = s.notes, 
                     onValueChange = { vm.setNotes(it) },
                     label = "Ingrese dirección exacta",
                     leadingIcon = Icons.Default.Home,
+                    isError = s.isAtHomeAddressMissing && s.notes.isBlank(),
                     enabled = !s.isLoading
                 )
-                Text(
-                    "El profesional se desplazará a esta ubicación.",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-                )
+                if (s.isAtHomeAddressMissing && s.notes.isBlank()) {
+                    Text(
+                        "Requerido para servicios a domicilio si no hay dirección en el perfil.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                    )
+                } else {
+                    Text(
+                        "El profesional se desplazará a esta ubicación.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                    )
+                }
             } else {
                 s.selectedProfessional?.let { prof ->
                     Spacer(Modifier.height(16.dp))
