@@ -46,6 +46,7 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
     val s by vm.state.collectAsState()
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showCancelDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(s.error) {
         s.error?.let {
@@ -59,6 +60,29 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
             snackbarHostState.showSnackbar(it)
             vm.clearSuccess()
         }
+    }
+
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("¿Cancelar Suscripción?") },
+            text = { Text("Si cancelas tu suscripción, perderás el acceso a las funciones premium al finalizar el periodo actual. ¿Estás seguro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.cancelSubscription()
+                        showCancelDialog = false
+                    }
+                ) {
+                    Text("SÍ, CANCELAR", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text("MANTENER PLAN")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -101,7 +125,7 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
                 if (s.currentSubscription != null) {
                     ActiveSubscriptionCard(
                         sub = s.currentSubscription!!,
-                        onCancel = { vm.cancelSubscription() },
+                        onCancel = { showCancelDialog = true },
                         isLoading = s.isLoading
                     )
                 } else {

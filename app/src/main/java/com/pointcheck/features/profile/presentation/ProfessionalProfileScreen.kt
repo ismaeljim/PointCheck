@@ -27,6 +27,8 @@ import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.core.presentation.components.AppSelectorField
 import com.pointcheck.core.presentation.components.DayScheduleRow
 import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.util.RutVisualTransformation
+import com.pointcheck.core.util.RutUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +49,8 @@ fun ProfessionalProfileScreen(
     var address by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("30") }
+    var rut by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var expandedCategory by remember { mutableStateOf(false) }
     
@@ -69,7 +73,7 @@ fun ProfessionalProfileScreen(
     }
 
     // Sincronizar campos cuando el perfil carga
-    LaunchedEffect(s.profile) {
+    LaunchedEffect(s.profile, s.rut, s.phone) {
         s.profile?.let {
             displayName = it.displayName ?: ""
             businessName = it.businessName ?: ""
@@ -82,6 +86,8 @@ fun ProfessionalProfileScreen(
             latitude = it.latitude
             longitude = it.longitude
         }
+        if (rut.isEmpty()) rut = s.rut
+        if (phone.isEmpty()) phone = s.phone
     }
 
     Scaffold(
@@ -149,6 +155,29 @@ fun ProfessionalProfileScreen(
                                 label = "Nombre de Empresa (Opcional)",
                                 leadingIcon = Icons.Default.Business,
                                 enabled = s.isEditing
+                            )
+
+                            AppTextField(
+                                value = rut,
+                                onValueChange = { if (it.length <= 9) rut = it },
+                                label = "RUT (Sin puntos ni guión)",
+                                leadingIcon = Icons.Default.AccountBox,
+                                enabled = s.isEditing,
+                                visualTransformation = RutVisualTransformation(),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                                )
+                            )
+
+                            AppTextField(
+                                value = phone,
+                                onValueChange = { phone = it },
+                                label = "Teléfono de Contacto",
+                                leadingIcon = Icons.Default.Phone,
+                                enabled = s.isEditing,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+                                )
                             )
                         }
                     }
@@ -370,12 +399,14 @@ fun ProfessionalProfileScreen(
                                     address,
                                     city,
                                     duration.toIntOrNull() ?: 30,
+                                    rut,
+                                    phone,
                                     latitude,
                                     longitude
                                 )
                             },
                             isLoading = s.isLoading,
-                            enabled = displayName.isNotBlank() && specialty.isNotBlank() && selectedCategoryId != null
+                            enabled = displayName.isNotBlank() && specialty.isNotBlank() && selectedCategoryId != null && rut.isNotBlank() && phone.isNotBlank()
                         )
                         Spacer(Modifier.height(8.dp))
                         TextButton(onClick = { vm.toggleEdit() }, modifier = Modifier.fillMaxWidth(), enabled = !s.isLoading) {

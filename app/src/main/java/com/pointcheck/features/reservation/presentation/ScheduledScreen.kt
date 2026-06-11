@@ -159,7 +159,7 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
                             },
                             onConfirmPayment = {
                                 vm.confirmPayment(res.id) {
-                                    // Callback opcional
+                                    // El dashboard se recargará automáticamente al volver por el LaunchedEffect en DashboardScreen
                                 }
                             },
                             onCancel = { vm.cancelReservation(res.id) }

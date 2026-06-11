@@ -42,6 +42,8 @@ data class DayConfig(
  */
 data class ProfessionalProfileUiState(
     val profile: ProfessionalProfileResponseDto? = null,
+    val rut: String = "",
+    val phone: String = "",
     val isLoading: Boolean = true,
     val error: String? = null,
     val successMessage: String? = null,
@@ -120,7 +122,9 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
     fun loadProfile() {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
-            _state.update { it.copy(isLoading = true, error = null) }
+            val savedRut = prefs.rut.first() ?: ""
+            val savedPhone = prefs.phone.first() ?: ""
+            _state.update { it.copy(isLoading = true, error = null, rut = savedRut, phone = savedPhone) }
             
             repository.getProfileByUserId(userId)
                 .onSuccess { profile ->
@@ -159,6 +163,8 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
      * @param address Dirección física del negocio.
      * @param city Ciudad donde se ubica el negocio.
      * @param duration Duración predeterminada de la sesión en minutos.
+     * @param rut RUT del profesional para validación.
+     * @param phone Teléfono de contacto.
      * @param latitude Coordenada de latitud GPS opcional.
      * @param longitude Coordenada de longitud GPS opcional.
      */
@@ -171,11 +177,24 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
         address: String,
         city: String,
         duration: Int,
+        rut: String,
+        phone: String,
         latitude: Double? = null,
         longitude: Double? = null
     ) {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
+
+            // Validaciones de RUT y Teléfono
+            if (!com.pointcheck.core.util.RutUtils.validateRut(rut)) {
+                _state.update { it.copy(error = "El RUT ingresado no es válido.") }
+                return@launch
+            }
+
+            if (phone.length < 8) {
+                _state.update { it.copy(error = "El teléfono debe tener al menos 8 dígitos.") }
+                return@launch
+            }
 
             // Validación de lógica de negocio: Horarios coherentes
             val invalidDays = _state.value.workingHours.filter { it.value.isActive }.filter { 

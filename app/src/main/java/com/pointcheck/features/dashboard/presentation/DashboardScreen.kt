@@ -79,6 +79,11 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
         }
     }
 
+    // Forzar recarga al entrar a la pantalla para asegurar métricas frescas
+    LaunchedEffect(Unit) {
+        vm.loadDashboard()
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {

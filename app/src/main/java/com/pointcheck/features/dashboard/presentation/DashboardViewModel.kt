@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 /**
  * Representa el estado de la interfaz de usuario para el panel de control principal (Dashboard).
@@ -71,6 +72,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state
 
+    private var loadJob: Job? = null
+
     init {
         Log.d("DashboardVM", "Iniciando DashboardViewModel")
         loadDashboard()
@@ -82,7 +85,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
      * (Admin, Profesional o Cliente).
      */
     fun loadDashboard() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             Log.d("DashboardVM", "loadDashboard() ejecutado")
             _state.update { it.copy(isLoading = true, error = null) }
             
