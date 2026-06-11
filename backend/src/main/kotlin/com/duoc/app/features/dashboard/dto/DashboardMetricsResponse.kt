@@ -15,5 +15,6 @@ data class DashboardMetricsResponse(
     val paidBillingAmount: Double = 0.0,
     val subscriptionStatus: String? = null,
     val subscriptionPlan: String? = null,
-    val specialty: String? = null
+    val specialty: String? = null,
+    val isProfileComplete: Boolean = true
 )

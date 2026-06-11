@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -216,6 +217,11 @@ fun ReservationCard(
                 InfoRow(icon = Icons.Default.Person, text = "Especialista: ${res.specialist.name}")
             }
             InfoRow(icon = Icons.Default.CalendarToday, text = res.reservationStart.replace("T", " ").substringBeforeLast(":"))
+
+            val contactInfo = if (isSpecialistView) res.client.phone else res.specialist.phone
+            if (!contactInfo.isNullOrBlank()) {
+                InfoRow(icon = Icons.Default.Phone, text = contactInfo)
+            }
 
             Spacer(Modifier.height(16.dp))
 

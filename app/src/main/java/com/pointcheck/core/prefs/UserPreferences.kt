@@ -19,6 +19,7 @@ object UserPrefsKeys {
     val AVATAR_URI = stringPreferencesKey("avatar_uri")
     val PROFESSIONAL_PROFILE_ID = stringPreferencesKey("professional_profile_id")
     val SUBSCRIPTION_STATUS = stringPreferencesKey("subscription_status")
+    val SPECIALTY = stringPreferencesKey("specialty")
 }
 
 /**
@@ -88,6 +89,13 @@ class UserPreferences(private val context: Context) {
         context.dataStore.edit { it[UserPrefsKeys.SUBSCRIPTION_STATUS] = status }
     }
 
+    /**
+     * Guarda la especialidad del profesional para personalización rápida.
+     */
+    suspend fun saveSpecialty(specialty: String) {
+        context.dataStore.edit { it[UserPrefsKeys.SPECIALTY] = specialty }
+    }
+
     // --- Flows para observar datos de sesión ---
 
     val userId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.USER_ID] }
@@ -99,6 +107,7 @@ class UserPreferences(private val context: Context) {
     val avatar: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.AVATAR_URI] }
     val professionalProfileId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.PROFESSIONAL_PROFILE_ID] }
     val subscriptionStatus: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.SUBSCRIPTION_STATUS] }
+    val specialty: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.SPECIALTY] }
     val isLogged: Flow<Boolean> = context.dataStore.data.map { it[UserPrefsKeys.LOGGED] ?: false }
 
     /**

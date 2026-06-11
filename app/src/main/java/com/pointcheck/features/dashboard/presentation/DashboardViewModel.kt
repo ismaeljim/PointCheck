@@ -111,6 +111,22 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         loadAdminData()
                     } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
                         Log.d("DashboardVM", "Cargando datos SPECIALIST")
+                        
+                        // 1. Cargar métricas generales para verificar estado del perfil
+                        repository.getDashboardMetrics(userId, role)
+                            .onSuccess { metrics ->
+                                if (!metrics.isProfileComplete) {
+                                    _state.update { it.copy(error = "PROFILE_INCOMPLETE", isLoading = false) }
+                                } else {
+                                    _state.update { it.copy(metrics = metrics) }
+                                    // Guardar especialidad si cambió
+                                    metrics.specialty?.let { sp ->
+                                        viewModelScope.launch { prefs.saveSpecialty(sp) }
+                                    }
+                                }
+                            }
+
+                        // 2. Cargar resumen de reportes
                         repository.getReportSummaryBySpecialist(userId)
                             .onSuccess { summary ->
                                 Log.d("DashboardVM", "Reporte cargado con éxito")

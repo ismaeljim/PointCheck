@@ -36,6 +36,7 @@ class DashboardService(
     private val attentionRepository: AttentionRepository,
     private val billingRecordRepository: BillingRecordRepository,
     private val profileRepository: ProfessionalProfileRepository,
+    private val serviceOfferingRepository: com.duoc.app.features.service.repository.ServiceOfferingRepository,
     private val userRepository: com.duoc.app.features.user.repository.UserRepository,
     private val notificationService: com.duoc.app.features.notification.service.NotificationService
 ) {
@@ -147,7 +148,11 @@ class DashboardService(
             }
             else -> {
                 val profile = profileRepository.findByUser_Id(userId)
-                if (profile == null) return DashboardMetricsResponse()
+                if (profile == null) return DashboardMetricsResponse(isProfileComplete = false)
+
+                // Validación de servicio mínimo: Un perfil no está completo si no tiene servicios que ofrecer
+                val hasServices = serviceOfferingRepository.findByProfessionalProfile_Id(profile.id!!).isNotEmpty()
+                if (!hasServices) return DashboardMetricsResponse(isProfileComplete = false)
 
                 val now = LocalDateTime.now()
                 val todayStart = now.toLocalDate().atStartOfDay()

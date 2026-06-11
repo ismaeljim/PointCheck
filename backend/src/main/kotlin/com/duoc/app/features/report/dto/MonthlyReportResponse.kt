@@ -1,19 +1,19 @@
 package com.duoc.app.features.report.dto
 
 data class MonthlyReportResponse(
-    val monthName: String,
-    val year: Int,
-    val totalReservations: Int,
-    val completedAttentions: Int,
-    val totalRevenue: Double,
-    val totalHoursWorked: Double,
-    val previousPeriodRevenue: Double,
-    val weeklyBreakdown: List<WeeklySummaryDto>
+    val monthName: String = "",
+    val year: Int = 0,
+    val totalReservations: Int = 0,
+    val completedAttentions: Int = 0,
+    val totalRevenue: Double = 0.0,
+    val totalHoursWorked: Double = 0.0,
+    val previousPeriodRevenue: Double = 0.0,
+    val weeklyBreakdown: List<WeeklySummaryDto> = emptyList()
 )
 
 data class WeeklySummaryDto(
-    val weekNumber: Int,
-    val dateRange: String,
-    val reservationsCount: Int,
-    val revenue: Double
+    val weekNumber: Int = 0,
+    val dateRange: String = "",
+    val reservationsCount: Int = 0,
+    val revenue: Double = 0.0
 )

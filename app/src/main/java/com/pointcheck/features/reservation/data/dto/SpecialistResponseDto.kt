@@ -14,6 +14,8 @@ import com.google.gson.annotations.SerializedName
  * @property defaultSessionDurationMinutes Duración estándar de una sesión en minutos.
  * @property latitude Coordenada de latitud de la ubicación del servicio.
  * @property longitude Coordenada de longitud de la ubicación del servicio.
+ * @property rut Rol Único Tributario del profesional.
+ * @property phone Teléfono de contacto del profesional.
  */
 data class SpecialistResponseDto(
     val id: String,
@@ -24,5 +26,7 @@ data class SpecialistResponseDto(
     val city: String?,
     val defaultSessionDurationMinutes: Int? = 30,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val rut: String? = null,
+    val phone: String? = null
 )
