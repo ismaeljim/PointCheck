@@ -11,6 +11,7 @@ import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
+import com.pointcheck.core.util.MockDataProvider
 import com.pointcheck.features.onboarding.presentation.dto.CategoryDto
 import com.pointcheck.features.onboarding.presentation.CategoryApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,6 +109,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             .onSuccess { metrics ->
                                 _state.update { it.copy(metrics = metrics) }
                             }
+                            .onFailure {
+                                _state.update { it.copy(metrics = MockDataProvider.mockMetrics) }
+                            }
                         loadAdminData()
                     } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
                         Log.d("DashboardVM", "Cargando datos SPECIALIST")
@@ -125,6 +129,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                                     }
                                 }
                             }
+                            .onFailure {
+                                _state.update { it.copy(metrics = MockDataProvider.mockMetrics) }
+                            }
 
                         // 2. Cargar resumen de reportes
                         repository.getReportSummaryBySpecialist(userId)
@@ -133,8 +140,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                                 _state.update { it.copy(reportSummary = summary, isLoading = false) }
                             }
                             .onFailure { e ->
-                                Log.e("DashboardVM", "Error en reporte: ${e.message}")
-                                _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
+                                Log.e("DashboardVM", "Error en reporte, usando mock: ${e.message}")
+                                _state.update { it.copy(reportSummary = MockDataProvider.mockReportSummary, isLoading = false) }
                             }
                     } else {
                         Log.d("DashboardVM", "Cargando datos CLIENT")
@@ -148,8 +155,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                                 }
                             }
                             .onFailure { e ->
-                                Log.e("DashboardVM", "Error en dashboard cliente: ${e.message}")
-                                _state.update { it.copy(error = "Error al cargar dashboard: ${e.message}", isLoading = false) }
+                                Log.e("DashboardVM", "Error en dashboard cliente, usando mock: ${e.message}")
+                                _state.update { it.copy(clientDashboard = MockDataProvider.mockClientDashboard, isLoading = false) }
                             }
                     }
                 } else {

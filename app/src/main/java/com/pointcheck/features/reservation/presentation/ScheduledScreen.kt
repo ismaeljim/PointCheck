@@ -27,8 +27,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.prefs.UserPreferences
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppOutlinedButton
+import com.pointcheck.core.ui.components.PCButton
+import com.pointcheck.core.ui.components.PCCard
+import com.pointcheck.core.ui.components.PCOutlinedButton
+import com.pointcheck.core.ui.components.PCStatusChip
+import com.pointcheck.core.ui.components.PCShimmer
 import com.pointcheck.core.presentation.components.AppTopBar
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import kotlinx.coroutines.flow.first
@@ -138,7 +141,11 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
 
             if (state.isLoading && currentList.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(5) {
+                            PCShimmer(modifier = Modifier.fillMaxWidth().height(180.dp))
+                        }
+                    }
                 }
             } else if (currentList.isEmpty()) {
                 EmptyReservationsState(
@@ -174,10 +181,10 @@ fun ScheduledScreen(nav: NavController, filter: String? = null, vm: ReservationV
                 
                 // Solo mostramos "Nueva Reserva" si el usuario es CLIENTE o está en su pestaña de reservas
                 if (userRole?.uppercase() == "CLIENT" || (isSpecialist && selectedTab == 1)) {
-                    AppButton(
+                    PCButton(
                         text = "Nueva Reserva",
                         onClick = { nav.navigate(Screen.Booking.route) },
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
                     )
                 }
             }
@@ -194,13 +201,8 @@ fun ReservationCard(
     onConfirmPayment: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+    PCCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(
@@ -254,17 +256,17 @@ fun ReservationCard(
                 }
             }
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Spacer(Modifier.height(12.dp))
 
             InfoRow(
-                icon = Icons.Default.Person, 
+                icon = Icons.Default.Person,
                 text = if (isSpecialistView) "Cliente: ${res.client.name}" else "Especialista: ${res.specialist.name}",
                 fontWeight = FontWeight.SemiBold
             )
-            
+
             InfoRow(
-                icon = Icons.Default.CalendarToday, 
+                icon = Icons.Default.CalendarToday,
                 text = res.reservationStart.replace("T", " ").substringBeforeLast(":"),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -309,38 +311,29 @@ fun ReservationCard(
 
             if (canAction) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
+                    PCOutlinedButton(
+                        text = "Cancelar",
                         onClick = onCancel,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                    ) {
-                        Text("Cancelar")
-                    }
+                        modifier = Modifier.weight(1f)
+                    )
 
                     if (isSpecialistView) {
-                        Button(
+                        PCButton(
+                            text = "Atender",
                             onClick = onAtender,
-                            modifier = Modifier.weight(1f),
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Text("Atender")
-                        }
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
-                
+
                 if (isSpecialistView && statusUpper == "CONFIRMED") {
                     Spacer(Modifier.height(8.dp))
-                    Button(
+                    PCButton(
+                        text = "Cobrar y Finalizar",
+                        icon = Icons.Default.Payments,
                         onClick = onConfirmPayment,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Cobrar y Finalizar")
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -376,25 +369,17 @@ fun InfoRow(
 
 @Composable
 fun StatusChip(status: String) {
-    val color = when (status.uppercase()) {
-        "PENDING", "PENDIENTE" -> MaterialTheme.colorScheme.tertiary
-        "CONFIRMED", "CONFIRMADA" -> MaterialTheme.colorScheme.primary
-        "COMPLETED", "COMPLETADA" -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.outline
+    val (containerColor, contentColor) = when (status.uppercase()) {
+        "PENDING", "PENDIENTE" -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        "CONFIRMED", "CONFIRMADA" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        "COMPLETED", "COMPLETADA" -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Surface(
-        color = color.copy(alpha = 0.1f),
-        shape = MaterialTheme.shapes.extraSmall,
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
-    ) {
-        Text(
-            text = status,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    PCStatusChip(
+        text = status,
+        containerColor = containerColor,
+        contentColor = contentColor
+    )
 }
 
 @Composable
@@ -436,9 +421,10 @@ fun EmptyReservationsState(
         
         if (!isSpecialist || !isAttentionsTab) {
             Spacer(Modifier.height(24.dp))
-            AppButton(
+            PCButton(
                 text = "Agendar mi primera cita",
-                onClick = onNewBooking
+                onClick = onNewBooking,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

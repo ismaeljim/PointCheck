@@ -1,6 +1,7 @@
 package com.pointcheck.features.billing.data.repository
 
 import com.pointcheck.core.network.ApiService
+import com.pointcheck.core.network.NetworkHandler
 import com.pointcheck.features.billing.data.dto.BillingRecordRequestDto
 import com.pointcheck.features.billing.data.dto.BillingRecordResponseDto
 import com.pointcheck.features.billing.data.dto.MarkAsPaidRequestDto
@@ -21,7 +22,7 @@ class BillingRepository(private val api: ApiService) {
      * @return [Result] con el registro de facturación creado [BillingRecordResponseDto].
      */
     suspend fun createBillingRecord(request: BillingRecordRequestDto): Result<BillingRecordResponseDto> {
-        return handleApiCall { api.createBillingRecord(request) }
+        return handleApiCall("Error al crear cobro") { api.createBillingRecord(request) }
     }
 
     /**
@@ -40,7 +41,7 @@ class BillingRepository(private val api: ApiService) {
         notes: String? = null
     ): Result<BillingRecordResponseDto> {
         val request = MarkAsPaidRequestDto(paymentMethod, externalReference, notes)
-        return handleApiCall { api.markBillingAsPaid(id, request) }
+        return handleApiCall("Error al registrar pago") { api.markBillingAsPaid(id, request) }
     }
 
     /**
@@ -50,7 +51,7 @@ class BillingRepository(private val api: ApiService) {
      * @return [Result] con el registro cancelado.
      */
     suspend fun cancelBillingRecord(id: String): Result<BillingRecordResponseDto> {
-        return handleApiCall { api.cancelBillingRecord(id) }
+        return handleApiCall("Error al cancelar cobro") { api.cancelBillingRecord(id) }
     }
 
     /**
@@ -60,7 +61,7 @@ class BillingRepository(private val api: ApiService) {
      * @return [Result] con la lista de registros de facturación.
      */
     suspend fun getBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
-        return handleApiCall { api.getBillingBySpecialist(specialistId) }
+        return handleApiCall("Error al obtener historial de cobros") { api.getBillingBySpecialist(specialistId) }
     }
 
     /**
@@ -70,7 +71,7 @@ class BillingRepository(private val api: ApiService) {
      * @return [Result] con la lista de registros pendientes.
      */
     suspend fun getPendingBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
-        return handleApiCall { api.getPendingBillingBySpecialist(specialistId) }
+        return handleApiCall("Error al obtener cobros pendientes") { api.getPendingBillingBySpecialist(specialistId) }
     }
 
     /**
@@ -80,27 +81,18 @@ class BillingRepository(private val api: ApiService) {
      * @return [Result] con la lista de registros de hoy.
      */
     suspend fun getTodayBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
-        return handleApiCall { api.getTodayBillingBySpecialist(specialistId) }
+        return handleApiCall("Error al obtener cobros de hoy") { api.getTodayBillingBySpecialist(specialistId) }
     }
 
     /**
      * Función auxiliar genérica para manejar las llamadas a la API.
      */
-    private suspend fun <T> handleApiCall(call: suspend () -> Response<T>): Result<T> {
+    private suspend fun <T> handleApiCall(errorMsg: String = "Error de red", call: suspend () -> Response<T>): Result<T> {
         return try {
             val response = call()
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body != null) {
-                    Result.success(body)
-                } else {
-                    Result.failure(Exception("Cuerpo de respuesta vacío"))
-                }
-            } else {
-                Result.failure(Exception("Error servidor: ${response.code()}"))
-            }
+            NetworkHandler.handleResponse(response, errorMsg)
         } catch (e: Exception) {
-            Result.failure(e)
+            NetworkHandler.handleException(e)
         }
     }
 }

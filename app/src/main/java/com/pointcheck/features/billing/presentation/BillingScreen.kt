@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,10 +17,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.text.style.TextAlign
 import com.pointcheck.core.presentation.components.AppButton
 import com.pointcheck.core.presentation.components.AppOutlinedButton
 import com.pointcheck.core.presentation.components.AppTextField
 import com.pointcheck.core.presentation.components.AppTopBar
+
+/**
+ * Empty state component for Billing lists or summaries.
+ */
+@Composable
+fun BillingEmptyState(
+    message: String = "No hay registros de cobro para mostrar.",
+    icon: ImageVector = Icons.AutoMirrored.Filled.ReceiptLong
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
 
 /**
  * Screen for managing the billing process for a service attention.
@@ -81,7 +114,15 @@ fun BillingScreen(
                 .verticalScroll(scrollState)
                 .padding(16.dp)
         ) {
-            if (s.currentBilling == null) {
+            if (s.isLoading && s.currentBilling == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (s.currentBilling == null && !s.isLoading) {
+                // If it's a new billing, show form. If it was a failed load, maybe an empty state?
+                // For now, if reservationId is provided, we assume we want to create or load it.
+                // If the VM finished loading and currentBilling is still null, we show the creation form.
+
                 // Formulario de creación
                 Text(
                     "Información del Cobro",

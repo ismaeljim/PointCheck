@@ -46,6 +46,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation("androidx.compose.ui:ui-tooling-preview")
 
     // Navegación y ViewModel (Versiones estables para K2)
@@ -59,6 +60,10 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    
+    // Security & Encrypted Storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     
     // Maps & Location
     implementation("com.google.android.gms:play-services-maps:19.0.0")

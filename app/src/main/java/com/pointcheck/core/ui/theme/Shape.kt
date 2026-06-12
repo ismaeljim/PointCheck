@@ -4,9 +4,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-// Usamos AppShapes para evitar conflictos con la clase Shapes de Material3
+/**
+ * PointCheck Design System - Shapes
+ * Defined for consistency across components and containers.
+ */
 val AppShapes = Shapes(
+    // Componentes estándar: Botones, Inputs (8dp)
     small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp)
+    
+    // Contenedores: Tarjetas, Secciones principales (16dp)
+    medium = RoundedCornerShape(16.dp),
+    
+    // Contenedores grandes: Diálogos, Bottom Sheets (24dp)
+    large = RoundedCornerShape(24.dp)
 )

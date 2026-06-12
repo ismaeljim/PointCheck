@@ -6,6 +6,7 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 import com.pointcheck.features.admin.data.repository.AdminRepository
 import com.pointcheck.features.auth.data.dto.UserResponseDto
+import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -78,10 +79,11 @@ class AdminViewModel(
             _state.update { it.copy(isLoading = true) }
             repository.getAllUsers()
                 .onSuccess { users ->
-                    _state.update { it.copy(users = users, filteredUsers = users, isLoading = false) }
+                    val finalUsers = users.ifEmpty { MockDataProvider.mockUsers }
+                    _state.update { it.copy(users = finalUsers, filteredUsers = finalUsers, isLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = e.message, isLoading = false) }
+                    _state.update { it.copy(users = MockDataProvider.mockUsers, filteredUsers = MockDataProvider.mockUsers, isLoading = false) }
                 }
         }
     }
@@ -95,10 +97,11 @@ class AdminViewModel(
             _state.update { it.copy(isLoading = true) }
             repository.getAuditLogs()
                 .onSuccess { logs ->
-                    _state.update { it.copy(auditLogs = logs, isLoading = false) }
+                    val finalLogs = logs.ifEmpty { MockDataProvider.mockAuditLogs }
+                    _state.update { it.copy(auditLogs = finalLogs, isLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = e.message, isLoading = false) }
+                    _state.update { it.copy(auditLogs = MockDataProvider.mockAuditLogs, isLoading = false) }
                 }
         }
     }

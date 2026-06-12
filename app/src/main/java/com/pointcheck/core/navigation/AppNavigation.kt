@@ -3,6 +3,7 @@ package com.pointcheck.core.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +22,7 @@ import com.pointcheck.features.profile.presentation.ProfessionalProfileScreen
 import com.pointcheck.features.services.presentation.ServiceListScreen
 import com.pointcheck.features.attentions.presentation.AttentionScreen
 import com.pointcheck.features.billing.presentation.BillingScreen
+import com.pointcheck.features.billing.presentation.BillingListScreen
 import com.pointcheck.features.subscriptions.presentation.SubscriptionScreen
 import com.pointcheck.features.onboarding.presentation.CategorySelectionScreen
 import com.pointcheck.features.onboarding.presentation.ServiceConfigurationScreen
@@ -93,6 +95,9 @@ sealed class Screen(val route: String) {
     /** Gestión de la suscripción del profesional. */
     object Subscription : Screen("subscription")
 
+    /** Lista general de cobros del especialista. */
+    object BillingList : Screen("billing_list")
+
     /** 
      * Flujo de atención activa de una cita. 
      * Permite al especialista registrar el inicio y fin del servicio.
@@ -141,10 +146,13 @@ sealed class Screen(val route: String) {
  * Gestiona el paso de parámetros, la instanciación de ViewModels y la lógica de protección de rutas.
  * 
  * @param snackbar Host para mostrar notificaciones rápidas en pantalla.
+ * @param nav Controlador de navegación compartido (opcional).
  */
 @Composable
-fun AppNavigation(snackbar: SnackbarHostState) {
-    val nav = rememberNavController()
+fun AppNavigation(
+    snackbar: SnackbarHostState,
+    nav: NavHostController = rememberNavController()
+) {
     // authVm se comparte en el grafo si es necesario (ej: registro)
     val authVm: UserViewModel = viewModel()
     
@@ -204,6 +212,7 @@ fun AppNavigation(snackbar: SnackbarHostState) {
         composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
         composable(Screen.ServiceManagement.route) { ServiceListScreen(nav) }
         composable(Screen.Subscription.route) { SubscriptionScreen(nav) }
+        composable(Screen.BillingList.route) { BillingListScreen(nav) }
 
         // Módulo de Atención: Se pasa reservationId (UUID)
         composable(

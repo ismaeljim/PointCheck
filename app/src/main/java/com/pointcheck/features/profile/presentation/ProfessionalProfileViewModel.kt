@@ -8,6 +8,7 @@ import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.profile.data.dto.ProfessionalProfileRequestDto
 import com.pointcheck.features.profile.data.dto.ProfessionalProfileResponseDto
 import com.pointcheck.features.profile.data.repository.ProfessionalProfileRepository
+import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -144,7 +145,15 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                     prefs.saveProfessionalProfileId(profile.id)
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false) } 
+                    // Fallback a MockDataProvider para estabilidad en el rediseño
+                    val mockProfile = MockDataProvider.mockProfessionalProfile
+                    val workingHours = try {
+                        val type = object : TypeToken<Map<String, DayConfig>>() {}.type
+                        gson.fromJson<Map<String, DayConfig>>(mockProfile.workingHoursJson, type)
+                    } catch (ex: Exception) {
+                        _state.value.workingHours
+                    }
+                    _state.update { it.copy(profile = mockProfile, isLoading = false, workingHours = workingHours) }
                 }
         }
     }

@@ -1,5 +1,6 @@
 package com.pointcheck.features.dashboard.presentation
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -47,6 +48,10 @@ import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.entryModelOf
 import com.patrykandpatrick.vico.core.component.shape.Shapes
 
+import com.pointcheck.core.ui.components.PCButton
+import com.pointcheck.core.ui.components.PCCard
+import com.pointcheck.core.ui.components.PCOutlinedButton
+import com.pointcheck.core.ui.components.shimmerEffect
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.utils.CategoryIdentityMapper
 import com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto
@@ -72,12 +77,10 @@ import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
  * @param nav Controlador de navegación para las transiciones entre pantallas.
  * @param vm ViewModel que gestiona el estado del tablero y la obtención de datos basada en el rol.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
     val s by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showMenu by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(false) }
     var showAdminUsers by remember { mutableStateOf(false) }
     var showAdminFinance by remember { mutableStateOf(false) }
@@ -90,12 +93,12 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
         }
     }
 
-    // Forzar recarga al entrar a la pantalla para asegurar métricas frescas
     LaunchedEffect(Unit) {
         vm.loadDashboard()
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             AppTopBar(
@@ -113,18 +116,8 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
                             Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
                         }
                     }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
-                    }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Mi Perfil") },
-                            onClick = { nav.navigate(Screen.Profile.route); showMenu = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Refrescar") },
-                            onClick = { vm.loadDashboard(); showMenu = false }
-                        )
+                    IconButton(onClick = { nav.navigate(Screen.Profile.route) }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = "Perfil")
                     }
                 }
             )
@@ -152,19 +145,21 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
             modifier = Modifier
                 .padding(pad)
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start
         ) {
             val isSpecialist = s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL"
             
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = if (isSpecialist) "Bienvenido, ${s.userName}" else "Hola, ${s.userName}",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = if (isSpecialist) (s.reportSummary?.specialty ?: s.userRole) else "Rol: ${s.userRole}",
+                text = if (isSpecialist) (s.reportSummary?.specialty ?: "Especialista") else "Tu resumen diario",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -192,7 +187,7 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
 
             if (s.error != null) {
                 Spacer(Modifier.height(16.dp))
-                AppButton(text = "Reintentar", onClick = { vm.loadDashboard() }, enabled = !s.isLoading)
+                PCButton(text = "Reintentar", onClick = { vm.loadDashboard() }, enabled = !s.isLoading)
             }
         }
     }
@@ -321,7 +316,7 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
     Column(Modifier.fillMaxWidth()) {
         if (d?.nextAppointment != null) {
             Text("Tu Próxima Cita", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             FeaturedAppointmentCard(d.nextAppointment, weather, nav)
             Spacer(Modifier.height(24.dp))
         }
@@ -330,8 +325,8 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
         Spacer(Modifier.height(12.dp))
         if (d?.favoriteSpecialists?.isNotEmpty() == true) {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(d.favoriteSpecialists) { specialist ->
                     FavoriteSpecialistCard(specialist) {
@@ -340,11 +335,7 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
                 }
             }
         } else {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+            PCCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -376,10 +367,11 @@ fun ClientDashboardV2(s: DashboardUiState, nav: NavController) {
         }
 
         Spacer(Modifier.height(24.dp))
-        AppOutlinedButton(
+        PCOutlinedButton(
             text = "Historial Completo",
             icon = Icons.Default.History,
-            onClick = { nav.navigate(Screen.AppointmentHistory.createRoute("all")) }
+            onClick = { nav.navigate(Screen.AppointmentHistory.createRoute("all")) },
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -403,11 +395,7 @@ fun FeaturedAppointmentCard(
     if (appointment == null) return
     val context = LocalContext.current
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    PCCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -417,14 +405,14 @@ fun FeaturedAppointmentCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             Icons.Default.Event,
                             null,
                             modifier = Modifier.padding(12.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     Spacer(Modifier.width(16.dp))
@@ -448,7 +436,8 @@ fun FeaturedAppointmentCard(
                         Text(
                             "con ${appointment.specialist.name}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -490,7 +479,7 @@ fun FeaturedAppointmentCard(
 
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AppButton(
+                PCButton(
                     text = "Cómo llegar",
                     onClick = {
                         val address = appointment.address
@@ -507,9 +496,10 @@ fun FeaturedAppointmentCard(
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = !appointment.address.isNullOrBlank()
+                    enabled = !appointment.address.isNullOrBlank(),
+                    icon = Icons.Default.Map
                 )
-                AppOutlinedButton(
+                PCOutlinedButton(
                     text = "Detalles",
                     onClick = { nav.navigate(Screen.Scheduled.route) },
                     modifier = Modifier.weight(1f)
@@ -521,10 +511,9 @@ fun FeaturedAppointmentCard(
 
 @Composable
 fun FavoriteSpecialistCard(specialist: FavoriteSpecialistDto, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.width(140.dp).clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    PCCard(
+        modifier = Modifier.width(140.dp),
+        onClick = onClick
     ) {
         Column(
             Modifier.padding(12.dp),
@@ -533,7 +522,7 @@ fun FavoriteSpecialistCard(specialist: FavoriteSpecialistDto, onClick: () -> Uni
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
             ) {
                 Icon(
                     Icons.Default.Person,
@@ -593,13 +582,9 @@ fun ServiceCategoryGrid(categories: List<com.pointcheck.features.onboarding.pres
 
 @Composable
 fun CategoryCard(name: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Card(
-        modifier = modifier
-            .height(110.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    PCCard(
+        modifier = modifier.height(110.dp),
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -688,10 +673,9 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: D
             Spacer(Modifier.height(16.dp))
             
             // Card Principal de Reporte: Único punto de acceso a detalles y finanzas
-            Card(
+            PCCard(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { nav.navigate(Screen.WeeklyReport.route) },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                onClick = { nav.navigate(Screen.WeeklyReport.route) }
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -740,15 +724,15 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: D
 
         Spacer(Modifier.height(24.dp))
         Text("Accesos Rápidos", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         
-        AppOutlinedButton(text = "Perfil Profesional", icon = Icons.Default.Person, onClick = { nav.navigate(Screen.ProfessionalProfile.route) })
+        PCOutlinedButton(text = "Perfil Profesional", icon = Icons.Default.Person, onClick = { nav.navigate(Screen.ProfessionalProfile.route) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        AppOutlinedButton(text = "Mi Agenda", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) })
+        PCOutlinedButton(text = "Mi Agenda", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        AppOutlinedButton(text = "Servicios", icon = Icons.AutoMirrored.Filled.List, onClick = { nav.navigate(Screen.ServiceManagement.route) })
+        PCOutlinedButton(text = "Servicios", icon = Icons.AutoMirrored.Filled.List, onClick = { nav.navigate(Screen.ServiceManagement.route) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        AppOutlinedButton(text = "Suscripción", icon = Icons.Default.Star, onClick = { nav.navigate(Screen.Subscription.route) })
+        PCOutlinedButton(text = "Suscripción", icon = Icons.Default.Star, onClick = { nav.navigate(Screen.Subscription.route) }, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -810,8 +794,9 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
         
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-            shape = RoundedCornerShape(24.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+            shape = MaterialTheme.shapes.medium
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text("Balances Financieros", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -836,10 +821,11 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
                 }
 
                 Spacer(Modifier.height(16.dp))
-                AppOutlinedButton(
+                PCOutlinedButton(
                     text = "Gestionar Parámetros", 
                     icon = Icons.Default.Settings, 
-                    onClick = onShowSettings
+                    onClick = onShowSettings,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -856,11 +842,9 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
 
 @Composable
 fun AdminActionButton(title: String, icon: ImageVector, subtitle: String, onClick: () -> Unit) {
-    Card(
+    PCCard(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
@@ -974,15 +958,15 @@ fun ShimmerDashboard() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .clip(MaterialTheme.shapes.medium)
                 .shimmerEffect()
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
-            Box(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
+            Box(Modifier.weight(1f).height(100.dp).clip(MaterialTheme.shapes.small).shimmerEffect())
+            Box(Modifier.weight(1f).height(100.dp).clip(MaterialTheme.shapes.small).shimmerEffect())
         }
         repeat(3) {
-            Box(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).shimmerEffect())
+            Box(Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.small).shimmerEffect())
         }
     }
 }
@@ -1020,12 +1004,9 @@ fun MetricCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    Card(
-        modifier = modifier.then(
-            if (onClick != null) Modifier.clickable { onClick() } else Modifier
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    PCCard(
+        modifier = modifier,
+        onClick = onClick
     ) {
         Column(
             Modifier.padding(16.dp).fillMaxWidth(),
@@ -1033,14 +1014,14 @@ fun MetricCard(
         ) {
             Surface(
                 modifier = Modifier.size(40.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             ) {
                 Icon(
                     icon,
                     null,
                     modifier = Modifier.padding(8.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             Spacer(Modifier.height(8.dp))

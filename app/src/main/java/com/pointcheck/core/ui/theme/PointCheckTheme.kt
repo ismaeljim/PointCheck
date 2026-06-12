@@ -4,32 +4,55 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-
-// Paleta de colores para el modo claro
-private val LightColors = lightColorScheme(
-    primary = MetallicBlue,
-    onPrimary = White,
-    background = LightBackground,
-    surface = White
-)
-
-// Paleta de colores para el modo oscuro
-private val DarkColors = darkColorScheme(
-    primary = MetallicBlue,
-    onPrimary = White,
-    background = DarkBackground,
-    surface = DarkBackground
-)
+import androidx.compose.ui.graphics.Color
 
 /**
- * Configuración del tema principal de la aplicación PointCheck.
- * Implementa el sistema de diseño Material3 con soporte para modos claro y oscuro.
- * 
- * @param darkTheme Indica si se debe aplicar el esquema de colores oscuro.
- * @param content Composable que se renderizará bajo este tema.
+ * PointCheck "SaaS Operativa" Theme Configuration.
+ * Maps custom design tokens to Material 3 ColorScheme.
  */
+private val LightColors = lightColorScheme(
+    primary = PointCheckBlue,
+    onPrimary = PointCheckOnBlue,
+    primaryContainer = PointCheckBlueContainer,
+    onPrimaryContainer = PointCheckOnBlueContainer,
+    
+    secondary = PointCheckSecondary,
+    onSecondary = Color.White,
+    secondaryContainer = PointCheckSecondaryContainer,
+    onSecondaryContainer = PointCheckOnSecondaryContainer,
+    
+    background = PointCheckBackground,
+    onBackground = PointCheckOnSurface,
+    
+    surface = PointCheckSurface,
+    onSurface = PointCheckOnSurface,
+    surfaceVariant = PointCheckSurfaceVariant,
+    onSurfaceVariant = PointCheckOnSurfaceVariant,
+    
+    outline = PointCheckOutline,
+    
+    error = PointCheckError,
+    onError = Color.White,
+    errorContainer = PointCheckErrorContainer,
+    onErrorContainer = PointCheckOnErrorContainer
+)
+
+// Dark mode adaptation for SaaS environment
+private val DarkColors = darkColorScheme(
+    primary = PointCheckBlue,
+    onPrimary = Color.White,
+    background = Color(0xFF1A1C1E),
+    surface = Color(0xFF1A1C1E),
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF44474E),
+    onSurfaceVariant = Color.LightGray
+)
+
 @Composable
-fun PointCheckTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
+fun PointCheckTheme(
+    darkTheme: Boolean = false,
+    content: @Composable () -> Unit
+) {
     val colors = if (darkTheme) DarkColors else LightColors
 
     MaterialTheme(
