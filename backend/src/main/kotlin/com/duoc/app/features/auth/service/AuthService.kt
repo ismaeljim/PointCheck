@@ -27,7 +27,8 @@ class AuthService(
     private val userRepository: UserRepository,
     private val professionalProfileRepository: com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository,
     private val categoryRepository: CategoryRepository,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val auditLogger: com.duoc.app.core.audit.AuditLogger
 ) {
 
     /**
@@ -69,6 +70,16 @@ class AuthService(
         )
 
         val savedUser = userRepository.save(user)
+
+        auditLogger.log(
+            action = "CREAR",
+            targetType = "Usuario",
+            targetId = savedUser.id!!,
+            targetName = savedUser.name,
+            details = "Registro inicial de usuario con rol ${savedUser.role}",
+            performedByEmail = savedUser.email,
+            performedByName = savedUser.name
+        )
 
         var assignedCategoryId: String? = null
 

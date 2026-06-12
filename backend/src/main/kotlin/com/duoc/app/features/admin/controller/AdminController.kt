@@ -16,8 +16,15 @@ class AdminController(private val adminService: AdminService) {
     fun getAllUsers(): ResponseEntity<List<User>> = ResponseEntity.ok(adminService.getAllUsers())
 
     @PatchMapping("/users/{id}/toggle-status")
-    fun toggleUserStatus(@PathVariable id: String, principal: Principal): ResponseEntity<User> =
-        ResponseEntity.ok(adminService.toggleUserStatus(id, principal.name))
+    fun toggleUserStatus(@PathVariable id: String): ResponseEntity<User> =
+        ResponseEntity.ok(adminService.toggleUserStatus(id))
+
+    @PutMapping("/users/{id}")
+    fun updateUser(
+        @PathVariable id: String,
+        @RequestBody request: com.duoc.app.features.admin.dto.AdminUserUpdateRequest
+    ): ResponseEntity<User> =
+        ResponseEntity.ok(adminService.updateUser(id, request))
 
     @GetMapping("/reports/financial")
     fun getFinancialReport(): ResponseEntity<Map<String, Any>> = 
@@ -30,10 +37,9 @@ class AdminController(private val adminService: AdminService) {
     @PostMapping("/settings")
     fun updateSetting(
         @RequestParam key: String,
-        @RequestParam value: String,
-        principal: Principal
+        @RequestParam value: String
     ): ResponseEntity<GlobalSettings> = 
-        ResponseEntity.ok(adminService.updateSetting(key, value, principal.name))
+        ResponseEntity.ok(adminService.updateSetting(key, value))
 
     @GetMapping("/audit-logs")
     fun getAuditLogs(): ResponseEntity<List<AuditLog>> = 

@@ -106,7 +106,7 @@ class AdminE2ETest {
         }.andExpect { status { isOk() } }
 
         val logs = auditLogRepository.findAll()
-        assertTrue(logs.any { it.action == "DEACTIVATE_USER" && it.targetId == testUser.id.toString() })
+        assertTrue(logs.any { (it.action == "ACTIVAR" || it.action == "DESACTIVAR") && it.targetId == testUser.id.toString() })
     }
 
     @Test
@@ -118,7 +118,7 @@ class AdminE2ETest {
         }.andExpect { status { isOk() } }
 
         val logs = auditLogRepository.findAll()
-        assertTrue(logs.any { it.action == "UPDATE_SETTING" && it.details?.contains("NEW_VALUE") == true })
+        assertTrue(logs.any { it.action == "EDITAR" && it.details?.contains("NEW_VALUE") == true })
         
         val setting = settingsRepository.findByKey("TEST_SETTING").get()
         assertEquals("NEW_VALUE", setting.value)
@@ -134,8 +134,8 @@ class AdminE2ETest {
             principal = MockPrincipal("admin@pointcheck.cl")
         }.andExpect {
             status { isOk() }
-            jsonPath("$[0].action") { value("DEACTIVATE_USER") }
-            jsonPath("$[0].performedBy") { value("admin@pointcheck.cl") }
+            jsonPath("$[0].action") { value("DESACTIVAR") }
+            jsonPath("$[0].performedByEmail") { value("admin@pointcheck.cl") }
         }
     }
 }

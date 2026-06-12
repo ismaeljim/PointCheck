@@ -59,4 +59,56 @@ class UserController(
             ResponseEntity.notFound().build()
         }
     }
+
+    /**
+     * Actualiza el perfil del usuario autenticado.
+     */
+    @PutMapping("/{id}")
+    fun updateProfile(
+        @PathVariable id: String,
+        @RequestBody request: com.duoc.app.features.user.dto.UserUpdateRequest
+    ): ResponseEntity<Any> {
+        return try {
+            ResponseEntity.ok(userService.updateProfile(id, request))
+        } catch (e: SecurityException) {
+            ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(mapOf("error" to e.message))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().build()
+        }
+    }
+
+    /**
+     * Actualiza la dirección del usuario.
+     */
+    @PutMapping("/{id}/address")
+    fun updateAddress(
+        @PathVariable id: String,
+        @RequestParam address: String
+    ): ResponseEntity<Any> {
+        return try {
+            ResponseEntity.ok(userService.updateAddress(id, address))
+        } catch (e: SecurityException) {
+            ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(mapOf("error" to e.message))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().build()
+        }
+    }
+
+    /**
+     * Cambia la contraseña del usuario.
+     */
+    @PutMapping("/{id}/password")
+    fun changePassword(
+        @PathVariable id: String,
+        @RequestBody request: com.duoc.app.features.user.dto.ChangePasswordRequest
+    ): ResponseEntity<Any> {
+        return try {
+            userService.changePassword(id, request)
+            ResponseEntity.ok().build()
+        } catch (e: SecurityException) {
+            ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(mapOf("error" to e.message))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("error" to e.message))
+        }
+    }
 }

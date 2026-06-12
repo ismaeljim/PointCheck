@@ -26,7 +26,10 @@ data class AdminUiState(
     val users: List<UserResponseDto> = emptyList(),
     val filteredUsers: List<UserResponseDto> = emptyList(),
     val auditLogs: List<AuditLogDto> = emptyList(),
+    val categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto> = emptyList(),
+    val selectedUserForEdit: UserResponseDto? = null,
     val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
     val error: String? = null,
     val searchQuery: String = ""
 )
@@ -47,6 +50,23 @@ class AdminViewModel(
     init {
         loadUsers()
         loadAuditLogs()
+        loadCategories()
+    }
+
+    /**
+     * Carga la lista de categorías disponibles para la edición de especialistas.
+     */
+    fun loadCategories() {
+        viewModelScope.launch {
+            try {
+                // Reutilizamos el ApiClient para obtener categorías
+                val api = ApiClient.retrofitInstance.create(com.pointcheck.features.onboarding.presentation.CategoryApi::class.java)
+                val cats = api.getCategories()
+                _state.update { it.copy(categories = cats) }
+            } catch (e: Exception) {
+                println("Error loading categories for admin: ${e.message}")
+            }
+        }
     }
 
     /**
@@ -109,6 +129,38 @@ class AdminViewModel(
             }
         }
         _state.update { it.copy(filteredUsers = filtered) }
+    }
+
+    /**
+     * Selecciona un usuario para iniciar el proceso de edición.
+     */
+    fun selectUserForEdit(user: UserResponseDto?) {
+        _state.update { it.copy(selectedUserForEdit = user) }
+    }
+
+    /**
+     * Envía la solicitud de actualización de usuario al backend.
+     */
+    fun updateUser(userId: String, request: com.pointcheck.features.admin.data.dto.AdminUserUpdateRequestDto) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSaving = true) }
+            repository.updateUser(userId, request)
+                .onSuccess { updatedUser ->
+                    val updatedList = _state.value.users.map {
+                        if (it.id == updatedUser.id) updatedUser else it
+                    }
+                    _state.update { it.copy(
+                        users = updatedList, 
+                        isSaving = false, 
+                        selectedUserForEdit = null 
+                    ) }
+                    filterUsers(_state.value.searchQuery)
+                    loadAuditLogs() // Recargamos logs para ver el cambio reflejado
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(error = e.message, isSaving = false) }
+                }
+        }
     }
 
     /**

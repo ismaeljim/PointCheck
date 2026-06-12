@@ -55,7 +55,11 @@ data class RegisterUiState(
     val isValid: Boolean = false,
     val error: String? = null,
     val isLoading: Boolean = false,
-    val userAddress: String? = null
+    val userAddress: String? = null,
+    val userName: String = "",
+    val userPhone: String = "",
+    val userEmail: String = "",
+    val userRole: String = ""
 )
 
 /**
@@ -80,16 +84,69 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<RegisterUiState> = _state
 
     init {
-        // Al inicializar, cargamos el rol guardado para pre-configurar formularios si aplica
+        // Al inicializar, cargamos los datos guardados
         viewModelScope.launch {
             prefs.role.collect { role ->
-                _state.update { it.copy(role = role ?: "CLIENT") }
+                _state.update { it.copy(role = role ?: "CLIENT", userRole = role ?: "CLIENT") }
             }
         }
         viewModelScope.launch {
             prefs.address.collect { address ->
                 _state.update { it.copy(userAddress = address) }
             }
+        }
+        viewModelScope.launch {
+            prefs.name.collect { name ->
+                _state.update { it.copy(userName = name ?: "") }
+            }
+        }
+        viewModelScope.launch {
+            prefs.phone.collect { phone ->
+                _state.update { it.copy(userPhone = phone ?: "") }
+            }
+        }
+        viewModelScope.launch {
+            prefs.email.collect { email ->
+                _state.update { it.copy(userEmail = email ?: "") }
+            }
+        }
+    }
+
+    /**
+     * Actualiza el perfil completo del usuario.
+     */
+    fun updateProfile(name: String, phone: String, address: String) {
+        viewModelScope.launch {
+            val userId = prefs.userId.first() ?: return@launch
+            _state.update { it.copy(isLoading = true, error = null) }
+            
+            val request = com.pointcheck.features.auth.data.dto.UserUpdateRequestDto(
+                name = name,
+                phone = phone,
+                address = address
+            )
+
+            authRepository.updateProfile(userId, request)
+                .onSuccess { user ->
+                    prefs.saveSession(
+                        userId = user.id,
+                        name = user.name,
+                        email = user.email,
+                        role = user.role,
+                        phone = user.phone,
+                        rut = user.rut,
+                        address = user.address
+                    )
+                    _state.update { it.copy(
+                        isLoading = false,
+                        userName = user.name,
+                        userPhone = user.phone,
+                        userAddress = user.address
+                    ) }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
         }
     }
 
@@ -299,6 +356,26 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             prefs.clear()
             onDone()
+        }
+    }
+
+    /**
+     * Cambia la contraseña del usuario.
+     */
+    fun changePassword(current: String, new: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val userId = prefs.userId.first() ?: return@launch
+            _state.update { it.copy(isLoading = true, error = null) }
+            
+            authRepository.changePassword(userId, current, new)
+                .onSuccess {
+                    _state.update { it.copy(isLoading = false) }
+                    onResult(true, null)
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                    onResult(false, e.message)
+                }
         }
     }
 }

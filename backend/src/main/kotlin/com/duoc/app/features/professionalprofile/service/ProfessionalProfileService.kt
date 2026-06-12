@@ -26,7 +26,8 @@ import java.time.LocalDateTime
 class ProfessionalProfileService(
     private val professionalProfileRepository: ProfessionalProfileRepository,
     private val userRepository: UserRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val auditLogger: com.duoc.app.core.audit.AuditLogger
 ) {
 
     /**
@@ -74,7 +75,17 @@ class ProfessionalProfileService(
             active = true
         )
 
-        return professionalProfileRepository.save(profile).toResponse()
+        val saved = professionalProfileRepository.save(profile)
+
+        auditLogger.log(
+            action = "CREAR",
+            targetType = "Perfil Profesional",
+            targetId = saved.id!!,
+            targetName = saved.displayName,
+            details = "Perfil profesional creado para ${user.name} en categoría ${category?.name ?: "N/A"}"
+        )
+
+        return saved.toResponse()
     }
 
     /**
@@ -144,7 +155,17 @@ class ProfessionalProfileService(
             updatedAt = LocalDateTime.now()
         }
 
-        return professionalProfileRepository.save(profile).toResponse()
+        val saved = professionalProfileRepository.save(profile)
+
+        auditLogger.log(
+            action = "EDITAR",
+            targetType = "Perfil Profesional",
+            targetId = saved.id!!,
+            targetName = saved.displayName,
+            details = "Perfil profesional actualizado"
+        )
+
+        return saved.toResponse()
     }
 
     /**
@@ -168,7 +189,17 @@ class ProfessionalProfileService(
             updatedAt = LocalDateTime.now()
         }
 
-        return professionalProfileRepository.save(profile).toResponse()
+        val saved = professionalProfileRepository.save(profile)
+
+        auditLogger.log(
+            action = "DESACTIVAR",
+            targetType = "Perfil Profesional",
+            targetId = saved.id!!,
+            targetName = saved.displayName,
+            details = "Perfil profesional desactivado lógicamente"
+        )
+
+        return saved.toResponse()
     }
 
     private fun ProfessionalProfile.toResponse(): ProfessionalProfileResponse {

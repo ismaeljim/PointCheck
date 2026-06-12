@@ -38,6 +38,7 @@ interface ReservationRepository : JpaRepository<Reservation, String> {
     fun findBySpecialist_IdAndReservationStartBetweenAndService_Id(specialistId: String, start: LocalDateTime, end: LocalDateTime, serviceId: String): List<Reservation>
 
     // Métodos de conteo optimizados para Dashboard
+    fun countByReservationStartBetween(start: LocalDateTime, end: LocalDateTime): Long
     fun countBySpecialist_Id(specialistId: String): Long
     fun countBySpecialist_IdAndReservationStartBetween(specialistId: String, start: LocalDateTime, end: LocalDateTime): Long
     fun countBySpecialist_IdAndStatus(specialistId: String, status: ReservationStatus): Long

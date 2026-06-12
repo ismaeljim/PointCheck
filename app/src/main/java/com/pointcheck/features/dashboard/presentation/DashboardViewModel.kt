@@ -157,6 +157,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     _state.update { it.copy(isLoading = false) }
                 }
             } catch (e: Exception) {
+                // Si la excepción es por cancelación de corrutina, no la mostramos como error
+                if (e is kotlinx.coroutines.CancellationException) throw e
+
                 Log.e("DashboardVM", "Excepción fatal en loadDashboard: ${e.message}", e)
                 _state.update { it.copy(isLoading = false, error = "Error inesperado: ${e.message}") }
             }

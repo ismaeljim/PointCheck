@@ -6,11 +6,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -192,7 +196,11 @@ fun ReservationCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(
@@ -200,27 +208,98 @@ fun ReservationCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Cita #${res.id.takeLast(8)}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary
-                )
+                Column {
+                    Text(
+                        text = "Cita #${res.id.takeLast(8)}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = res.serviceName ?: "Servicio sin nombre",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 StatusChip(res.status)
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            InfoRow(icon = Icons.Default.MedicalServices, text = res.serviceName ?: "Servicio sin nombre")
-            if (isSpecialistView) {
-                InfoRow(icon = Icons.Default.Person, text = "Cliente: ${res.client.name}")
-            } else {
-                InfoRow(icon = Icons.Default.Person, text = "Especialista: ${res.specialist.name}")
+            // Badge de Domicilio
+            if (res.isAtHome) {
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = MaterialTheme.shapes.extraSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Home,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "SERVICIO A DOMICILIO",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
             }
-            InfoRow(icon = Icons.Default.CalendarToday, text = res.reservationStart.replace("T", " ").substringBeforeLast(":"))
+
+            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(Modifier.height(12.dp))
+
+            InfoRow(
+                icon = Icons.Default.Person, 
+                text = if (isSpecialistView) "Cliente: ${res.client.name}" else "Especialista: ${res.specialist.name}",
+                fontWeight = FontWeight.SemiBold
+            )
+            
+            InfoRow(
+                icon = Icons.Default.CalendarToday, 
+                text = res.reservationStart.replace("T", " ").substringBeforeLast(":"),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            if (!res.address.isNullOrBlank()) {
+                InfoRow(icon = Icons.Default.LocationOn, text = res.address)
+            }
 
             val contactInfo = if (isSpecialistView) res.client.phone else res.specialist.phone
             if (!contactInfo.isNullOrBlank()) {
                 InfoRow(icon = Icons.Default.Phone, text = contactInfo)
+            }
+
+            if (!res.notes.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(Modifier.padding(8.dp)) {
+                        Icon(
+                            Icons.Default.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            res.notes,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -229,29 +308,38 @@ fun ReservationCard(
             val canAction = statusUpper != "COMPLETED" && statusUpper != "CANCELLED"
 
             if (canAction) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    AppOutlinedButton(
-                        text = "Cancelar",
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    ) {
+                        Text("Cancelar")
+                    }
 
                     if (isSpecialistView) {
-                        Spacer(Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1.5f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AppButton(
-                                text = "Atender",
-                                onClick = onAtender,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            AppButton(
-                                text = "Cobrar y Finalizar",
-                                containerColor = MaterialTheme.colorScheme.tertiary,
-                                onClick = onConfirmPayment,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                        Button(
+                            onClick = onAtender,
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text("Atender")
                         }
+                    }
+                }
+                
+                if (isSpecialistView && statusUpper == "CONFIRMED") {
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = onConfirmPayment,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Cobrar y Finalizar")
                     }
                 }
             }
@@ -260,19 +348,29 @@ fun ReservationCard(
 }
 
 @Composable
-fun InfoRow(icon: ImageVector, text: String) {
+fun InfoRow(
+    icon: ImageVector, 
+    text: String, 
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+    fontWeight: FontWeight = FontWeight.Normal
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 2.dp)
+        modifier = Modifier.padding(vertical = 3.dp)
     ) {
         Icon(
             icon,
             contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.outline
+            modifier = Modifier.size(18.dp),
+            tint = color.copy(alpha = 0.7f)
         )
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = text, 
+            style = MaterialTheme.typography.bodyMedium,
+            color = color,
+            fontWeight = fontWeight
+        )
     }
 }
 

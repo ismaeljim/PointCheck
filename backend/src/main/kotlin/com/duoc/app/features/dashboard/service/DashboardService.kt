@@ -38,7 +38,8 @@ class DashboardService(
     private val profileRepository: ProfessionalProfileRepository,
     private val serviceOfferingRepository: com.duoc.app.features.service.repository.ServiceOfferingRepository,
     private val userRepository: com.duoc.app.features.user.repository.UserRepository,
-    private val notificationService: com.duoc.app.features.notification.service.NotificationService
+    private val notificationService: com.duoc.app.features.notification.service.NotificationService,
+    private val auditLogRepository: com.duoc.app.features.admin.repository.AuditLogRepository
 ) {
 
     /**
@@ -123,17 +124,39 @@ class DashboardService(
         
         return when {
             role.equals("ADMIN", ignoreCase = true) -> {
-                val totalReservations = reservationRepository.count()
+                val reservationsToday = reservationRepository.countByReservationStartBetween(
+                    LocalDateTime.now().toLocalDate().atStartOfDay(),
+                    LocalDateTime.now().toLocalDate().atTime(LocalTime.MAX)
+                )
                 val totalClients = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.CLIENT)
                 val totalSpecialists = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.SPECIALIST)
-                val totalRevenue = billingRecordRepository.findByStatus(PaymentStatus.PAID).sumOf { it.amount.toDouble() }
+                val totalRevenuePaid = billingRecordRepository.findByStatus(PaymentStatus.PAID).sumOf { it.amount.toDouble() }
+                val pendingRevenue = billingRecordRepository.findByStatus(PaymentStatus.PENDING).sumOf { it.amount.toDouble() }
+                
+                val todayStart = LocalDateTime.now().toLocalDate().atStartOfDay()
+                val todayEnd = LocalDateTime.now().toLocalDate().atTime(LocalTime.MAX)
+                val alertsToday = auditLogRepository.countByTimestampBetween(todayStart, todayEnd)
+
+                // Series para ADMIN (Ingresos últimos 7 días)
+                val revenueSeries = (6 downTo 0).map { daysAgo ->
+                    val date = LocalDate.now().minusDays(daysAgo.toLong())
+                    val dayStart = date.atStartOfDay()
+                    val dayEnd = date.atTime(LocalTime.MAX)
+                    val dailyRevenue = billingRecordRepository.findByStatus(PaymentStatus.PAID)
+                        .filter { it.createdAt.isAfter(dayStart) && it.createdAt.isBefore(dayEnd) }
+                        .sumOf { it.amount.toDouble() }
+                    com.duoc.app.features.dashboard.dto.ChartDataDto(date.dayOfWeek.name.take(3), dailyRevenue)
+                }
 
                 DashboardMetricsResponse(
-                    appointmentsToday = totalReservations.toInt(),
-                    totalAttentionsPerformed = totalClients.toInt(),
-                    averageDurationMinutes = totalSpecialists.toDouble(),
-                    paidBillingAmount = totalRevenue,
-                    subscriptionStatus = "ADMIN_MODE"
+                    appointmentsToday = reservationsToday.toInt(),
+                    totalUsers = (totalClients + totalSpecialists).toInt(),
+                    totalRevenue = totalRevenuePaid,
+                    pendingRevenue = pendingRevenue,
+                    activeSpecialists = totalSpecialists.toInt(),
+                    systemAlerts = alertsToday.toInt(),
+                    subscriptionStatus = "ADMIN_MODE",
+                    revenueSeries = revenueSeries
                 )
             }
             role.equals("CLIENT", ignoreCase = true) -> {
@@ -199,6 +222,15 @@ class DashboardService(
                     userId, monthStart, todayEnd, PaymentStatus.PAID
                 )?.toDouble() ?: 0.0
 
+                // Series para ESPECIALISTA (Citas últimos 7 días)
+                val activitySeries = (6 downTo 0).map { daysAgo ->
+                    val date = LocalDate.now().minusDays(daysAgo.toLong())
+                    val dayStart = date.atStartOfDay()
+                    val dayEnd = date.atTime(LocalTime.MAX)
+                    val count = reservationRepository.countBySpecialist_IdAndReservationStartBetween(userId, dayStart, dayEnd)
+                    com.duoc.app.features.dashboard.dto.ChartDataDto(date.dayOfWeek.name.take(3), count.toDouble())
+                }
+
                 DashboardMetricsResponse(
                     appointmentsToday = appointmentsToday,
                     appointmentsMonth = appointmentsMonth,
@@ -207,7 +239,8 @@ class DashboardService(
                     pendingBillingAmount = pendingAmount,
                     paidBillingAmount = paidAmount,
                     subscriptionStatus = "ACTIVE",
-                    specialty = profile.specialty
+                    specialty = profile.specialty,
+                    activitySeries = activitySeries
                 )
             }
         }

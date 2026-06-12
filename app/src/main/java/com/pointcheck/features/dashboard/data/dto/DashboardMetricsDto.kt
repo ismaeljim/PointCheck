@@ -30,5 +30,15 @@ data class DashboardMetricsDto(
     val subscriptionStatus: String? = null,
     val subscriptionPlan: String? = null,
     val specialty: String? = null,
-    val isProfileComplete: Boolean = true
+    val isProfileComplete: Boolean = true,
+    
+    // Métricas para Administradores
+    val totalUsers: Int = 0,
+    val totalRevenue: Double = 0.0,
+    val pendingRevenue: Double = 0.0,
+    val activeSpecialists: Int = 0,
+    val systemAlerts: Int = 0,
+
+    val revenueSeries: List<ChartDataDto> = emptyList(),
+    val activitySeries: List<ChartDataDto> = emptyList()
 )

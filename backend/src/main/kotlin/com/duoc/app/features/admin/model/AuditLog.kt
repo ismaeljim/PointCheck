@@ -4,6 +4,12 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 import java.util.Objects
 
+/**
+ * Entidad para el registro detallado de auditoría del sistema.
+ * 
+ * Basado en estándares de seguridad para trazabilidad, registra quién, qué, cuándo y dónde
+ * se realizó una acción crítica dentro de la plataforma.
+ */
 @Entity
 @Table(name = "audit_logs")
 class AuditLog(
@@ -13,19 +19,28 @@ class AuditLog(
     val id: String? = null,
 
     @Column(nullable = false)
-    var action: String,
+    var action: String, // e.g., "ACCESO", "CREAR", "EDITAR", "ELIMINAR"
 
     @Column(nullable = false)
-    var performedBy: String, // Email or Name of the admin
+    var performedByEmail: String,
 
     @Column(nullable = false)
-    var targetType: String, // e.g., "USER", "SETTING", "BILLING"
+    var performedByName: String,
+
+    @Column(nullable = false)
+    var targetType: String, // e.g., "Usuario", "Servicio", "Reserva", "Configuración"
 
     @Column(nullable = false)
     var targetId: String,
 
-    @Column(length = 1000)
-    var details: String? = null,
+    @Column(nullable = true)
+    var targetName: String? = null, // Nombre legible del objetivo (ej: Nombre del Cliente)
+
+    @Column(length = 2000)
+    var details: String? = null, // Descripción de cambios (ej: "Nombre: OLD -> NEW")
+
+    @Column(nullable = true)
+    var ipAddress: String? = null,
 
     @Column(nullable = false)
     val timestamp: LocalDateTime = LocalDateTime.now()
@@ -38,5 +53,5 @@ class AuditLog(
 
     override fun hashCode(): Int = Objects.hash(id)
 
-    override fun toString(): String = "AuditLog(id=$id, action=$action, timestamp=$timestamp)"
+    override fun toString(): String = "AuditLog(id=$id, action=$action, target=$targetType, timestamp=$timestamp)"
 }

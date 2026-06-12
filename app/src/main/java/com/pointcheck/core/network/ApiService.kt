@@ -388,6 +388,15 @@ interface ApiService {
     suspend fun toggleUserStatus(@Path("id") id: String): Response<UserResponseDto>
 
     /**
+     * Actualiza la información de un usuario desde el panel de administración.
+     */
+    @PUT("api/admin/users/{id}")
+    suspend fun updateAdminUser(
+        @Path("id") id: String,
+        @Body request: com.pointcheck.features.admin.data.dto.AdminUserUpdateRequestDto
+    ): Response<UserResponseDto>
+
+    /**
      * Obtiene el reporte financiero global del sistema.
      */
     @GET("api/admin/reports/financial")
@@ -423,6 +432,15 @@ interface ApiService {
     suspend fun getUserById(@Path("id") id: String): Response<UserResponseDto>
 
     /**
+     * Actualiza el perfil del usuario.
+     */
+    @PUT("api/users/{id}")
+    suspend fun updateUserProfile(
+        @Path("id") id: String,
+        @Body request: com.pointcheck.features.auth.data.dto.UserUpdateRequestDto
+    ): Response<UserResponseDto>
+
+    /**
      * Actualiza la dirección de un usuario.
      */
     @PUT("api/users/{id}/address")
@@ -430,6 +448,15 @@ interface ApiService {
         @Path("id") id: String,
         @Query("address") address: String
     ): Response<UserResponseDto>
+
+    /**
+     * Cambia la contraseña del usuario.
+     */
+    @PUT("api/users/{id}/password")
+    suspend fun changePassword(
+        @Path("id") id: String,
+        @Body request: com.pointcheck.features.auth.data.dto.ChangePasswordRequestDto
+    ): Response<Unit>
 
     // --- Endpoints de Servicios Externos ---
 

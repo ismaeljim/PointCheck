@@ -17,7 +17,8 @@ import java.time.LocalDateTime
 @Service
 class ServiceOfferingService(
     private val serviceOfferingRepository: ServiceOfferingRepository,
-    private val professionalProfileRepository: ProfessionalProfileRepository
+    private val professionalProfileRepository: ProfessionalProfileRepository,
+    private val auditLogger: com.duoc.app.core.audit.AuditLogger
 ) {
 
     /**
@@ -47,7 +48,17 @@ class ServiceOfferingService(
             isAtHome = request.isAtHome
         )
 
-        return serviceOfferingRepository.save(serviceOffering).toResponse()
+        val saved = serviceOfferingRepository.save(serviceOffering)
+
+        auditLogger.log(
+            action = "CREAR",
+            targetType = "Servicio",
+            targetId = saved.id!!,
+            targetName = saved.name,
+            details = "Servicio creado: ${saved.name} ($${saved.price})"
+        )
+
+        return saved.toResponse()
     }
 
     /**
@@ -88,7 +99,17 @@ class ServiceOfferingService(
             updatedAt = LocalDateTime.now()
         }
         
-        return serviceOfferingRepository.save(serviceOffering).toResponse()
+        val saved = serviceOfferingRepository.save(serviceOffering)
+
+        auditLogger.log(
+            action = "ELIMINAR",
+            targetType = "Servicio",
+            targetId = saved.id!!,
+            targetName = saved.name,
+            details = "Servicio desactivado lógicamente: ${saved.name}"
+        )
+        
+        return saved.toResponse()
     }
 
     private fun ServiceOffering.toResponse(): ServiceOfferingResponse = ServiceOfferingResponse(

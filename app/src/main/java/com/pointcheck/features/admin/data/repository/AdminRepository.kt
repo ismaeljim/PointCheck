@@ -51,6 +51,26 @@ class AdminRepository(private val apiService: ApiService) {
     }
 
     /**
+     * Actualiza la información de un usuario desde el panel de administración.
+     * 
+     * @param userId ID del usuario a editar.
+     * @param request Datos actualizados.
+     * @return Result con el usuario actualizado.
+     */
+    suspend fun updateUser(userId: String, request: com.pointcheck.features.admin.data.dto.AdminUserUpdateRequestDto): Result<UserResponseDto> {
+        return try {
+            val response = apiService.updateAdminUser(userId, request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Error al actualizar usuario: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Obtiene los registros de auditoría históricos del sistema.
      * 
      * @return Result con la lista de [AuditLogDto] o el error correspondiente.

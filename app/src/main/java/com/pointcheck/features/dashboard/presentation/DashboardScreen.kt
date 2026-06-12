@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +37,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+
+// Vico Charts
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.column.columnChart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.core.entry.entryModelOf
+import com.patrykandpatrick.vico.core.component.shape.Shapes
+
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.utils.CategoryIdentityMapper
 import com.pointcheck.features.dashboard.data.dto.ClientDashboardResponseDto
@@ -173,7 +184,7 @@ fun DashboardScreen(nav: NavController, vm: DashboardViewModel = viewModel()) {
                         onShowSettings = { showAdminSettings = true }
                     )
                 } else if (s.userRole == "SPECIALIST" || s.userRole == "PROFESSIONAL") {
-                    ProfessionalDashboard(s.reportSummary, nav)
+                    ProfessionalDashboard(s.reportSummary, nav, s)
                 } else {
                     ClientDashboardV2(s, nav)
                 }
@@ -650,7 +661,7 @@ fun ClientDashboard(m: DashboardMetricsDto, nav: NavController) {
 }
 
 @Composable
-fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
+fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: DashboardUiState) {
     Column(Modifier.fillMaxWidth()) {
         Text("Panel de Control", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
@@ -694,6 +705,21 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController) {
                     FinancialRow("Por Cobrar", "$${r.pendingAmount}", MaterialTheme.colorScheme.error)
                     FinancialRow("Tiempo Promedio", "${r.averageAttentionMinutes.toInt()} min")
                     
+                    // Gráfico de Actividad Reciente (Especialista)
+                    if (s.metrics?.activitySeries?.isNotEmpty() == true) {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Actividad Últimos 7 Días", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                        val model = entryModelOf(*s.metrics.activitySeries.map { it.value.toFloat() }.toTypedArray())
+                        Chart(
+                            chart = columnChart(),
+                            model = model,
+                            startAxis = rememberStartAxis(),
+                            bottomAxis = rememberBottomAxis(),
+                            modifier = Modifier.fillMaxWidth().height(120.dp)
+                        )
+                    }
+
                     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     
                     Row(
@@ -742,59 +768,79 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
         )
         Spacer(Modifier.height(24.dp))
         
+        // Fila 1: Usuarios e Ingresos
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MetricCard(
+                label = "Usuarios Totales",
+                value = m.totalUsers.toString(),
+                icon = Icons.Default.People,
+                modifier = Modifier.weight(1f),
+                onClick = onShowUsers
+            )
+            MetricCard(
+                label = "Ingresos Netos",
+                value = "$${String.format("%,.0f", m.totalRevenue)}",
+                icon = Icons.Default.MonetizationOn,
+                modifier = Modifier.weight(1f),
+                onClick = onShowFinance
+            )
+        }
+        
+        Spacer(Modifier.height(12.dp))
+        
+        // Fila 2: Operaciones y Seguridad
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MetricCard(
+                label = "Citas Hoy",
+                value = m.appointmentsToday.toString(),
+                icon = Icons.AutoMirrored.Filled.EventNote,
+                modifier = Modifier.weight(1f),
+                onClick = { nav.navigate(Screen.Scheduled.route) } // Ver agenda global
+            )
+            MetricCard(
+                label = "Alertas Sist.",
+                value = m.systemAlerts.toString(),
+                icon = Icons.Default.Security,
+                modifier = Modifier.weight(1f),
+                onClick = onShowAudit
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(24.dp)
         ) {
-            Column(Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiary,
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Analytics, 
-                            null, 
-                            tint = MaterialTheme.colorScheme.onTertiary,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text("Métricas del Ecosistema", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(20.dp))
-                
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MetricCard(
-                        label = "Citas Totales", 
-                        value = m.appointmentsToday.toString(), 
-                        icon = Icons.AutoMirrored.Filled.EventNote, 
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        label = "Ingresos Netos", 
-                        value = "$${String.format("%,.0f", m.paidBillingAmount)}", 
-                        icon = Icons.Default.MonetizationOn, 
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+            Column(Modifier.padding(16.dp)) {
+                Text("Balances Financieros", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MetricCard(
-                        label = "Usuarios Clientes", 
-                        value = m.totalAttentionsPerformed.toString(), 
-                        icon = Icons.Default.People, 
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        label = "Especialistas", 
-                        value = m.averageDurationMinutes.toInt().toString(), 
-                        icon = Icons.Default.Engineering, 
-                        modifier = Modifier.weight(1f)
+                FinancialRow("Recaudación Real", "$${String.format("%,.0f", m.totalRevenue)}", Color(0xFF4CAF50))
+                FinancialRow("Pendiente de Cobro", "$${String.format("%,.0f", m.pendingRevenue)}", MaterialTheme.colorScheme.error)
+                FinancialRow("Especialistas Activos", m.activeSpecialists.toString())
+                
+                // Gráfico de Ingresos (Admin)
+                if (m.revenueSeries.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text("Ingresos Últimos 7 Días", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
+                    val model = entryModelOf(*m.revenueSeries.map { it.value.toFloat() }.toTypedArray())
+                    Chart(
+                        chart = lineChart(),
+                        model = model,
+                        startAxis = rememberStartAxis(),
+                        bottomAxis = rememberBottomAxis(),
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
                     )
                 }
+
+                Spacer(Modifier.height(16.dp))
+                AppOutlinedButton(
+                    text = "Gestionar Parámetros", 
+                    icon = Icons.Default.Settings, 
+                    onClick = onShowSettings
+                )
             }
         }
 
@@ -804,7 +850,6 @@ fun AdminDashboard(m: DashboardMetricsDto, nav: NavController, onShowUsers: () -
         
         AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles", onShowUsers)
         AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas", onShowAudit)
-        AdminActionButton("Reportes Financieros", Icons.Default.Payments, "Exportar balances globales", onShowFinance)
         AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
     }
 }
@@ -871,9 +916,10 @@ fun AuditLogsBottomSheet(onDismiss: () -> Unit) {
 @Composable
 fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
     val icon = when (log.action) {
-        "ACTIVATE_USER" -> Icons.Default.PersonAdd
-        "DEACTIVATE_USER" -> Icons.Default.PersonRemove
-        "UPDATE_SETTING" -> Icons.Default.SettingsSuggest
+        "ACTIVAR" -> Icons.Default.PersonAdd
+        "DESACTIVAR" -> Icons.Default.PersonRemove
+        "EDITAR" -> Icons.Default.SettingsSuggest
+        "CREAR" -> Icons.Default.AddCircle
         else -> Icons.Default.History
     }
 
@@ -893,7 +939,7 @@ fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
                 Icon(Icons.Default.AdminPanelSettings, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    "Por: ${log.performedBy.substringBefore("@")}", 
+                    "Por: ${log.performedByEmail.substringBefore("@")}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.secondary
                 )

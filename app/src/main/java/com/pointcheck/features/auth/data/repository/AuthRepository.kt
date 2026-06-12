@@ -71,5 +71,34 @@ class AuthRepository(
             NetworkHandler.handleException(e)
         }
     }
+
+    /**
+     * Actualiza el perfil completo del usuario.
+     */
+    suspend fun updateProfile(id: String, request: com.pointcheck.features.auth.data.dto.UserUpdateRequestDto): Result<UserResponseDto> {
+        return try {
+            val response = apiService.updateUserProfile(id, request)
+            NetworkHandler.handleResponse(response, "Error al actualizar perfil")
+        } catch (e: Exception) {
+            NetworkHandler.handleException(e)
+        }
+    }
+
+    /**
+     * Cambia la contraseña del usuario.
+     */
+    suspend fun changePassword(id: String, current: String, new: String): Result<Unit> {
+        return try {
+            val request = com.pointcheck.features.auth.data.dto.ChangePasswordRequestDto(current, new)
+            val response = apiService.changePassword(id, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("La contraseña actual es incorrecta o los datos son inválidos"))
+            }
+        } catch (e: Exception) {
+            NetworkHandler.handleException(e)
+        }
+    }
 }
 

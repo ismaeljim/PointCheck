@@ -67,5 +67,8 @@ dependencies {
     implementation("com.google.android.libraries.places:places:4.1.0")
     implementation("com.google.maps.android:android-maps-utils:3.8.2")
 
+    // Charts (Vico)
+    implementation("com.patrykandpatrick.vico:compose-m3:1.15.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

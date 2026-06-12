@@ -22,9 +22,19 @@ class SecurityConfig {
         http
             .csrf { it.disable() }
             .authorizeHttpRequests { auth ->
-                auth.anyRequest().permitAll() // Permitimos todo por ahora para no romper la comunicación con la App
+                // Endpoints públicos (Registro e Inicio de Sesión)
+                auth.requestMatchers("/api/auth/**").permitAll()
+                
+                // Endpoints de Administración (Solo ADMIN)
+                auth.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                
+                // Endpoints de Auditoría (Solo ADMIN)
+                auth.requestMatchers("/api/audit/**").hasRole("ADMIN")
+
+                // El resto requiere autenticación
+                auth.anyRequest().authenticated()
             }
-            .httpBasic { it.disable() }
+            .httpBasic { } // Habilitamos Basic Auth para simplificar la integración con la App actual
             .formLogin { it.disable() }
         
         return http.build()

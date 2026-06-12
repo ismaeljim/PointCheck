@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,8 +24,8 @@ import com.pointcheck.features.auth.data.dto.UserResponseDto
 /**
  * Pantalla para la gestión administrativa de usuarios.
  * 
- * Permite a los administradores buscar usuarios por nombre, email o RUT y alternar
- * su estado de activación (banear o activar cuentas).
+ * Permite a los administradores buscar usuarios por nombre, email o RUT, corregir sus datos
+ * y alternar su estado de activación.
  * 
  * @param onBack Callback para navegar a la pantalla anterior.
  * @param viewModel ViewModel que gestiona el estado administrativo y la lista de usuarios.
@@ -36,6 +37,17 @@ fun UserManagementScreen(
     viewModel: AdminViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
+
+    // Mostrar diálogo de edición si hay un usuario seleccionado
+    state.selectedUserForEdit?.let { user ->
+        EditUserDialog(
+            user = user,
+            categories = state.categories,
+            onDismiss = { viewModel.selectUserForEdit(null) },
+            onConfirm = { request -> viewModel.updateUser(user.id, request) },
+            isSaving = state.isSaving
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -69,6 +81,7 @@ fun UserManagementScreen(
                     items(state.filteredUsers) { user ->
                         UserItem(
                             user = user,
+                            onEdit = { viewModel.selectUserForEdit(user) },
                             onToggleStatus = { viewModel.toggleUserStatus(user.id) }
                         )
                     }
@@ -82,10 +95,15 @@ fun UserManagementScreen(
  * Renders an individual user item in the management list.
  *
  * @param user The user data to display.
+ * @param onEdit Callback triggered when the edit button is clicked.
  * @param onToggleStatus Callback triggered when the activation toggle is clicked.
  */
 @Composable
-fun UserItem(user: UserResponseDto, onToggleStatus: () -> Unit) {
+fun UserItem(
+    user: UserResponseDto,
+    onEdit: () -> Unit,
+    onToggleStatus: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -110,12 +128,21 @@ fun UserItem(user: UserResponseDto, onToggleStatus: () -> Unit) {
                 )
             }
 
-            IconButton(onClick = onToggleStatus) {
-                Icon(
-                    imageVector = if (user.active) Icons.Default.Block else Icons.Default.CheckCircle,
-                    contentDescription = if (user.active) "Banear" else "Activar",
-                    tint = if (user.active) Color.Red else Color.Green
-                )
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onToggleStatus) {
+                    Icon(
+                        imageVector = if (user.active) Icons.Default.Block else Icons.Default.CheckCircle,
+                        contentDescription = if (user.active) "Banear" else "Activar",
+                        tint = if (user.active) Color.Red else Color.Green
+                    )
+                }
             }
         }
     }
