@@ -30,11 +30,12 @@ class AdminService(
 ) {
 
     /**
-     * Recupera la lista completa de usuarios registrados en el sistema.
+     * Recupera la lista completa de usuarios registrados en el sistema mapeados a DTOs.
      *
-     * @return Lista de todos los usuarios (Clientes, Especialistas y Admins).
+     * @return Lista de todos los usuarios.
      */
-    fun getAllUsers(): List<User> = userRepository.findAll()
+    fun getAllUsers(): List<com.duoc.app.features.admin.dto.AdminUserResponse> = 
+        userRepository.findAll().map { it.toAdminResponse() }
 
     /**
      * Activa o desactiva la cuenta de un usuario.
@@ -42,11 +43,10 @@ class AdminService(
      * Registra la acción en el log de auditoría detallando quién realizó el cambio.
      *
      * @param userId ID del usuario a modificar.
-     * @param adminEmail Email del administrador que ejecuta la acción.
-     * @return Usuario con el estado actualizado.
+     * @return DTO del usuario con el estado actualizado.
      */
     @Transactional
-    fun toggleUserStatus(userId: String): User {
+    fun toggleUserStatus(userId: String): com.duoc.app.features.admin.dto.AdminUserResponse {
         val user = userRepository.findById(userId).orElseThrow { RuntimeException("User not found") }
         user.active = !user.active
         val savedUser = userRepository.save(user)
@@ -59,7 +59,7 @@ class AdminService(
             details = "Estado cambiado a ${if (savedUser.active) "Activo" else "Inactivo"}"
         )
         
-        return savedUser
+        return savedUser.toAdminResponse()
     }
 
     /**
@@ -70,11 +70,10 @@ class AdminService(
      * 
      * @param userId ID del usuario a editar.
      * @param request Datos actualizados.
-     * @param adminEmail Email del administrador que realiza la acción.
-     * @return Usuario actualizado.
+     * @return DTO del usuario actualizado.
      */
     @Transactional
-    fun updateUser(userId: String, request: com.duoc.app.features.admin.dto.AdminUserUpdateRequest): User {
+    fun updateUser(userId: String, request: com.duoc.app.features.admin.dto.AdminUserUpdateRequest): com.duoc.app.features.admin.dto.AdminUserResponse {
         val user = userRepository.findById(userId).orElseThrow { RuntimeException("Usuario no encontrado") }
         val changes = mutableListOf<String>()
 
@@ -114,11 +113,23 @@ class AdminService(
                 targetName = savedUser.name,
                 details = "Cambios realizados: ${changes.joinToString(", ")}"
             )
-            return savedUser
+            return savedUser.toAdminResponse()
         }
 
-        return user
+        return user.toAdminResponse()
     }
+
+    private fun User.toAdminResponse() = com.duoc.app.features.admin.dto.AdminUserResponse(
+        id = this.id!!,
+        name = this.name,
+        email = this.email,
+        rut = this.rut,
+        role = this.role.name,
+        active = this.active,
+        createdAt = this.createdAt.toString(),
+        phone = this.phone,
+        address = this.address ?: ""
+    )
 
     /**
      * Genera un reporte financiero resumido de toda la plataforma.

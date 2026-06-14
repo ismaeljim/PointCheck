@@ -145,7 +145,11 @@ class AuthService(
         // Obtención eficiente del categoryId desde la relación ya cargada
         val categoryId = user.professionalProfile?.category?.id
 
-        return user.toResponse(categoryId)
+        // GENERACIÓN DE TOKEN DE CONTINGENCIA (Format: Basic Auth para compatibilidad con SecurityConfig Stateless)
+        val rawCredentials = "${request.email}:${request.password}"
+        val token = "Basic " + java.util.Base64.getEncoder().encodeToString(rawCredentials.toByteArray())
+
+        return user.toResponse(categoryId, token)
     }
 
     /**
@@ -153,7 +157,7 @@ class AuthService(
      * 
      * @param categoryId ID opcional de la categoría si el usuario es un profesional.
      */
-    private fun User.toResponse(categoryId: String? = null): UserResponse = UserResponse(
+    private fun User.toResponse(categoryId: String? = null, token: String? = null): UserResponse = UserResponse(
         id = this.id!!,
         name = this.name,
         email = this.email,
@@ -161,6 +165,7 @@ class AuthService(
         phone = this.phone,
         role = this.role,
         active = this.active,
-        categoryId = categoryId
+        categoryId = categoryId,
+        token = token
     )
 }

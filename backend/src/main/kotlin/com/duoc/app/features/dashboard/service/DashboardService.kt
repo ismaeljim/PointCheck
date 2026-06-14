@@ -43,6 +43,15 @@ class DashboardService(
 ) {
 
     /**
+     * Recupera un usuario por su email.
+     * Utilizado para validaciones de seguridad en los controladores.
+     */
+    fun getUserByEmail(email: String): com.duoc.app.features.user.model.User {
+        return userRepository.findByEmailWithProfile(email)
+            ?: throw IllegalArgumentException("Usuario no encontrado")
+    }
+
+    /**
      * Genera un resumen detallado de desempeño para un especialista, usualmente para la sección de Reportes.
      *
      * Calcula métricas clave como volumen de reservas, atenciones completadas, promedio de
@@ -104,7 +113,7 @@ class DashboardService(
             pendingAmount = pendingAmount,
             paidBillingCount = paidBillingCount.toInt(),
             pendingBillingCount = pendingBillingCount.toInt(),
-            specialty = profile?.specialty
+            specialty = profile?.specialty ?: ""
         )
     }
 
@@ -121,29 +130,35 @@ class DashboardService(
      */
     fun getMetrics(userId: String, role: String): DashboardMetricsResponse {
         val now = LocalDateTime.now()
+        val cleanRole = role.replace("ROLE_", "").uppercase()
         
-        return when {
-            role.equals("ADMIN", ignoreCase = true) -> {
-                val reservationsToday = reservationRepository.countByReservationStartBetween(
-                    LocalDateTime.now().toLocalDate().atStartOfDay(),
-                    LocalDateTime.now().toLocalDate().atTime(LocalTime.MAX)
-                )
-                val totalClients = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.CLIENT)
-                val totalSpecialists = userRepository.countByRole(com.duoc.app.features.user.model.UserRole.SPECIALIST)
-                val totalRevenuePaid = billingRecordRepository.findByStatus(PaymentStatus.PAID).sumOf { it.amount.toDouble() }
-                val pendingRevenue = billingRecordRepository.findByStatus(PaymentStatus.PENDING).sumOf { it.amount.toDouble() }
+        return when (cleanRole) {
+            "ADMIN" -> {
+                val reservationsToday = try {
+                    reservationRepository.countByReservationStartBetween(
+                        LocalDateTime.now().toLocalDate().atStartOfDay(),
+                        LocalDateTime.now().toLocalDate().atTime(LocalTime.MAX)
+                    )
+                } catch (e: Exception) { 0L }
+
+                val totalClients = try { userRepository.countByRole(com.duoc.app.features.user.model.UserRole.CLIENT) } catch (e: Exception) { 0L }
+                val totalSpecialists = try { userRepository.countByRole(com.duoc.app.features.user.model.UserRole.SPECIALIST) } catch (e: Exception) { 0L }
+                
+                val billingAll = try { billingRecordRepository.findAll() } catch (e: Exception) { emptyList() }
+                val totalRevenuePaid = billingAll.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() }
+                val pendingRevenue = billingAll.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() }
                 
                 val todayStart = LocalDateTime.now().toLocalDate().atStartOfDay()
                 val todayEnd = LocalDateTime.now().toLocalDate().atTime(LocalTime.MAX)
-                val alertsToday = auditLogRepository.countByTimestampBetween(todayStart, todayEnd)
+                val alertsToday = try { auditLogRepository.countByTimestampBetween(todayStart, todayEnd) } catch (e: Exception) { 0L }
 
-                // Series para ADMIN (Ingresos últimos 7 días)
+                // Series para ADMIN (Ingresos últimos 7 días) con manejo de errores
                 val revenueSeries = (6 downTo 0).map { daysAgo ->
                     val date = LocalDate.now().minusDays(daysAgo.toLong())
                     val dayStart = date.atStartOfDay()
                     val dayEnd = date.atTime(LocalTime.MAX)
-                    val dailyRevenue = billingRecordRepository.findByStatus(PaymentStatus.PAID)
-                        .filter { it.createdAt.isAfter(dayStart) && it.createdAt.isBefore(dayEnd) }
+                    val dailyRevenue = billingAll
+                        .filter { it.status == PaymentStatus.PAID && it.createdAt.isAfter(dayStart) && it.createdAt.isBefore(dayEnd) }
                         .sumOf { it.amount.toDouble() }
                     com.duoc.app.features.dashboard.dto.ChartDataDto(date.dayOfWeek.name.take(3), dailyRevenue)
                 }
@@ -159,14 +174,14 @@ class DashboardService(
                     revenueSeries = revenueSeries
                 )
             }
-            role.equals("CLIENT", ignoreCase = true) -> {
+            "CLIENT" -> {
                 val upcoming = reservationRepository.findByClient_IdAndReservationStartAfter(userId, now)
                 val all = reservationRepository.findByClient_Id(userId)
                 
                 DashboardMetricsResponse(
                     upcomingReservationsCount = upcoming.size,
                     recentReservationsCount = all.size,
-                    lastReservationStatus = all.maxByOrNull { it.updatedAt ?: it.createdAt }?.status?.name
+                    lastReservationStatus = all.maxByOrNull { it.updatedAt ?: it.createdAt }?.status?.name ?: ""
                 )
             }
             else -> {
@@ -239,7 +254,7 @@ class DashboardService(
                     pendingBillingAmount = pendingAmount,
                     paidBillingAmount = paidAmount,
                     subscriptionStatus = "ACTIVE",
-                    specialty = profile.specialty,
+                    specialty = profile.specialty ?: "",
                     activitySeries = activitySeries
                 )
             }
@@ -273,7 +288,7 @@ class DashboardService(
                 com.duoc.app.features.dashboard.dto.FavoriteSpecialistDto(
                     specialistId = profile?.id ?: specialist.id!!,
                     name = specialist.name,
-                    specialty = profile?.specialty,
+                    specialty = profile?.specialty ?: "",
                     visitCount = reservations.size.toLong()
                 )
             }
@@ -285,8 +300,8 @@ class DashboardService(
             .map { 
                 com.duoc.app.features.dashboard.dto.NotificationSummaryDto(
                     id = it.id!!,
-                    title = it.title,
-                    message = it.message,
+                    title = it.title ?: "",
+                    message = it.message ?: "",
                     type = it.type.name,
                     isRead = it.isRead,
                     createdAt = it.createdAt
@@ -306,17 +321,17 @@ class DashboardService(
             id = this.id!!,
             client = this.client.toSummaryDto(),
             specialist = this.specialist.toSummaryDto(),
-            city = profProfile?.city,
-            address = profProfile?.address,
-            serviceId = this.service?.id,
-            serviceName = this.service?.name,
-            categoryIcon = profProfile?.category?.iconKey,
-            categoryColor = profProfile?.category?.colorHex,
+            city = profProfile?.city ?: "",
+            address = profProfile?.address ?: "",
+            serviceId = this.service?.id ?: "",
+            serviceName = this.service?.name ?: "",
+            categoryIcon = profProfile?.category?.iconKey ?: "",
+            categoryColor = profProfile?.category?.colorHex ?: "",
             isAtHome = this.service?.isAtHome ?: false,
             reservationStart = this.reservationStart,
             reservationEnd = this.reservationEnd,
             status = this.status,
-            notes = this.notes,
+            notes = this.notes ?: "",
             createdAt = this.createdAt
         )
     }

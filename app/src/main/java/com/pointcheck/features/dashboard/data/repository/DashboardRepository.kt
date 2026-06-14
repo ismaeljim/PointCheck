@@ -17,14 +17,13 @@ import retrofit2.Response
 class DashboardRepository(private val api: ApiService) {
 
     /**
-     * Obtiene las métricas principales del dashboard para un usuario y rol específicos.
+     * Obtiene las métricas principales del dashboard.
+     * La identidad y el rol se resuelven en el backend mediante el token de autenticación.
      *
-     * @param userId Identificador único del usuario.
-     * @param role Rol del usuario (ej: "CLIENT", "SPECIALIST", "ADMIN").
      * @return [Result] con el objeto [DashboardMetricsDto].
      */
-    suspend fun getDashboardMetrics(userId: String, role: String): Result<DashboardMetricsDto> {
-        return handleApiCall("Error al obtener métricas") { api.getDashboardMetrics(userId, role) }
+    suspend fun getDashboardMetrics(): Result<DashboardMetricsDto> {
+        return handleApiCall("Error al obtener métricas") { api.getDashboardMetrics() }
     }
 
     /**

@@ -15,7 +15,7 @@ data class UserSummaryDto(
     val id: String,
     val name: String,
     val rut: String,
-    val email: String? = null,
-    val phone: String? = null,
-    val profilePicture: String? = null
+    val email: String = "",
+    val phone: String = "",
+    val profilePicture: String = ""
 )

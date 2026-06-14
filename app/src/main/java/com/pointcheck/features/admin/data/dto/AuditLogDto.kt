@@ -3,20 +3,19 @@ package com.pointcheck.features.admin.data.dto
 import com.google.gson.annotations.SerializedName
 
 /**
- * DTO para los registros de auditoría del sistema.
- * 
- * Basado en la nueva estructura de trazabilidad que separa el nombre y email del actor,
- * y proporciona detalles legibles sobre el objetivo de la acción.
+ * DTO para los registros de auditoría del sistema blindado contra nulos.
+ * Se utilizan tipos nulables con valores por defecto para prevenir crashes
+ * cuando Gson deserializa JSONs incompletos del backend.
  */
 data class AuditLogDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("action") val action: String, // ej: ACCESO, CREAR, EDITAR, ELIMINAR
-    @SerializedName("performedByEmail") val performedByEmail: String,
-    @SerializedName("performedByName") val performedByName: String,
-    @SerializedName("targetType") val targetType: String, // ej: Usuario, Servicio, Cliente
-    @SerializedName("targetId") val targetId: String,
-    @SerializedName("targetName") val targetName: String?, // ej: Nombre del cliente o servicio
-    @SerializedName("details") val details: String?, // ej: "Nombre: OLD -> NEW"
-    @SerializedName("ipAddress") val ipAddress: String?,
-    @SerializedName("timestamp") val timestamp: String
+    @SerializedName("id") val id: String? = "",
+    @SerializedName("action") val action: String? = "",
+    @SerializedName("performed_by_email") val performedByEmail: String? = "",
+    @SerializedName("performed_by_name") val performedByName: String? = "",
+    @SerializedName("target_type") val targetType: String? = "",
+    @SerializedName("target_id") val targetId: String? = "",
+    @SerializedName("target_name") val targetName: String? = "",
+    @SerializedName("details") val details: String? = "",
+    @SerializedName("ip_address") val ipAddress: String? = "",
+    @SerializedName("timestamp") val timestamp: String? = ""
 )

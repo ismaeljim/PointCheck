@@ -306,16 +306,37 @@ fun ReservationCard(
 
             Spacer(Modifier.height(16.dp))
 
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val reservationDate = try { sdf.parse(res.reservationStart.substringBefore("T")) } catch (e: Exception) { null }
+            val isPast = reservationDate?.before(sdf.parse(sdf.format(Date()))) ?: false
+
             val statusUpper = res.status.uppercase()
+            val canCancel = !isPast && statusUpper != "COMPLETED" && statusUpper != "CANCELLED"
             val canAction = statusUpper != "COMPLETED" && statusUpper != "CANCELLED"
 
             if (canAction) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PCOutlinedButton(
-                        text = "Cancelar",
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f)
-                    )
+                    if (canCancel) {
+                        PCOutlinedButton(
+                            text = "Cancelar",
+                            onClick = onCancel,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else if (isPast && (statusUpper == "PENDING" || statusUpper == "PENDIENTE")) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "CITA EXPIRADA",
+                                modifier = Modifier.padding(8.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
 
                     if (isSpecialistView) {
                         PCButton(

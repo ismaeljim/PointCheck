@@ -131,19 +131,19 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { user ->
                     prefs.saveSession(
                         token = user.token,
-                        userId = user.id,
-                        name = user.name,
-                        email = user.email,
-                        role = user.role,
-                        phone = user.phone,
-                        rut = user.rut,
-                        address = user.address
+                        userId = user.id ?: "",
+                        name = user.name ?: "",
+                        email = user.email ?: "",
+                        role = user.role ?: "CLIENT",
+                        phone = user.phone ?: "",
+                        rut = user.rut ?: "",
+                        address = user.address ?: ""
                     )
                     _state.update { it.copy(
                         isLoading = false,
-                        userName = user.name,
-                        userPhone = user.phone,
-                        userAddress = user.address
+                        userName = user.name ?: "",
+                        userPhone = user.phone ?: "",
+                        userAddress = user.address ?: ""
                     ) }
                 }
                 .onFailure { e ->
@@ -163,15 +163,15 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { user ->
                     prefs.saveSession(
                         token = user.token,
-                        userId = user.id,
-                        name = user.name,
-                        email = user.email,
-                        role = user.role,
-                        phone = user.phone,
-                        rut = user.rut,
-                        address = user.address
+                        userId = user.id ?: "",
+                        name = user.name ?: "",
+                        email = user.email ?: "",
+                        role = user.role ?: "CLIENT",
+                        phone = user.phone ?: "",
+                        rut = user.rut ?: "",
+                        address = user.address ?: ""
                     )
-                    _state.update { it.copy(isLoading = false, userAddress = user.address) }
+                    _state.update { it.copy(isLoading = false, userAddress = user.address ?: "") }
                 }
                 .onFailure { e ->
                     _state.update { it.copy(isLoading = false, error = e.message) }
@@ -275,18 +275,18 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                     // Persistencia local de los datos básicos del usuario
                     prefs.saveSession(
                         token = userResponse.token,
-                        userId = userResponse.id, // UUID
-                        name = userResponse.name,
-                        email = userResponse.email,
-                        role = userResponse.role,
-                        phone = userResponse.phone,
-                        rut = userResponse.rut,
-                        address = userResponse.address
+                        userId = userResponse.id ?: "", // UUID
+                        name = userResponse.name ?: "",
+                        email = userResponse.email ?: "",
+                        role = userResponse.role ?: "CLIENT",
+                        phone = userResponse.phone ?: "",
+                        rut = userResponse.rut ?: "",
+                        address = userResponse.address ?: ""
                     )
                     
                     // Si es especialista, intentamos vincular el ID de perfil profesional inmediatamente
                     if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
-                        profileRepository.getProfileByUserId(userResponse.id)
+                        profileRepository.getProfileByUserId(userResponse.id ?: "")
                             .onSuccess { profile ->
                                 prefs.saveProfessionalProfileId(profile.id)
                             }
@@ -324,12 +324,10 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                     onResult(true)
                 }
                 .onFailure { e ->
-                    // Fallback a Mock Data para asegurar estabilidad en el rediseño
-                    Log.w("UserViewModel", "Login fallido, usando MockDataProvider: ${e.message}")
-                    val mockUser = MockDataProvider.mockUser
-                    saveUserSession(mockUser)
-                    _state.update { it.copy(isLoading = false) }
-                    onResult(true)
+                    // Eliminamos el fallback a Mock Data para sincerar los errores de red/auth
+                    Log.e("UserViewModel", "Login fallido: ${e.message}")
+                    _state.update { it.copy(isLoading = false, error = e.message ?: "Error de autenticación") }
+                    onResult(false)
                 }
         }
     }
@@ -338,18 +336,18 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
         // Guardamos la sesión encriptada/segura en DataStore
         prefs.saveSession(
             token = userResponse.token ?: MockDataProvider.mockUser.token,
-            userId = userResponse.id,
-            name = userResponse.name,
-            email = userResponse.email,
-            role = userResponse.role,
-            phone = userResponse.phone,
-            rut = userResponse.rut,
-            address = userResponse.address
+            userId = userResponse.id ?: "",
+            name = userResponse.name ?: "",
+            email = userResponse.email ?: "",
+            role = userResponse.role ?: "CLIENT",
+            phone = userResponse.phone ?: "",
+            rut = userResponse.rut ?: "",
+            address = userResponse.address ?: ""
         )
         
         // Recuperación proactiva del ID de especialista para facilitar navegación en el Dashboard
         if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
-            profileRepository.getProfileByUserId(userResponse.id)
+            profileRepository.getProfileByUserId(userResponse.id ?: "")
                 .onSuccess { profile ->
                     prefs.saveProfessionalProfileId(profile.id)
                 }

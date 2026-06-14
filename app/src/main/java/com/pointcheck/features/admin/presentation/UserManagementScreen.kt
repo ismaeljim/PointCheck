@@ -44,7 +44,7 @@ fun UserManagementScreen(
             user = user,
             categories = state.categories,
             onDismiss = { viewModel.selectUserForEdit(null) },
-            onConfirm = { request -> viewModel.updateUser(user.id, request) },
+            onConfirm = { request -> viewModel.updateUser(user.id ?: "", request) },
             isSaving = state.isSaving
         )
     }
@@ -82,7 +82,7 @@ fun UserManagementScreen(
                         UserItem(
                             user = user,
                             onEdit = { viewModel.selectUserForEdit(user) },
-                            onToggleStatus = { viewModel.toggleUserStatus(user.id) }
+                            onToggleStatus = { viewModel.toggleUserStatus(user.id?: "") }
                         )
                     }
                 }
@@ -118,11 +118,11 @@ fun UserItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = user.name, style = MaterialTheme.typography.titleMedium)
-                Text(text = user.email, style = MaterialTheme.typography.bodySmall)
-                Text(text = "RUT: ${user.rut}", style = MaterialTheme.typography.bodySmall)
+                Text(text = user.name ?: "", style = MaterialTheme.typography.titleMedium)
+                Text(text = user.email ?: "", style = MaterialTheme.typography.bodySmall)
+                Text(text = "RUT: ${user.rut ?: ""}", style = MaterialTheme.typography.bodySmall)
                 Text(
-                    text = "Rol: ${user.role}",
+                    text = "Rol: ${user.role ?: "CLIENT"}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -137,10 +137,11 @@ fun UserItem(
                     )
                 }
                 IconButton(onClick = onToggleStatus) {
+                    val isActive = user.active ?: true
                     Icon(
-                        imageVector = if (user.active) Icons.Default.Block else Icons.Default.CheckCircle,
-                        contentDescription = if (user.active) "Banear" else "Activar",
-                        tint = if (user.active) Color.Red else Color.Green
+                        imageVector = if (isActive) Icons.Default.Block else Icons.Default.CheckCircle,
+                        contentDescription = if (isActive) "Banear" else "Activar",
+                        tint = if (isActive) Color.Red else Color.Green
                     )
                 }
             }

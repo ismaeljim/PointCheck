@@ -10,20 +10,21 @@ import java.security.Principal
 
 @RestController
 @RequestMapping("/api/admin")
+@org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
 class AdminController(private val adminService: AdminService) {
 
     @GetMapping("/users")
-    fun getAllUsers(): ResponseEntity<List<User>> = ResponseEntity.ok(adminService.getAllUsers())
+    fun getAllUsers(): ResponseEntity<List<com.duoc.app.features.admin.dto.AdminUserResponse>> = ResponseEntity.ok(adminService.getAllUsers())
 
     @PatchMapping("/users/{id}/toggle-status")
-    fun toggleUserStatus(@PathVariable id: String): ResponseEntity<User> =
+    fun toggleUserStatus(@PathVariable id: String): ResponseEntity<com.duoc.app.features.admin.dto.AdminUserResponse> =
         ResponseEntity.ok(adminService.toggleUserStatus(id))
 
     @PutMapping("/users/{id}")
     fun updateUser(
         @PathVariable id: String,
         @RequestBody request: com.duoc.app.features.admin.dto.AdminUserUpdateRequest
-    ): ResponseEntity<User> =
+    ): ResponseEntity<com.duoc.app.features.admin.dto.AdminUserResponse> =
         ResponseEntity.ok(adminService.updateUser(id, request))
 
     @GetMapping("/reports/financial")

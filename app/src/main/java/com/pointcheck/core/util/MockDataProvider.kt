@@ -31,11 +31,11 @@ object MockDataProvider {
     )
 
     private val mockClientSummary = UserSummaryDto(
-        id = mockUser.id,
-        name = mockUser.name,
-        rut = mockUser.rut,
-        email = mockUser.email,
-        phone = mockUser.phone
+        id = mockUser.id ?: UUID.randomUUID().toString(),
+        name = mockUser.name ?: "Usuario Mock",
+        rut = mockUser.rut ?: "00.000.000-0",
+        email = mockUser.email ?: "",
+        phone = mockUser.phone ?: ""
     )
 
     private val mockSpecialistSummary = UserSummaryDto(
@@ -77,7 +77,7 @@ object MockDataProvider {
             reservationStart = "2024-05-22T15:30:00Z",
             reservationEnd = "2024-05-22T16:30:00Z",
             status = "PENDING",
-            notes = null,
+            notes = "",
             createdAt = "2024-05-16T14:20:00Z"
         )
     )
@@ -106,11 +106,11 @@ object MockDataProvider {
             specialist = mockSpecialistSummary,
             amount = 30000.0,
             currency = "CLP",
-            paymentMethod = null,
+            paymentMethod = "",
             status = "PENDING",
             paidAt = null,
-            externalReference = null,
-            notes = null,
+            externalReference = "",
+            notes = "",
             createdAt = "2024-05-16T14:20:00Z"
         )
     )
@@ -177,8 +177,8 @@ object MockDataProvider {
             performedByEmail = "admin@pointcheck.com",
             performedByName = "Admin",
             targetType = "USER",
-            targetId = mockUser.id,
-            targetName = mockUser.name,
+            targetId = mockUser.id ?: "",
+            targetName = mockUser.name ?: "",
             details = "Acceso exitoso al sistema",
             ipAddress = "192.168.1.1",
             timestamp = "2024-05-20T09:00:00Z"
@@ -199,7 +199,7 @@ object MockDataProvider {
 
     val mockProfessionalProfile = ProfessionalProfileResponseDto(
         id = UUID.randomUUID().toString(),
-        userId = mockUser.id,
+        userId = mockUser.id ?: "",
         categoryId = "cat_medical",
         displayName = "Dra. María González",
         businessName = "Clínica San José",

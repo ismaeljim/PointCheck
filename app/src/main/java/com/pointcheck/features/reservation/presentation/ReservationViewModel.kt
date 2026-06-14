@@ -115,15 +115,15 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             val attResult = repository.getReservationsBySpecialist(userId)
 
             resResult.onSuccess { list -> 
-                _reservations.value = list.ifEmpty { MockDataProvider.mockReservations }
+                _reservations.value = list
             }.onFailure {
-                _reservations.value = MockDataProvider.mockReservations
+                _reservations.value = emptyList()
             }
 
             attResult.onSuccess { list -> 
-                _attentions.value = list.ifEmpty { MockDataProvider.mockReservations }
+                _attentions.value = list
             }.onFailure {
-                _attentions.value = MockDataProvider.mockReservations
+                _attentions.value = emptyList()
             }
 
             _state.update { it.copy(isLoading = false) }
@@ -419,12 +419,11 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(isLoading = true) }
             repository.getReservationsByClient(userId)
                 .onSuccess { list ->
-                    _reservations.value = list.ifEmpty { MockDataProvider.mockReservations }
+                    _reservations.value = list
                     _state.update { it.copy(isLoading = false) }
                 }
                 .onFailure { e ->
-                    // Fallback a datos mock para visualización
-                    _reservations.value = MockDataProvider.mockReservations
+                    _reservations.value = emptyList()
                     _state.update { it.copy(isLoading = false) }
                 }
         }

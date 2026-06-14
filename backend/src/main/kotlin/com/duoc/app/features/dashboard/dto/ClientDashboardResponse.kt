@@ -12,7 +12,7 @@ data class ClientDashboardResponse(
 data class FavoriteSpecialistDto(
     val specialistId: String,
     val name: String,
-    val specialty: String?,
+    val specialty: String = "",
     val visitCount: Long
 )
 

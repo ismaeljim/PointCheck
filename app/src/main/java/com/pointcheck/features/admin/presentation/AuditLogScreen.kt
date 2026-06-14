@@ -20,12 +20,6 @@ import com.pointcheck.features.admin.data.dto.AuditLogDto
 
 /**
  * Pantalla para la visualización de los registros de auditoría del sistema.
- * 
- * Presenta una lista cronológica de las acciones administrativas realizadas en el sistema,
- * permitiendo rastrear cambios de estado de usuarios y otras operaciones críticas.
- * 
- * @param onBack Callback para navegar a la pantalla anterior.
- * @param viewModel ViewModel que gestiona el estado administrativo y los datos de auditoría.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +42,6 @@ fun AuditLogScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Banner informativo sobre la retención de datos
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                 modifier = Modifier.fillMaxWidth()
@@ -65,7 +58,7 @@ fun AuditLogScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "El historial se conserva por 30 días. Los registros más antiguos se eliminan automáticamente de forma mensual.",
+                        text = "El historial se conserva por 30 días.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -96,19 +89,16 @@ fun AuditLogScreen(
     }
 }
 
-/**
- * Renderiza una entrada individual del log de auditoría con el estilo visual
- * solicitado (similar a un panel de control profesional).
- */
 @Composable
 fun AuditLogItem(log: AuditLogDto) {
-    val actionColor = when (log.action.uppercase()) {
-        "ACCESO" -> Color(0xFF9C27B0) // Púrpura
-        "CREAR" -> Color(0xFF4CAF50)  // Verde
-        "EDITAR" -> Color(0xFFFF9800) // Naranja
-        "ELIMINAR" -> Color(0xFFF44336) // Rojo
-        "ACTIVAR" -> Color(0xFF2196F3) // Azul
-        "DESACTIVAR" -> Color(0xFF607D8B) // Gris azulado
+    val actionStr = log.action ?: ""
+    val actionColor = when (actionStr.uppercase()) {
+        "ACCESO" -> Color(0xFF9C27B0)
+        "CREAR" -> Color(0xFF4CAF50)
+        "EDITAR" -> Color(0xFFFF9800)
+        "ELIMINAR" -> Color(0xFFF44336)
+        "ACTIVAR" -> Color(0xFF2196F3)
+        "DESACTIVAR" -> Color(0xFF607D8B)
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -120,25 +110,25 @@ fun AuditLogItem(log: AuditLogDto) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Fila Superior: Fecha y Usuario
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // LÍNEA 130: Aplicamos encadenamiento seguro total
                 Text(
-                    text = log.timestamp.take(16).replace("T", " "),
+                    text = log.timestamp?.take(16)?.replace("T", " ") ?: "",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = log.performedByName,
+                        text = log.performedByName ?: "Sistema",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text = log.performedByEmail,
+                        text = log.performedByEmail ?: "",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -147,7 +137,6 @@ fun AuditLogItem(log: AuditLogDto) {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
 
-            // Fila Central: Acción y Entidad
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -158,7 +147,7 @@ fun AuditLogItem(log: AuditLogDto) {
                     border = androidx.compose.foundation.BorderStroke(1.dp, actionColor.copy(alpha = 0.5f))
                 ) {
                     Text(
-                        text = log.action,
+                        text = actionStr,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = actionColor
@@ -168,7 +157,7 @@ fun AuditLogItem(log: AuditLogDto) {
                 Spacer(modifier = Modifier.width(12.dp))
                 
                 Text(
-                    text = log.targetType,
+                    text = log.targetType ?: "SISTEMA",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -182,7 +171,6 @@ fun AuditLogItem(log: AuditLogDto) {
                 }
             }
 
-            // Fila Inferior: Detalles o IP
             log.details?.let {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

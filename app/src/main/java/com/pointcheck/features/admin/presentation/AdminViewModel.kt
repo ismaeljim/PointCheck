@@ -125,10 +125,13 @@ class AdminViewModel(
         val filtered = if (query.isBlank()) {
             _state.value.users
         } else {
-            _state.value.users.filter { 
-                it.name.contains(query, ignoreCase = true) || 
-                it.email.contains(query, ignoreCase = true) ||
-                it.rut.contains(query)
+            _state.value.users.filter { user ->
+                val name = user.name ?: ""
+                val email = user.email ?: ""
+                val rut = user.rut ?: ""
+                name.contains(query, ignoreCase = true) || 
+                email.contains(query, ignoreCase = true) ||
+                rut.contains(query, ignoreCase = true)
             }
         }
         _state.update { it.copy(filteredUsers = filtered) }

@@ -301,11 +301,8 @@ interface ApiService {
     /**
      * Obtiene métricas clave para el tablero principal según el rol.
      */
-    @GET("api/dashboard/metrics/{userId}")
-    suspend fun getDashboardMetrics(
-        @Path("userId") userId: String,
-        @Query("role") role: String
-    ): Response<DashboardMetricsDto>
+    @GET("api/dashboard/metrics")
+    suspend fun getDashboardMetrics(): Response<DashboardMetricsDto>
 
     /**
      * Obtiene un resumen consolidado de desempeño para reportes.

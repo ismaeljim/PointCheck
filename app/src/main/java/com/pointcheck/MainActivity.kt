@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,6 +22,10 @@ import com.pointcheck.core.navigation.AppNavigation
 import com.pointcheck.core.navigation.Screen
 import com.pointcheck.core.ui.theme.PointCheckTheme
 
+import androidx.compose.runtime.collectAsState
+import com.pointcheck.core.prefs.UserPreferences
+import kotlinx.coroutines.flow.map
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,7 +34,7 @@ class MainActivity : ComponentActivity() {
         ApiClient.init(this)
 
         setContent {
-            PointCheckApp()
+            PointCheckApp(UserPreferences(this))
         }
     }
 }
@@ -37,16 +42,22 @@ class MainActivity : ComponentActivity() {
 sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
     object Home : BottomNavItem(Screen.Dashboard.route, "Inicio", Icons.Default.Dashboard)
     object Agenda : BottomNavItem(Screen.Scheduled.route, "Agenda", Icons.Default.CalendarToday)
-    object Billing : BottomNavItem("billing_list", "Cobros", Icons.Default.AccountBalanceWallet)
+    object Billing : BottomNavItem(Screen.BillingList.route, "Cobros", Icons.Default.AccountBalanceWallet)
+    object MyPayments : BottomNavItem(Screen.AppointmentHistory.createRoute("payments"), "Mis Pagos", Icons.AutoMirrored.Filled.ReceiptLong)
+    object AdminUsers : BottomNavItem(Screen.AdminUsers.route, "Control", Icons.Default.AdminPanelSettings)
+    object AdminAudit : BottomNavItem(Screen.AdminAudit.route, "Auditoría", Icons.Default.Security)
     object Profile : BottomNavItem(Screen.Profile.route, "Perfil", Icons.Default.Person)
 }
 
 @Composable
-fun PointCheckApp() {
+fun PointCheckApp(userPrefs: UserPreferences) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    // Observamos el rol del usuario para ajustar la navegación
+    val userRole by userPrefs.role.collectAsState(initial = "CLIENT")
 
     // Pantallas donde NO se muestra la barra de navegación (Auth/Splash)
     val noBottomBarScreens = listOf(Screen.Splash.route, Screen.Login.route, Screen.Register.route, "category_selection")
@@ -61,12 +72,27 @@ fun PointCheckApp() {
                         containerColor = MaterialTheme.colorScheme.surface,
                         tonalElevation = 0.dp
                     ) {
-                        val items = listOf(
-                            BottomNavItem.Home,
-                            BottomNavItem.Agenda,
-                            BottomNavItem.Billing,
-                            BottomNavItem.Profile
-                        )
+                        val items = when (userRole?.uppercase()) {
+                            "ADMIN" -> listOf(
+                                BottomNavItem.Home,
+                                BottomNavItem.AdminUsers,
+                                BottomNavItem.AdminAudit,
+                                BottomNavItem.Profile
+                            )
+                            "SPECIALIST", "PROFESSIONAL" -> listOf(
+                                BottomNavItem.Home,
+                                BottomNavItem.Agenda,
+                                BottomNavItem.Billing,
+                                BottomNavItem.Profile
+                            )
+                            else -> listOf( // CLIENT
+                                BottomNavItem.Home,
+                                BottomNavItem.Agenda,
+                                BottomNavItem.MyPayments,
+                                BottomNavItem.Profile
+                            )
+                        }
+
                         items.forEach { item ->
                             val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
                             NavigationBarItem(

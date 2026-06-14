@@ -431,17 +431,17 @@ class ReservationService(
             id = this.id ?: "",
             client = this.client.toSummaryDto(),
             specialist = this.specialist.toSummaryDto(),
-            city = profile?.city,
-            address = profile?.address,
+            city = profile?.city ?: "",
+            address = profile?.address ?: "",
             serviceId = this.service?.id ?: "",
             serviceName = this.service?.name ?: "Servicio no especificado",
-            categoryIcon = profile?.category?.iconKey,
-            categoryColor = profile?.category?.colorHex,
+            categoryIcon = profile?.category?.iconKey ?: "medical_services",
+            categoryColor = profile?.category?.colorHex ?: "#000000",
             isAtHome = this.service?.isAtHome ?: false,
             reservationStart = this.reservationStart,
             reservationEnd = this.reservationEnd,
             status = this.status,
-            notes = this.notes,
+            notes = this.notes ?: "",
             createdAt = this.createdAt
         )
     }

@@ -53,8 +53,12 @@ class UserPreferences(private val context: Context) {
     }
 
     val token: Flow<String?> = flow {
+        // Emitimos el valor actual del SecurityManager
         emit(securityManager.getSecureString(SecurityManager.KEY_AUTH_TOKEN))
     }
+
+    // Agregamos un flow que observe cambios en el DataStore para el rol de forma más directa
+    val userRole: Flow<String> = context.dataStore.data.map { it[UserPrefsKeys.ROLE] ?: "CLIENT" }
     val userId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.USER_ID] }
     val name: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.NAME] }
     val email: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.EMAIL] }

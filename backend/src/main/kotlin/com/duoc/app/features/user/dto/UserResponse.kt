@@ -6,7 +6,7 @@ import com.duoc.app.features.user.model.UserRole
  * DTO que representa la respuesta con la información del usuario tras autenticación o registro.
  */
 data class UserResponse(
-    val id: String, // UUID estandarizado como String
+    val id: String,
     val name: String,
     val email: String,
     val rut: String,
@@ -14,5 +14,6 @@ data class UserResponse(
     val address: String? = null,
     val role: UserRole,
     val active: Boolean,
-    val categoryId: String? = null // ID de categoría si el usuario es un Especialista
+    val categoryId: String? = null,
+    val token: String? = null
 )

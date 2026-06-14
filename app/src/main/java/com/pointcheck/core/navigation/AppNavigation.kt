@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pointcheck.features.auth.presentation.LoginScreen
 import com.pointcheck.features.auth.presentation.RegisterScreen
+import com.pointcheck.features.auth.presentation.ForgotPasswordScreen
 import com.pointcheck.features.reservation.presentation.BookingScreen
 import com.pointcheck.features.reservation.presentation.ScheduledScreen
 import com.pointcheck.features.dashboard.presentation.DashboardScreen
@@ -55,6 +56,8 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     /** Pantalla de inicio de sesión. */
     object Login : Screen("login")
+    /** Pantalla de recuperación de contraseña. */
+    object ForgotPassword : Screen("forgot_password")
     /** Pantalla de registro de nuevos usuarios (Clientes y Especialistas). */
     object Register : Screen("register")
     
@@ -160,6 +163,10 @@ fun AppNavigation(
 
         composable(Screen.Splash.route) { SplashScreen(nav) }
         composable(Screen.Login.route) { LoginScreen(nav) }
+        composable(Screen.ForgotPassword.route) { 
+            // Stub para la pantalla de recuperar contraseña
+            ForgotPasswordScreen(onBack = { nav.popBackStack() })
+        }
         composable(Screen.Dashboard.route) { DashboardScreen(nav) }
         composable(Screen.Register.route) { RegisterScreen(nav, authVm) }
         
@@ -209,10 +216,26 @@ fun AppNavigation(
         }
 
         composable(Screen.Profile.route) { ProfileScreen(nav) }
-        composable(Screen.ProfessionalProfile.route) { ProfessionalProfileScreen(nav) }
-        composable(Screen.ServiceManagement.route) { ServiceListScreen(nav) }
-        composable(Screen.Subscription.route) { SubscriptionScreen(nav) }
-        composable(Screen.BillingList.route) { BillingListScreen(nav) }
+        composable(Screen.ProfessionalProfile.route) { 
+            RoleProtectedRoute(nav, authVm, listOf("SPECIALIST", "PROFESSIONAL")) {
+                ProfessionalProfileScreen(nav)
+            }
+        }
+        composable(Screen.ServiceManagement.route) { 
+            RoleProtectedRoute(nav, authVm, listOf("SPECIALIST", "PROFESSIONAL", "ADMIN")) {
+                ServiceListScreen(nav)
+            }
+        }
+        composable(Screen.Subscription.route) { 
+            RoleProtectedRoute(nav, authVm, listOf("SPECIALIST", "PROFESSIONAL")) {
+                SubscriptionScreen(nav)
+            }
+        }
+        composable(Screen.BillingList.route) { 
+            RoleProtectedRoute(nav, authVm, listOf("SPECIALIST", "PROFESSIONAL")) {
+                BillingListScreen(nav)
+            }
+        }
 
         // Módulo de Atención: Se pasa reservationId (UUID)
         composable(
@@ -259,30 +282,50 @@ fun AppNavigation(
         }
 
         composable(Screen.WeeklyReport.route) {
-            WeeklyReportScreen(nav)
+            RoleProtectedRoute(nav, authVm, listOf("SPECIALIST", "PROFESSIONAL")) {
+                WeeklyReportScreen(nav)
+            }
         }
 
         // --- Rutas de Administración (Protegidas por Rol) ---
         composable(Screen.AdminUsers.route) {
-            val userRole = authVm.state.collectAsState().value.role
-            if (userRole == "ADMIN") {
+            RoleProtectedRoute(nav, authVm, listOf("ADMIN")) {
                 UserManagementScreen(onBack = { nav.popBackStack() })
-            } else {
-                // Redirección si no es admin para evitar accesos indebidos
-                nav.navigate(Screen.Dashboard.route) {
-                    popUpTo(Screen.AdminUsers.route) { inclusive = true }
-                }
             }
         }
 
         composable(Screen.AdminAudit.route) {
-            val userRole = authVm.state.collectAsState().value.role
-            if (userRole == "ADMIN") {
+            RoleProtectedRoute(nav, authVm, listOf("ADMIN")) {
                 AuditLogScreen(onBack = { nav.popBackStack() })
-            } else {
-                nav.navigate(Screen.Dashboard.route) {
-                    popUpTo(Screen.AdminAudit.route) { inclusive = true }
-                }
+            }
+        }
+    }
+}
+
+/**
+ * Componente de protección de rutas basado en roles.
+ * Si el usuario no tiene el rol necesario, es redirigido al Dashboard.
+ */
+@Composable
+fun RoleProtectedRoute(
+    nav: NavHostController,
+    authVm: UserViewModel,
+    allowedRoles: List<String>,
+    content: @Composable () -> Unit
+) {
+    val userState by authVm.state.collectAsState()
+    val userRole = userState.role?.uppercase()
+
+    if (userRole == null) {
+        // Si aún no carga el rol, podríamos mostrar un loading o esperar
+        // Por ahora, asumimos que el Splash ya validó la sesión
+        content()
+    } else if (userRole in allowedRoles) {
+        content()
+    } else {
+        LaunchedEffect(Unit) {
+            nav.navigate(Screen.Dashboard.route) {
+                popUpTo(0) { inclusive = true }
             }
         }
     }

@@ -146,6 +146,21 @@ fun LoginScreen(
                         isLoading = s.isLoading,
                         enabled = email.isNotBlank() && password.isNotBlank()
                     )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Link para recuperación de contraseña
+                    TextButton(
+                        onClick = { nav.navigate(Screen.ForgotPassword.route) },
+                        modifier = Modifier.align(Alignment.End),
+                        enabled = !s.isLoading
+                    ) {
+                        Text(
+                            "¿Olvidaste tu contraseña?",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             

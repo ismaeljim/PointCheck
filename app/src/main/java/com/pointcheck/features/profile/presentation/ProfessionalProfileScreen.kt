@@ -53,6 +53,7 @@ fun ProfessionalProfileScreen(
     var phone by remember { mutableStateOf("") }
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var expandedCategory by remember { mutableStateOf(false) }
+    var syncAddressWithUser by remember { mutableStateOf(true) }
     
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
@@ -75,13 +76,13 @@ fun ProfessionalProfileScreen(
     // Sincronizar campos cuando el perfil carga
     LaunchedEffect(s.profile, s.rut, s.phone) {
         s.profile?.let {
-            displayName = it.displayName ?: ""
-            businessName = it.businessName ?: ""
-            specialty = it.specialty ?: ""
-            description = it.description ?: ""
-            address = it.address ?: ""
-            city = it.city ?: ""
-            duration = (it.defaultSessionDurationMinutes ?: 30).toString()
+            displayName = it.displayName
+            businessName = it.businessName
+            specialty = it.specialty
+            description = it.description
+            address = it.address
+            city = it.city
+            duration = it.defaultSessionDurationMinutes.toString()
             selectedCategoryId = it.categoryId
             latitude = it.latitude
             longitude = it.longitude
@@ -371,6 +372,22 @@ fun ProfessionalProfileScreen(
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                 }
+
+                                if (s.isEditing) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Checkbox(
+                                            checked = syncAddressWithUser,
+                                            onCheckedChange = { syncAddressWithUser = it }
+                                        )
+                                        Text(
+                                            "Actualizar mi dirección personal también",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -402,7 +419,8 @@ fun ProfessionalProfileScreen(
                                     rut,
                                     phone,
                                     latitude,
-                                    longitude
+                                    longitude,
+                                    updateBaseAddress = syncAddressWithUser
                                 )
                             },
                             isLoading = s.isLoading,

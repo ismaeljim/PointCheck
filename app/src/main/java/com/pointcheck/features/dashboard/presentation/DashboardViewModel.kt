@@ -88,8 +88,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun loadDashboard() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            Log.d("DashboardVM", "loadDashboard() ejecutado")
-            _state.update { it.copy(isLoading = true, error = null) }
+            Log.d("DashboardVM", "loadDashboard() ejecutado con limpieza de estado")
+            // AISLAMIENTO: Limpieza total de caché de UI para evitar mezclar datos de roles
+            _state.value = DashboardUiState(isLoading = true)
             
             try {
                 val userId = prefs.userId.first()
@@ -105,44 +106,44 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
                     if (role == "ADMIN") {
                         Log.d("DashboardVM", "Cargando datos ADMIN")
-                        repository.getDashboardMetrics(userId, role)
+                        repository.getDashboardMetrics()
                             .onSuccess { metrics ->
                                 _state.update { it.copy(metrics = metrics) }
                             }
-                            .onFailure {
-                                _state.update { it.copy(metrics = MockDataProvider.mockMetrics) }
+                            .onFailure { e ->
+                                Log.e("DashboardVM", "Error obteniendo métricas admin: ${e.message}")
+                                _state.update { it.copy(error = "Error al cargar métricas: ${e.message}") }
                             }
                         loadAdminData()
                     } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
                         Log.d("DashboardVM", "Cargando datos SPECIALIST")
                         
                         // 1. Cargar métricas generales para verificar estado del perfil
-                        repository.getDashboardMetrics(userId, role)
-                            .onSuccess { metrics ->
-                                if (!metrics.isProfileComplete) {
-                                    _state.update { it.copy(error = "PROFILE_INCOMPLETE", isLoading = false) }
-                                } else {
-                                    _state.update { it.copy(metrics = metrics) }
-                                    // Guardar especialidad si cambió
-                                    metrics.specialty?.let { sp ->
-                                        viewModelScope.launch { prefs.saveSpecialty(sp) }
-                                    }
+                        val metricsResult = repository.getDashboardMetrics()
+                        metricsResult.onSuccess { metrics ->
+                            if (metrics.isProfileComplete == false) {
+                                _state.update { it.copy(error = "PROFILE_INCOMPLETE", isLoading = false) }
+                            } else {
+                                _state.update { it.copy(metrics = metrics) }
+                                // Guardar especialidad si cambió
+                                metrics.specialty?.let { sp ->
+                                    viewModelScope.launch { prefs.saveSpecialty(sp) }
                                 }
                             }
-                            .onFailure {
-                                _state.update { it.copy(metrics = MockDataProvider.mockMetrics) }
-                            }
+                        }.onFailure { e ->
+                            Log.e("DashboardVM", "Error obteniendo métricas specialist: ${e.message}")
+                            _state.update { it.copy(error = "Error al cargar métricas: ${e.message}") }
+                        }
 
                         // 2. Cargar resumen de reportes
-                        repository.getReportSummaryBySpecialist(userId)
-                            .onSuccess { summary ->
-                                Log.d("DashboardVM", "Reporte cargado con éxito")
-                                _state.update { it.copy(reportSummary = summary, isLoading = false) }
-                            }
-                            .onFailure { e ->
-                                Log.e("DashboardVM", "Error en reporte, usando mock: ${e.message}")
-                                _state.update { it.copy(reportSummary = MockDataProvider.mockReportSummary, isLoading = false) }
-                            }
+                        val summaryResult = repository.getReportSummaryBySpecialist(userId)
+                        summaryResult.onSuccess { summary ->
+                            Log.d("DashboardVM", "Reporte cargado con éxito")
+                            _state.update { it.copy(reportSummary = summary, isLoading = false) }
+                        }.onFailure { e ->
+                            Log.e("DashboardVM", "Error en reporte: ${e.message}")
+                            _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
+                        }
                     } else {
                         Log.d("DashboardVM", "Cargando datos CLIENT")
                         repository.getClientDashboard(userId)
@@ -155,8 +156,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                                 }
                             }
                             .onFailure { e ->
-                                Log.e("DashboardVM", "Error en dashboard cliente, usando mock: ${e.message}")
-                                _state.update { it.copy(clientDashboard = MockDataProvider.mockClientDashboard, isLoading = false) }
+                                Log.e("DashboardVM", "Error en dashboard cliente: ${e.message}")
+                                _state.update { it.copy(error = "Error al cargar dashboard: ${e.message}", isLoading = false) }
                             }
                     }
                 } else {
@@ -176,8 +177,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     /**
      * Carga datos extendidos para usuarios con rol de Administrador.
      */
-    private fun loadAdminData() {
+    fun loadAdminData() {
         viewModelScope.launch {
+            _state.update { it.copy(error = null) } // Limpiamos errores previos al reintentar
             // Cargar usuarios para auditoría
             repository.getAllUsers()
                 .onSuccess { users ->
@@ -187,7 +189,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             // Cargar configuraciones
             repository.getSettings()
                 .onSuccess { settings ->
-                    _state.update { it.copy(adminSettings = settings) }
+                    val finalSettings = if (settings.isEmpty()) {
+                        listOf(
+                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "IVA", value = "19", description = "Porcentaje de IVA"),
+                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "COMMISSION_PERCENTAGE", value = "10", description = "Comisión de la plataforma"),
+                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "TOLERANCE_MINUTES", value = "15", description = "Tiempo de tolerancia para citas"),
+                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "PLATFORM_ENABLED", value = "true", description = "Habilitar acceso global")
+                        )
+                    } else settings
+                    _state.update { it.copy(adminSettings = finalSettings) }
                 }
             
             // Cargar reporte financiero global
@@ -202,6 +212,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     _state.update { it.copy(auditLogs = logs, isLoading = false) }
                 }
                 .onFailure { e ->
+                    Log.e("DashboardVM", "Error cargando logs: ${e.message}")
                     _state.update { it.copy(error = "Error Admin: ${e.message}", isLoading = false) }
                 }
         }

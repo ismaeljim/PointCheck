@@ -25,10 +25,10 @@ fun EditUserDialog(
     onConfirm: (AdminUserUpdateRequestDto) -> Unit,
     isSaving: Boolean = false
 ) {
-    var name by remember { mutableStateOf(user.name) }
-    var phone by remember { mutableStateOf(user.phone) }
+    var name by remember { mutableStateOf(user.name ?: "") }
+    var phone by remember { mutableStateOf(user.phone ?: "") }
     var address by remember { mutableStateOf(user.address ?: "") }
-    var role by remember { mutableStateOf(user.role) }
+    var role by remember { mutableStateOf(user.role ?: "CLIENT") }
     var selectedCategoryId by remember { mutableStateOf(user.categoryId ?: "") }
     var expandedRole by remember { mutableStateOf(false) }
     var expandedCat by remember { mutableStateOf(false) }

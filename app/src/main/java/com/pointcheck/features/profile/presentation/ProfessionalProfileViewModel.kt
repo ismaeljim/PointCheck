@@ -145,15 +145,7 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                     prefs.saveProfessionalProfileId(profile.id)
                 }
                 .onFailure { e ->
-                    // Fallback a MockDataProvider para estabilidad en el rediseño
-                    val mockProfile = MockDataProvider.mockProfessionalProfile
-                    val workingHours = try {
-                        val type = object : TypeToken<Map<String, DayConfig>>() {}.type
-                        gson.fromJson<Map<String, DayConfig>>(mockProfile.workingHoursJson, type)
-                    } catch (ex: Exception) {
-                        _state.value.workingHours
-                    }
-                    _state.update { it.copy(profile = mockProfile, isLoading = false, workingHours = workingHours) }
+                    _state.update { it.copy(profile = null, isLoading = false) }
                 }
         }
     }
@@ -176,6 +168,7 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
      * @param phone Teléfono de contacto.
      * @param latitude Coordenada de latitud GPS opcional.
      * @param longitude Coordenada de longitud GPS opcional.
+     * @param updateBaseAddress Si es verdadero, actualiza también la dirección base del usuario.
      */
     fun saveProfile(
         categoryId: String?,
@@ -189,7 +182,8 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
         rut: String,
         phone: String,
         latitude: Double? = null,
-        longitude: Double? = null
+        longitude: Double? = null,
+        updateBaseAddress: Boolean = false
     ) {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
@@ -248,6 +242,31 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
             result.onSuccess { updated ->
                 _state.update { it.copy(profile = updated, isLoading = false, successMessage = "Perfil guardado con éxito", isEditing = false) }
                 prefs.saveProfessionalProfileId(updated.id)
+
+                // Sincronización de dirección si se solicita
+                if (updateBaseAddress) {
+                    val authApi = ApiClient.retrofitInstance.create(com.pointcheck.core.network.ApiService::class.java)
+                    try {
+                        val response = authApi.updateUserAddress(userId, address)
+                        if (response.isSuccessful) {
+                            val user = response.body()
+                            if (user != null) {
+                                prefs.saveSession(
+                                    token = user.token,
+                                    userId = user.id ?: "",
+                                    name = user.name ?: "",
+                                    email = user.email ?: "",
+                                    role = user.role ?: "CLIENT",
+                                    phone = user.phone ?: "",
+                                    rut = user.rut ?: "",
+                                    address = user.address ?: ""
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Error no crítico para el perfil profesional
+                    }
+                }
             }.onFailure { e ->
                 _state.update { it.copy(isLoading = false, error = "Error al guardar perfil: ${e.message}") }
             }
