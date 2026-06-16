@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.attentions.data.dto.AttentionResponseDto
 import com.pointcheck.features.attentions.data.repository.AttentionRepository
-import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -60,21 +59,17 @@ class AttentionViewModel(application: Application) : AndroidViewModel(applicatio
     fun loadAttentionByReservation(reservationId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.getAttentionsByReservation(reservationId)
-                .onSuccess { attentions ->
-                    val lastAttention = attentions.lastOrNull() ?: MockDataProvider.mockAttentions.first()
+            repository.getAttentionByReservation(reservationId)
+                .onSuccess { attention ->
                     _state.update { it.copy(
-                        currentAttention = lastAttention,
-                        observations = lastAttention.observations ?: "",
+                        currentAttention = attention,
+                        observations = attention.observations ?: "",
                         isLoading = false
                     ) }
                 }
                 .onFailure { e ->
-                    // Fallback a MockDataProvider para estabilidad en el rediseño
-                    val mockAttention = MockDataProvider.mockAttentions.first()
                     _state.update { it.copy(
-                        currentAttention = mockAttention,
-                        observations = mockAttention.observations ?: "",
+                        error = "No se pudo cargar la atención: ${e.message}",
                         isLoading = false
                     ) }
                 }

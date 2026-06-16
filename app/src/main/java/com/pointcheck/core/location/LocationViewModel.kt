@@ -119,33 +119,4 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     fun clearSuggestions() {
         _state.update { it.copy(addressSuggestions = emptyList()) }
     }
-
-    /**
-     * Convierte una dirección de texto en coordenadas geográficas (Lat/Lng).
-     *
-     * @param address Dirección completa en texto.
-     * @return Par de Latitud y Longitud, o null si no se pudo geocodificar.
-     */
-    suspend fun getLatLngFromAddress(address: String): Pair<Double, Double>? = suspendCancellableCoroutine { continuation ->
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                geocoder.getFromLocationName(address, 1, object : Geocoder.GeocodeListener {
-                    override fun onGeocode(addresses: MutableList<Address>) {
-                        val loc = addresses.firstOrNull()?.let { it.latitude to it.longitude }
-                        continuation.resume(loc)
-                    }
-                    override fun onError(errorMessage: String?) {
-                        continuation.resume(null)
-                    }
-                })
-            } else {
-                @Suppress("DEPRECATION")
-                val addresses = geocoder.getFromLocationName(address, 1)
-                val loc = addresses?.firstOrNull()?.let { it.latitude to it.longitude }
-                continuation.resume(loc)
-            }
-        } catch (e: Exception) {
-            continuation.resume(null)
-        }
-    }
 }

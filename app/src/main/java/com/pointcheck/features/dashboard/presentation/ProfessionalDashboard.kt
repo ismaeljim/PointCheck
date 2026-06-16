@@ -115,6 +115,8 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: D
         Spacer(Modifier.height(8.dp))
         PCOutlinedButton(text = "Mi Agenda", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
+        PCOutlinedButton(text = "Mis Cobros", icon = Icons.Default.Payments, onClick = { nav.navigate(Screen.BillingList.route) }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
         PCOutlinedButton(text = "Servicios", icon = Icons.AutoMirrored.Filled.List, onClick = { nav.navigate(Screen.ServiceManagement.route) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         PCOutlinedButton(text = "Suscripción", icon = Icons.Default.Star, onClick = { nav.navigate(Screen.Subscription.route) }, modifier = Modifier.fillMaxWidth())

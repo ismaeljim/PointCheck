@@ -11,7 +11,7 @@ import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import com.pointcheck.features.services.data.dto.ServiceResponseDto
 import com.pointcheck.features.reservation.data.dto.SpecialistResponseDto
 import com.pointcheck.features.reservation.data.repository.ReservationRepository
-import com.pointcheck.core.util.MockDataProvider
+import com.pointcheck.core.notifications.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -73,6 +73,7 @@ data class BookingUiState(
 class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = ReservationRepository(ApiClient.instance)
     private val prefs = UserPreferences(app)
+    private val scheduler = ReminderScheduler(app)
 
     private val _state = MutableStateFlow(BookingUiState())
     val state: StateFlow<BookingUiState> = _state
@@ -109,21 +110,34 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             
-            // Cargar Mis Reservas (como cliente)
-            val resResult = repository.getReservationsByClient(userId)
-            // Cargar Mis Atenciones (como especialista)
-            val attResult = repository.getReservationsBySpecialist(userId)
+            val role = prefs.role.first() ?: "CLIENT"
 
-            resResult.onSuccess { list -> 
-                _reservations.value = list
-            }.onFailure {
-                _reservations.value = emptyList()
-            }
+            if (role == "ADMIN") {
+                // Modo Administrador: Cargar todas las reservas del sistema
+                repository.getAllReservations()
+                    .onSuccess { list ->
+                        _reservations.value = list
+                        _attentions.value = emptyList() // Admin no tiene atenciones propias por ahora
+                    }
+                    .onFailure {
+                        _reservations.value = emptyList()
+                    }
+            } else {
+                // Modo Usuario: Cargar Mis Reservas y Mis Atenciones
+                val resResult = repository.getReservationsByClient(userId)
+                val attResult = repository.getReservationsBySpecialist(userId)
 
-            attResult.onSuccess { list -> 
-                _attentions.value = list
-            }.onFailure {
-                _attentions.value = emptyList()
+                resResult.onSuccess { list -> 
+                    _reservations.value = list
+                }.onFailure {
+                    _reservations.value = emptyList()
+                }
+
+                attResult.onSuccess { list -> 
+                    _attentions.value = list
+                }.onFailure {
+                    _attentions.value = emptyList()
+                }
             }
 
             _state.update { it.copy(isLoading = false) }
@@ -438,6 +452,14 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         val s = _state.value
         if (!validate(s)) return
 
+        val specialistId = s.selectedProfessional?.id
+        val serviceId = s.selectedService?.id
+
+        if (specialistId == null || serviceId == null) {
+            _state.update { it.copy(error = "Información de selección incompleta") }
+            return
+        }
+
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             val userId = prefs.userId.first() ?: return@launch
@@ -447,8 +469,8 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             
             val request = ReservationRequestDto(
                 clientId = userId,
-                specialistId = s.selectedProfessional!!.id,
-                serviceId = s.selectedService!!.id,
+                specialistId = specialistId,
+                serviceId = serviceId,
                 reservationStart = startStr,
                 notes = s.notes,
                 paymentMethod = s.paymentMethod
@@ -457,6 +479,19 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             repository.createReservation(request)
                 .onSuccess {
                     _state.update { it.copy(isLoading = false, successMessage = "Reserva creada con éxito") }
+                    
+                    // Programar recordatorio local 1 hora antes del inicio
+                    s.reservationStartMillis?.let { startMillis ->
+                        val reminderTime = startMillis - (60 * 60 * 1000) // 1 hora antes
+                        if (reminderTime > System.currentTimeMillis()) {
+                            scheduler.scheduleAt(
+                                reminderTime,
+                                "Recordatorio de Cita",
+                                "Tu cita para ${s.selectedService?.name} comienza en 1 hora."
+                            )
+                        }
+                    }
+
                     onDone()
                 }
                 .onFailure { e ->

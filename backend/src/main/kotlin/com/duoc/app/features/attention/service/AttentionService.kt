@@ -150,6 +150,16 @@ class AttentionService(
         return attentionRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 
+    /**
+     * Obtiene una atención por su ID de reserva.
+     *
+     * @param reservationId ID de la reserva.
+     * @return [AttentionResponse] si se encuentra, null de lo contrario.
+     */
+    fun getByReservationId(reservationId: String): AttentionResponse? {
+        return attentionRepository.findByReservation_Id(reservationId)?.toResponse()
+    }
+
     private fun Attention.toResponse(): AttentionResponse = AttentionResponse(
         id = this.id!!,
         reservationId = this.reservation.id!!,

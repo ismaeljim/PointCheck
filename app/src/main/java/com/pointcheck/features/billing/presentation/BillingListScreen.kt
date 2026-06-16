@@ -30,7 +30,6 @@ fun BillingListScreen(
 ) {
     val s by vm.state.collectAsState()
     // In a real scenario, we'd get the specialistId from a UserViewModel or Preferences
-    // For now, let's trigger a load (MockDataProvider will handle empty/fail)
     LaunchedEffect(Unit) {
         vm.loadBillingBySpecialist("current_user_id")
     }

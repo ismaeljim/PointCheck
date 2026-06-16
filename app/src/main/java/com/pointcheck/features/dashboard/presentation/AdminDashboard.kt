@@ -100,7 +100,7 @@ fun AdminDashboard(
                 value = (m.appointmentsToday ?: 0).toString(),
                 icon = Icons.AutoMirrored.Filled.EventNote,
                 modifier = Modifier.weight(1f),
-                onClick = { showAppointmentsInfo = true } 
+                onClick = { nav.navigate(Screen.Scheduled.createRoute("today")) }
             )
             MetricCard(
                 label = "Alertas Sist.",

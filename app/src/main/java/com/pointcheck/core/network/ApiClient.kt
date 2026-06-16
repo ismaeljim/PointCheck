@@ -13,7 +13,7 @@ import android.content.Context
  */
 object ApiClient {
     
-    private const val BASE_URL = "http://192.168.100.74:8080/"
+    private const val BASE_URL = "http://10.24.11.114:8080/"
     private lateinit var apiService: ApiService
     private lateinit var retrofit: Retrofit
 

@@ -44,7 +44,11 @@ fun UserManagementScreen(
             user = user,
             categories = state.categories,
             onDismiss = { viewModel.selectUserForEdit(null) },
-            onConfirm = { request -> viewModel.updateUser(user.id ?: "", request) },
+            onConfirm = { request -> 
+                user.id?.let { id -> 
+                    viewModel.updateUser(id, request) 
+                } ?: viewModel.clearError() // O manejar error de ID faltante
+            },
             isSaving = state.isSaving
         )
     }

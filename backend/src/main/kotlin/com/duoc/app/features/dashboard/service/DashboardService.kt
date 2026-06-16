@@ -31,6 +31,7 @@ import com.duoc.app.features.dashboard.dto.ReportSummaryResponse
  * @property notificationService Servicio para integrar alertas recientes en la vista del dashboard.
  */
 @Service
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 class DashboardService(
     private val reservationRepository: ReservationRepository,
     private val attentionRepository: AttentionRepository,
@@ -316,18 +317,20 @@ class DashboardService(
     }
 
     private fun com.duoc.app.features.reservation.model.Reservation.toResponse(): com.duoc.app.features.reservation.dto.ReservationResponse {
-        val profProfile = this.service?.professionalProfile
+        val currentService = this.service
+        val profProfile = currentService?.professionalProfile
+        
         return com.duoc.app.features.reservation.dto.ReservationResponse(
-            id = this.id!!,
+            id = this.id ?: "",
             client = this.client.toSummaryDto(),
             specialist = this.specialist.toSummaryDto(),
             city = profProfile?.city ?: "",
             address = profProfile?.address ?: "",
-            serviceId = this.service?.id ?: "",
-            serviceName = this.service?.name ?: "",
-            categoryIcon = profProfile?.category?.iconKey ?: "",
-            categoryColor = profProfile?.category?.colorHex ?: "",
-            isAtHome = this.service?.isAtHome ?: false,
+            serviceId = currentService?.id ?: "",
+            serviceName = currentService?.name ?: "Servicio no especificado",
+            categoryIcon = profProfile?.category?.iconKey ?: "event",
+            categoryColor = profProfile?.category?.colorHex ?: "#757575",
+            isAtHome = currentService?.isAtHome ?: false,
             reservationStart = this.reservationStart,
             reservationEnd = this.reservationEnd,
             status = this.status,

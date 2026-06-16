@@ -36,4 +36,11 @@ class AttentionController(
     fun getHistoryByClient(@PathVariable clientId: String): ResponseEntity<List<AttentionResponse>> {
         return ResponseEntity.ok(attentionService.getHistoryByClient(clientId))
     }
+
+    @GetMapping("/reservation/{reservationId}")
+    fun getByReservationId(@PathVariable reservationId: String): ResponseEntity<AttentionResponse> {
+        val attention = attentionService.getByReservationId(reservationId)
+            ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(attention)
+    }
 }

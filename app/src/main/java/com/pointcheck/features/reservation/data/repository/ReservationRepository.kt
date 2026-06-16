@@ -150,6 +150,13 @@ class ReservationRepository(private val api: ApiService) {
     }
 
     /**
+     * Obtiene todas las reservas del sistema (Solo ADMIN).
+     */
+    suspend fun getAllReservations(): Result<List<ReservationResponseDto>> {
+        return handleApiCall("Error al obtener todas las reservas") { api.getAllReservations() }
+    }
+
+    /**
      * Función genérica para manejar llamadas a la API y centralizar el tratamiento de errores.
      */
     private suspend fun <T> handleApiCall(errorMsg: String, call: suspend () -> Response<T>): Result<T> {

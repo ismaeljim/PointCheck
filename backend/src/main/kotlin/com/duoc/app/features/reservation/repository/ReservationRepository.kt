@@ -53,4 +53,7 @@ interface ReservationRepository : JpaRepository<Reservation, String> {
         start: LocalDateTime,
         status: ReservationStatus
     ): Boolean
+
+    @EntityGraph(attributePaths = ["client", "specialist"])
+    fun findByStatusAndReservationStartBefore(status: ReservationStatus, dateTime: LocalDateTime): List<Reservation>
 }

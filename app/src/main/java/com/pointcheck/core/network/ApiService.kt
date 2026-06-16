@@ -219,6 +219,14 @@ interface ApiService {
         @Path("clientId") clientId: String
     ): Response<List<AttentionResponseDto>>
 
+    /**
+     * Obtiene una atención por el ID de su reserva.
+     */
+    @GET("api/attentions/reservation/{reservationId}")
+    suspend fun getAttentionByReservation(
+        @Path("reservationId") reservationId: String
+    ): Response<AttentionResponseDto>
+
     // --- Endpoints de Facturación (Billing) ---
 
     /**
@@ -419,6 +427,12 @@ interface ApiService {
      */
     @GET("api/admin/audit-logs")
     suspend fun getAuditLogs(): Response<List<com.pointcheck.features.admin.data.dto.AuditLogDto>>
+
+    /**
+     * Obtiene todas las reservas del sistema para supervisión global (Solo ADMIN).
+     */
+    @GET("api/admin/reservations")
+    suspend fun getAllReservations(): Response<List<ReservationResponseDto>>
 
     // --- Endpoints de Usuarios ---
 

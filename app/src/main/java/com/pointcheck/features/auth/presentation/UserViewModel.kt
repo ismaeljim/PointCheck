@@ -12,7 +12,6 @@ import com.pointcheck.features.auth.data.dto.RegisterRequestDto
 import com.pointcheck.features.auth.data.repository.AuthRepository
 import com.pointcheck.features.profile.data.repository.ProfessionalProfileRepository
 import com.pointcheck.core.util.RutUtils
-import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -131,13 +130,13 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { user ->
                     prefs.saveSession(
                         token = user.token,
-                        userId = user.id ?: "",
-                        name = user.name ?: "",
-                        email = user.email ?: "",
-                        role = user.role ?: "CLIENT",
-                        phone = user.phone ?: "",
-                        rut = user.rut ?: "",
-                        address = user.address ?: ""
+                        userId = user.id,
+                        name = user.name,
+                        email = user.email,
+                        role = user.role,
+                        phone = user.phone,
+                        rut = user.rut,
+                        address = user.address
                     )
                     _state.update { it.copy(
                         isLoading = false,
@@ -163,13 +162,13 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { user ->
                     prefs.saveSession(
                         token = user.token,
-                        userId = user.id ?: "",
-                        name = user.name ?: "",
-                        email = user.email ?: "",
-                        role = user.role ?: "CLIENT",
-                        phone = user.phone ?: "",
-                        rut = user.rut ?: "",
-                        address = user.address ?: ""
+                        userId = user.id,
+                        name = user.name,
+                        email = user.email,
+                        role = user.role,
+                        phone = user.phone,
+                        rut = user.rut,
+                        address = user.address
                     )
                     _state.update { it.copy(isLoading = false, userAddress = user.address ?: "") }
                 }
@@ -275,24 +274,26 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
                     // Persistencia local de los datos básicos del usuario
                     prefs.saveSession(
                         token = userResponse.token,
-                        userId = userResponse.id ?: "", // UUID
-                        name = userResponse.name ?: "",
-                        email = userResponse.email ?: "",
-                        role = userResponse.role ?: "CLIENT",
-                        phone = userResponse.phone ?: "",
-                        rut = userResponse.rut ?: "",
-                        address = userResponse.address ?: ""
+                        userId = userResponse.id, // UUID
+                        name = userResponse.name,
+                        email = userResponse.email,
+                        role = userResponse.role,
+                        phone = userResponse.phone,
+                        rut = userResponse.rut,
+                        address = userResponse.address
                     )
                     
                     // Si es especialista, intentamos vincular el ID de perfil profesional inmediatamente
                     if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
-                        profileRepository.getProfileByUserId(userResponse.id ?: "")
-                            .onSuccess { profile ->
-                                prefs.saveProfessionalProfileId(profile.id)
-                            }
-                            .onFailure { e ->
-                                Log.e("UserViewModel", "Perfil no creado automáticamente: ${e.message}")
-                            }
+                        userResponse.id?.let { id ->
+                            profileRepository.getProfileByUserId(id)
+                                .onSuccess { profile ->
+                                    prefs.saveProfessionalProfileId(profile.id)
+                                }
+                                .onFailure { e ->
+                                    Log.e("UserViewModel", "Perfil no creado automáticamente: ${e.message}")
+                                }
+                        }
                     }
 
                     s.avatarUri?.let { prefs.setAvatar(it) }
@@ -335,25 +336,27 @@ class UserViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun saveUserSession(userResponse: com.pointcheck.features.auth.data.dto.UserResponseDto) {
         // Guardamos la sesión encriptada/segura en DataStore
         prefs.saveSession(
-            token = userResponse.token ?: MockDataProvider.mockUser.token,
-            userId = userResponse.id ?: "",
-            name = userResponse.name ?: "",
-            email = userResponse.email ?: "",
-            role = userResponse.role ?: "CLIENT",
-            phone = userResponse.phone ?: "",
-            rut = userResponse.rut ?: "",
-            address = userResponse.address ?: ""
+            token = userResponse.token,
+            userId = userResponse.id,
+            name = userResponse.name,
+            email = userResponse.email,
+            role = userResponse.role,
+            phone = userResponse.phone,
+            rut = userResponse.rut,
+            address = userResponse.address
         )
         
         // Recuperación proactiva del ID de especialista para facilitar navegación en el Dashboard
         if (userResponse.role == "SPECIALIST" || userResponse.role == "PROFESSIONAL") {
-            profileRepository.getProfileByUserId(userResponse.id ?: "")
-                .onSuccess { profile ->
-                    prefs.saveProfessionalProfileId(profile.id)
-                }
-                .onFailure { e ->
-                    Log.e("UserViewModel", "Error recuperando ID de perfil: ${e.message}")
-                }
+            userResponse.id?.let { id ->
+                profileRepository.getProfileByUserId(id)
+                    .onSuccess { profile ->
+                        prefs.saveProfessionalProfileId(profile.id)
+                    }
+                    .onFailure { e ->
+                        Log.e("UserViewModel", "Error recuperando ID de perfil: ${e.message}")
+                    }
+            }
         }
     }
 

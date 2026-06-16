@@ -6,7 +6,6 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 import com.pointcheck.features.admin.data.repository.AdminRepository
 import com.pointcheck.features.auth.data.dto.UserResponseDto
-import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -76,14 +75,13 @@ class AdminViewModel(
      */
     fun loadUsers() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             repository.getAllUsers()
                 .onSuccess { users ->
-                    val finalUsers = users.ifEmpty { MockDataProvider.mockUsers }
-                    _state.update { it.copy(users = finalUsers, filteredUsers = finalUsers, isLoading = false) }
+                    _state.update { it.copy(users = users, filteredUsers = users, isLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(users = MockDataProvider.mockUsers, filteredUsers = MockDataProvider.mockUsers, isLoading = false) }
+                    _state.update { it.copy(users = emptyList(), filteredUsers = emptyList(), error = e.message, isLoading = false) }
                 }
         }
     }
@@ -94,14 +92,13 @@ class AdminViewModel(
      */
     fun loadAuditLogs() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             repository.getAuditLogs()
                 .onSuccess { logs ->
-                    val finalLogs = logs.ifEmpty { MockDataProvider.mockAuditLogs }
-                    _state.update { it.copy(auditLogs = finalLogs, isLoading = false) }
+                    _state.update { it.copy(auditLogs = logs, isLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(auditLogs = MockDataProvider.mockAuditLogs, isLoading = false) }
+                    _state.update { it.copy(auditLogs = emptyList(), error = e.message, isLoading = false) }
                 }
         }
     }

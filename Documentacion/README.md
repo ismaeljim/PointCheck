@@ -43,21 +43,26 @@ Se ha auditado la capa de presentación y las integraciones externas:
 
 1. **Arquitectura de Componentes Reutilizables**:
    - **Atomicidad**: Implementación de `AppComponents.kt` con estilos estandarizados en Material3.
-   - **Feedback Visual**: Uso de Skeleton Loading (Shimmer Effect) en el Dashboard para mejorar la percepción de rendimiento.
-   - **UX Adaptativa**: Formularios dinámicos que cambian según el tipo de dato (ej: `DayScheduleRow` con selectores de tiempo nativos).
+   - **Feedback Visual**: Uso de `PCCard` con soporte para colores semánticos (`containerColor`) para estados de éxito, advertencia y error (ej: "No-Show").
+   - **UX Adaptativa**: Formularios dinámicos que cambian según el tipo de dato.
 
 2. **Dashboard Polimórfico**:
-   - **Personalización por Rol**: Tres vistas distintas (Admin, Profesional, Cliente) centralizadas en un único punto de entrada con lógica de navegación segregada.
-   - **Centro de Notificaciones**: Sistema de alertas in-app con estados de lectura persistentes.
+   - **Personalización por Rol**: Tres vistas distintas (Admin, Profesional, Cliente) centralizadas en un único punto de entrada.
+   - **Centro de Notificaciones**: Implementación base de `ReminderScheduler` para alertas locales (Pendiente integración con flujo de reservas).
 
 3. **Integraciones Externas**:
-   - **Geolocalización Inversa**: Uso de Intents implícitos para delegar la navegación a aplicaciones de mapas (Google Maps) mediante coordenadas o direcciones textuales.
-   - **Motor de Clima (Weather Integration)**: Consumo asíncrono de la API de OpenWeather para ofrecer sugerencias contextuales al usuario basadas en las condiciones meteorológicas del día de su cita.
-   - **Auditoría de Logs**: Pantalla administrativa para supervisión de cambios críticos en el sistema (cambio de roles, desactivación de usuarios).
+   - **Geolocalización**: `LocationViewModel` preparado para geocodificación inversa y sugerencias de direcciones (En uso en Perfil Profesional).
+   - **Motor de Clima**: Consumo de OpenWeather para contexto en el Dashboard.
 
-4. **Brechas Detectadas**:
-   - **Permisos**: Falta solicitud explícita de permisos de ubicación `ACCESS_FINE_LOCATION` si se desea automatizar la detección de la ciudad del usuario.
-   - **Caché**: Los datos del clima no se persisten localmente; se recargan en cada apertura del Dashboard.
+## 🛠 Pendientes y Brechas Técnicas (Hacia Producción)
+
+1. **Notificaciones Locales**: El módulo `core.notifications` está funcional pero no se invoca desde los flujos de creación de reservas. Se debe integrar `ReminderScheduler` en `BookingViewModel`.
+2. **Identidad Visual**: El `SplashScreen` requiere el logo oficial y una transición animada. Actualmente usa un placeholder de texto.
+3. **Limpieza de Código**: 
+   - `LocationViewModel`: Eliminar `getLatLngFromAddress` si no se requiere para navegación externa.
+   - `UserPreferences`: Unificar los flujos `role` y `userRole` para evitar redundancia.
+4. **Persistencia de Reportes**: Implementar `FileProvider` para permitir que el usuario comparta/guarde los CSVs generados en el módulo de BI.
+5. **Caché de Clima**: Implementar una política de caché (ej: 30 min) para los datos meteorológicos para reducir consumo de API y datos.
 
 ## 📊 Datos y Modelado
 - El esquema de base de datos (`schema.sql`) incluye tablas para:

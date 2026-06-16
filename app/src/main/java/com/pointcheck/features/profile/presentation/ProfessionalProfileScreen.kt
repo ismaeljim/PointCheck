@@ -73,22 +73,22 @@ fun ProfessionalProfileScreen(
         }
     }
 
-    // Sincronizar campos cuando el perfil carga
+    // Sincronizar campos cuando el perfil carga con saneamiento local para evitar NPEs
     LaunchedEffect(s.profile, s.rut, s.phone) {
         s.profile?.let {
-            displayName = it.displayName
-            businessName = it.businessName
-            specialty = it.specialty
-            description = it.description
-            address = it.address
-            city = it.city
-            duration = it.defaultSessionDurationMinutes.toString()
+            displayName = it.displayName ?: ""
+            businessName = it.businessName ?: ""
+            specialty = it.specialty ?: ""
+            description = it.description ?: ""
+            address = it.address ?: ""
+            city = it.city ?: ""
+            duration = it.defaultSessionDurationMinutes?.toString() ?: "30"
             selectedCategoryId = it.categoryId
             latitude = it.latitude
             longitude = it.longitude
         }
-        if (rut.isEmpty()) rut = s.rut
-        if (phone.isEmpty()) phone = s.phone
+        if (rut.isEmpty()) rut = s.rut ?: ""
+        if (phone.isEmpty()) phone = s.phone ?: ""
     }
 
     Scaffold(

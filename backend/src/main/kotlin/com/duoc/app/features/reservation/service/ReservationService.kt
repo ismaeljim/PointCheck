@@ -12,6 +12,7 @@ import com.duoc.app.features.service.repository.ServiceOfferingRepository
 import com.duoc.app.features.user.repository.UserRepository
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -34,7 +35,8 @@ class ReservationService(
     private val serviceOfferingRepository: ServiceOfferingRepository,
     private val professionalProfileRepository: ProfessionalProfileRepository,
     private val notificationService: com.duoc.app.features.notification.service.NotificationService,
-    private val billingRecordRepository: com.duoc.app.features.billing.repository.BillingRecordRepository
+    private val billingRecordRepository: com.duoc.app.features.billing.repository.BillingRecordRepository,
+    private val auditLogger: com.duoc.app.core.audit.AuditLogger
 ) {
 
     private val objectMapper = jacksonObjectMapper()
@@ -243,6 +245,15 @@ class ReservationService(
 
         val savedReservation = reservationRepository.save(reservation)
 
+        // AUDITORÍA: Registro de creación de cita
+        auditLogger.log(
+            action = "CREAR_RESERVA",
+            targetType = "RESERVATION",
+            targetId = savedReservation.id ?: "",
+            targetName = "${client.name} con ${specialist.name}",
+            details = "Nueva reserva creada para el ${reservation.reservationStart} por un valor de ${service?.price ?: 0}"
+        )
+
         notificationService.createNotification(
             user = client,
             title = "Nueva Cita Agendada",
@@ -379,6 +390,15 @@ class ReservationService(
         }
         val saved = reservationRepository.save(reservation)
 
+        // AUDITORÍA: Registro de pago confirmado
+        auditLogger.log(
+            action = "CONFIRMAR_PAGO",
+            targetType = "RESERVATION",
+            targetId = id,
+            targetName = "Pago Cita #${id.take(8)}",
+            details = "Especialista ${reservation.specialist.name} confirmó pago de ${reservation.client.name}"
+        )
+
         // 2. Gestionar el registro de facturación (BillingRecord)
         // Buscamos si ya existe uno vinculado a esta reserva
         val existingBilling = billingRecordRepository.findByReservation_Id(id).firstOrNull()
@@ -408,6 +428,35 @@ class ReservationService(
         }
 
         return saved.toResponse()
+    }
+
+    /**
+     * Tarea programada para limpiar la agenda de citas expiradas.
+     * Se ejecuta cada hora.
+     * Si una reserva sigue PENDING y ya pasaron más de 2 horas de su inicio, 
+     * se marca como EXPIRED para liberar la agenda.
+     */
+    @Scheduled(cron = "0 0 * * * *")
+    @Transactional
+    fun cleanupExpiredReservations() {
+        val expirationThreshold = LocalDateTime.now().minusHours(2)
+        val expiredReservations = reservationRepository.findByStatusAndReservationStartBefore(
+            ReservationStatus.PENDING,
+            expirationThreshold
+        )
+
+        expiredReservations.forEach { res ->
+            res.status = ReservationStatus.CANCELLED
+            res.updatedAt = LocalDateTime.now()
+            reservationRepository.save(res)
+            
+            notificationService.createNotification(
+                user = res.client,
+                title = "Cita Expirada",
+                message = "Tu cita con ${res.specialist.name} ha expirado por falta de confirmación.",
+                type = com.duoc.app.features.notification.model.NotificationType.ALERT
+            )
+        }
     }
 
     /**

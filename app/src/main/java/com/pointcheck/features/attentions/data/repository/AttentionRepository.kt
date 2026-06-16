@@ -74,16 +74,15 @@ class AttentionRepository(private val api: ApiService) {
     }
 
     /**
-     * Consulta las atenciones vinculadas a una reserva específica.
+     * Consulta la atención vinculada a una reserva específica.
      *
      * @param reservationId Identificador de la reserva.
-     * @return [Result] con la lista de atenciones (normalmente una).
+     * @return [Result] con la atención.
      */
-    suspend fun getAttentionsByReservation(reservationId: String): Result<List<AttentionResponseDto>> {
-        // Nota: Si el backend no tiene este endpoint específico, se puede filtrar en el cliente
-        // o usar el historial general. Para la auditoría, asumimos su existencia o compatibilidad.
-        // Por ahora, devolvemos un error controlado directamente.
-        return Result.failure(Exception("Endpoint no implementado en ApiService"))
+    suspend fun getAttentionByReservation(reservationId: String): Result<AttentionResponseDto> {
+        return handleApiCall("Error al obtener atención por reserva") {
+            api.getAttentionByReservation(reservationId)
+        }
     }
 
     /**
@@ -98,4 +97,4 @@ class AttentionRepository(private val api: ApiService) {
         }
     }
 }
-// Repositorio corregido y limpio de conflictos de Git.
+

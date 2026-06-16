@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pointcheck.core.ui.theme.PointCheckTheme
@@ -23,6 +24,7 @@ import com.pointcheck.core.ui.theme.PointCheckTheme
 fun PCCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {
@@ -31,7 +33,7 @@ fun PCCard(
             modifier = modifier,
             shape = MaterialTheme.shapes.medium, // 16dp as defined in Shape.kt
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = containerColor
             ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -42,7 +44,7 @@ fun PCCard(
             modifier = modifier,
             shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = containerColor
             ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),

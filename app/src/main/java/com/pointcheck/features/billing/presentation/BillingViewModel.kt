@@ -7,7 +7,6 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.billing.data.dto.BillingRecordRequestDto
 import com.pointcheck.features.billing.data.dto.BillingRecordResponseDto
 import com.pointcheck.features.billing.data.repository.BillingRepository
-import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -163,40 +162,17 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
             repository.getBillingBySpecialist(specialistId)
                 .onSuccess { list -> 
                     _state.update { it.copy(
-                        billings = list.ifEmpty { MockDataProvider.mockBillings }, 
+                        billings = list, 
                         isLoading = false 
                     ) } 
                 }
                 .onFailure { e -> 
                     _state.update { it.copy(
-                        billings = MockDataProvider.mockBillings, 
+                        billings = emptyList(), 
+                        error = e.message,
                         isLoading = false 
                     ) } 
                 }
-        }
-    }
-
-    /**
-     * Carga solo los cobros que están pendientes de pago para el especialista.
-     */
-    fun loadPendingBillingBySpecialist(specialistId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            repository.getPendingBillingBySpecialist(specialistId)
-                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
-                .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
-        }
-    }
-
-    /**
-     * Recupera los cobros realizados o generados en el día actual.
-     */
-    fun loadTodayBillingBySpecialist(specialistId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            repository.getTodayBillingBySpecialist(specialistId)
-                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
-                .onFailure { e -> _state.update { it.copy(error = e.message, isLoading = false) } }
         }
     }
 

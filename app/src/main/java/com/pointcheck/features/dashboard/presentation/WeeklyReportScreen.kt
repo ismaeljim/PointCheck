@@ -31,6 +31,7 @@ import com.pointcheck.features.dashboard.data.dto.DailyMetricDto
 import com.pointcheck.features.dashboard.data.dto.WeeklySummaryDto
 import com.pointcheck.features.services.data.dto.ServiceResponseDto
 import androidx.compose.foundation.lazy.LazyRow
+import com.pointcheck.core.utils.FileUtil
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,14 +45,19 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
     LaunchedEffect(s.exportContent) {
         s.exportContent?.let { content ->
             val fileName = if (s.period == ReportPeriod.WEEKLY) "Reporte_Semanal.csv" else "Reporte_Mensual.csv"
-            val sendIntent: Intent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, content)
-                putExtra(Intent.EXTRA_SUBJECT, fileName)
-                type = "text/csv"
+            val uri = FileUtil.saveTextToCache(context, fileName, content)
+            
+            if (uri != null) {
+                val sendIntent: Intent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, fileName)
+                    type = "text/csv"
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                val shareIntent = Intent.createChooser(sendIntent, "Exportar $fileName")
+                context.startActivity(shareIntent)
             }
-            val shareIntent = Intent.createChooser(sendIntent, "Exportar $fileName")
-            context.startActivity(shareIntent)
             vm.clearExport()
         }
     }

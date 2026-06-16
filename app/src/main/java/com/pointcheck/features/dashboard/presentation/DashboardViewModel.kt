@@ -11,7 +11,6 @@ import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
-import com.pointcheck.core.util.MockDataProvider
 import com.pointcheck.features.onboarding.presentation.dto.CategoryDto
 import com.pointcheck.features.onboarding.presentation.CategoryApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,9 +87,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun loadDashboard() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            Log.d("DashboardVM", "loadDashboard() ejecutado con limpieza de estado")
-            // AISLAMIENTO: Limpieza total de caché de UI para evitar mezclar datos de roles
-            _state.value = DashboardUiState(isLoading = true)
+            Log.d("DashboardVM", "loadDashboard() ejecutado")
+            
+            // Si ya tenemos datos, no limpiamos todo para evitar el "flasheo" de la UI.
+            // Solo marcamos como cargando si el estado está realmente vacío.
+            _state.update { 
+                it.copy(isLoading = it.clientDashboard == null && it.reportSummary == null && it.metrics.totalUsers == 0) 
+            }
             
             try {
                 val userId = prefs.userId.first()
@@ -132,7 +135,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             }
                         }.onFailure { e ->
                             Log.e("DashboardVM", "Error obteniendo métricas specialist: ${e.message}")
-                            _state.update { it.copy(error = "Error al cargar métricas: ${e.message}") }
+                            _state.update { it.copy(error = "Error al cargar métricas: ${e.message}", isLoading = false) }
                         }
 
                         // 2. Cargar resumen de reportes

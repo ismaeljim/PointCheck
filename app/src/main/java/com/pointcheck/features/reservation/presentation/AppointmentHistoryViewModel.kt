@@ -7,7 +7,6 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import com.pointcheck.features.reservation.data.repository.ReservationRepository
-import com.pointcheck.core.util.MockDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -69,13 +68,13 @@ class AppointmentHistoryViewModel(application: Application) : AndroidViewModel(a
                 
                 result.onSuccess { list ->
                     _state.update { it.copy(
-                        appointments = list.ifEmpty { MockDataProvider.mockReservations }, 
+                        appointments = list, 
                         isLoading = false 
                     ) }
                 }.onFailure { e ->
-                    // Fallback a MockDataProvider para asegurar estabilidad visual
                     _state.update { it.copy(
-                        appointments = MockDataProvider.mockReservations, 
+                        appointments = emptyList(),
+                        error = e.message,
                         isLoading = false 
                     ) }
                 }

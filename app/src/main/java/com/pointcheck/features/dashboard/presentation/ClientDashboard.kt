@@ -99,36 +99,55 @@ fun FeaturedAppointmentCard(
     if (appointment == null) return
     val context = LocalContext.current
 
-    PCCard(modifier = Modifier.fillMaxWidth()) {
+    val isPast = try {
+        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+        val date = inputFormat.parse(appointment.reservationStart)
+        date?.before(java.util.Date()) ?: false
+    } catch (e: Exception) {
+        false
+    }
+
+    PCCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = if (isPast) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+    ) {
         Column(Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        color = if (isPast) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            Icons.Default.Event,
+                            if (isPast) Icons.Default.EventBusy else Icons.Default.Event,
                             null,
                             modifier = Modifier.padding(12.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (isPast) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         )
                     }
                     Spacer(Modifier.width(16.dp))
                     Column {
                         Text(
-                            appointment.serviceName ?: "Tu Cita",
+                            if (isPast) "Cita Expirada" else (appointment.serviceName ?: "Tu Cita"),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = if (isPast) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                         )
                         
                         val displayDateTime = try {
-                            appointment.reservationStart.replace("T", " ").substringBeforeLast(":")
+                            val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }
+                            val date = inputFormat.parse(appointment.reservationStart)
+                            val outputFormat = java.text.SimpleDateFormat("EEE d 'de' MMM, HH:mm", java.util.Locale("es", "CL"))
+                            date?.let { outputFormat.format(it).replaceFirstChar { it.uppercase() } } ?: "Fecha no disponible"
                         } catch (_: Exception) {
                             "Fecha no disponible"
                         }
@@ -137,17 +156,19 @@ fun FeaturedAppointmentCard(
                             displayDateTime,
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        Text(
-                            "con ${appointment.specialist.name}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (!isPast) {
+                            Text(
+                                "con ${appointment.specialist.name}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
                 
-                // Widget de clima real
-                if (weather != null) {
+                // Widget de clima real (solo si no es pasado)
+                if (weather != null && !isPast) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text("${weather.main.temp.toInt()}°C", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
@@ -155,19 +176,13 @@ fun FeaturedAppointmentCard(
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 10.sp
                         )
-                        Text(weather.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    }
-                } else {
-                    // Placeholder mientras carga o si falla
-                    Column(horizontalAlignment = Alignment.End) {
-                        Icon(Icons.Default.WbSunny, contentDescription = null, tint = Color(0xFFFBC02D).copy(alpha = 0.5f))
-                        Text("--°C", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
             
             Spacer(Modifier.height(12.dp))
             val suggestion = when {
+                isPast -> "Esta cita ha expirado. Por favor, agenda una nueva o contacta al especialista si hubo un inconveniente."
                 weather?.weather?.firstOrNull()?.description?.contains("rain", ignoreCase = true) == true -> 
                     "¡Va a llover! No olvides tu paraguas para tu cita."
                 (weather?.main?.temp ?: 20.0) > 28.0 -> 
@@ -178,36 +193,44 @@ fun FeaturedAppointmentCard(
             Text(
                 suggestion,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isPast) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PCButton(
-                    text = "Cómo llegar",
-                    onClick = {
-                        val address = appointment.address
-                        if (!address.isNullOrBlank()) {
-                            val gmmIntentUri = android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(address)}")
-                            val mapIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri)
-                            mapIntent.setPackage("com.google.android.apps.maps")
-                            try {
-                                context.startActivity(mapIntent)
-                            } catch (e: Exception) {
-                                val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri)
-                                context.startActivity(fallbackIntent)
+                if (isPast) {
+                    PCButton(
+                        text = "Agendar Nueva",
+                        onClick = { nav.navigate(Screen.Booking.route) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    PCButton(
+                        text = "Cómo llegar",
+                        onClick = {
+                            val address = appointment.address
+                            if (!address.isNullOrBlank()) {
+                                val gmmIntentUri = android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(address)}")
+                                val mapIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri)
+                                mapIntent.setPackage("com.google.android.apps.maps")
+                                try {
+                                    context.startActivity(mapIntent)
+                                } catch (e: Exception) {
+                                    val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri)
+                                    context.startActivity(fallbackIntent)
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !appointment.address.isNullOrBlank(),
-                    icon = Icons.Default.Map
-                )
-                PCOutlinedButton(
-                    text = "Detalles",
-                    onClick = { nav.navigate(Screen.Scheduled.route) },
-                    modifier = Modifier.weight(1f)
-                )
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !appointment.address.isNullOrBlank(),
+                        icon = Icons.Default.Map
+                    )
+                    PCOutlinedButton(
+                        text = "Detalles",
+                        onClick = { nav.navigate(Screen.Scheduled.route) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

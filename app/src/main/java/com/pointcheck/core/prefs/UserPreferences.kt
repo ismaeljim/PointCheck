@@ -31,23 +31,23 @@ class UserPreferences(private val context: Context) {
 
     suspend fun saveSession(
         token: String? = null,
-        userId: String,
-        name: String,
-        email: String,
-        role: String,
-        phone: String,
-        rut: String,
+        userId: String? = null,
+        name: String? = null,
+        email: String? = null,
+        role: String? = null,
+        phone: String? = null,
+        rut: String? = null,
         address: String? = null
     ) {
         context.dataStore.edit { p ->
             token?.let { securityManager.saveSecureString(SecurityManager.KEY_AUTH_TOKEN, it) }
-            p[UserPrefsKeys.USER_ID] = userId
-            p[UserPrefsKeys.NAME] = name
-            p[UserPrefsKeys.EMAIL] = email
-            p[UserPrefsKeys.ROLE] = role
-            p[UserPrefsKeys.PHONE] = phone
-            securityManager.saveSecureString(SecurityManager.KEY_USER_RUT, rut)
-            p[UserPrefsKeys.ADDRESS] = address ?: ""
+            userId?.let { p[UserPrefsKeys.USER_ID] = it }
+            name?.let { p[UserPrefsKeys.NAME] = it }
+            email?.let { p[UserPrefsKeys.EMAIL] = it }
+            role?.let { p[UserPrefsKeys.ROLE] = it }
+            phone?.let { p[UserPrefsKeys.PHONE] = it }
+            rut?.let { securityManager.saveSecureString(SecurityManager.KEY_USER_RUT, it) }
+            address?.let { p[UserPrefsKeys.ADDRESS] = it }
             p[UserPrefsKeys.LOGGED] = true
         }
     }
@@ -57,12 +57,13 @@ class UserPreferences(private val context: Context) {
         emit(securityManager.getSecureString(SecurityManager.KEY_AUTH_TOKEN))
     }
 
-    // Agregamos un flow que observe cambios en el DataStore para el rol de forma más directa
-    val userRole: Flow<String> = context.dataStore.data.map { it[UserPrefsKeys.ROLE] ?: "CLIENT" }
     val userId: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.USER_ID] }
     val name: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.NAME] }
     val email: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.EMAIL] }
-    val role: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.ROLE] }
+    
+    /** Rol del usuario. Por defecto CLIENT si no está definido. */
+    val role: Flow<String> = context.dataStore.data.map { it[UserPrefsKeys.ROLE] ?: "CLIENT" }
+
     val phone: Flow<String?> = context.dataStore.data.map { it[UserPrefsKeys.PHONE] }
     val rut: Flow<String?> = flow {
         emit(securityManager.getSecureString(SecurityManager.KEY_USER_RUT))
