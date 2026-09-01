@@ -25,3 +25,6 @@ application-local.properties
 *-local.properties
 .env
 .env.local
+
+# Keystores de firma y secretos locales
+_firma/
