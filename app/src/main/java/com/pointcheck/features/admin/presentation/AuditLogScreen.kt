@@ -3,19 +3,20 @@ package com.pointcheck.features.admin.presentation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckCard
+import com.pointcheck.core.ui.components.PointCheckTopBar
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 
 /**
@@ -27,12 +28,13 @@ fun AuditLogScreen(
     onBack: () -> Unit,
     viewModel: AdminViewModel = viewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            AppTopBar(
-                title = "Logs de Auditoría",
+            PointCheckTopBar(
+                title = "PointCheck | Auditoría",
                 onBack = onBack
             )
         }
@@ -43,7 +45,7 @@ fun AuditLogScreen(
                 .padding(padding)
         ) {
             Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -53,14 +55,14 @@ fun AuditLogScreen(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "El historial se conserva por 30 días.",
+                        text = "El historial se conserva por 30 días para auditoría.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -75,13 +77,34 @@ fun AuditLogScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(state.auditLogs) { log ->
                         AuditLogItem(log)
+                    }
+
+                    if (!state.isLastAuditPage) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (state.isLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { viewModel.loadAuditLogs(isNextPage = true) },
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("Cargar más registros")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -91,41 +114,45 @@ fun AuditLogScreen(
 
 @Composable
 fun AuditLogItem(log: AuditLogDto) {
+    var expanded by remember { mutableStateOf(false) }
     val actionStr = log.action ?: ""
     val actionColor = when (actionStr.uppercase()) {
         "ACCESO" -> Color(0xFF9C27B0)
-        "CREAR" -> Color(0xFF4CAF50)
-        "EDITAR" -> Color(0xFFFF9800)
-        "ELIMINAR" -> Color(0xFFF44336)
+        "CREAR", "CREAR_RESERVA" -> Color(0xFF4CAF50)
+        "EDITAR", "CONFIRMAR_PAGO" -> Color(0xFFFF9800)
+        "ELIMINAR", "EXPIRAR" -> Color(0xFFF44336)
         "ACTIVAR" -> Color(0xFF2196F3)
         "DESACTIVAR" -> Color(0xFF607D8B)
         else -> MaterialTheme.colorScheme.primary
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    PointCheckCard(
+        title = actionStr.replace("_", " "),
+        subtitle = log.timestamp?.take(16)?.replace("T", " ") ?: "Reciente",
+        icon = when (actionStr.uppercase()) {
+            "ELIMINAR" -> Icons.Default.Delete
+            "CREAR", "CREAR_RESERVA" -> Icons.Default.AddCircle
+            "EDITAR" -> Icons.Default.Edit
+            "ACCESO" -> Icons.Default.Login
+            "EXPIRAR" -> Icons.Default.TimerOff
+            "CONFIRMAR_PAGO" -> Icons.Default.Payments
+            else -> Icons.Default.History
+        },
+        iconColor = actionColor,
+        badgeText = log.targetType,
+        onClick = { expanded = !expanded }
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // LÍNEA 130: Aplicamos encadenamiento seguro total
-                Text(
-                    text = log.timestamp?.take(16)?.replace("T", " ") ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Column(horizontalAlignment = Alignment.End) {
+                Column {
                     Text(
                         text = log.performedByName ?: "Sistema",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = log.performedByEmail ?: "",
@@ -135,58 +162,63 @@ fun AuditLogItem(log: AuditLogDto) {
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            val displayName = if (!log.targetName.isNullOrBlank()) {
+                log.targetName
+            } else if (!log.targetId.isNullOrBlank()) {
+                "ID: ${log.targetId?.take(8)}..."
+            } else null
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = actionColor.copy(alpha = 0.1f),
-                    shape = MaterialTheme.shapes.extraSmall,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, actionColor.copy(alpha = 0.5f))
-                ) {
-                    Text(
-                        text = actionStr,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = actionColor
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
+            displayName?.let {
                 Text(
-                    text = log.targetType ?: "SISTEMA",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "Objetivo: $it",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
-                
-                log.targetName?.let {
-                    Text(
-                        text = " • $it",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.height(6.dp))
             }
 
             log.details?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified
+                        ),
+                        modifier = Modifier.padding(10.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = if (expanded) Int.MAX_VALUE else 3,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
             }
 
-            log.ipAddress?.let {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "IP: $it",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+            if (expanded) {
+                log.ipAddress?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Dirección IP: $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+                
+                if (!log.targetId.isNullOrBlank()) {
+                    Text(
+                        text = "ID Interno: ${log.targetId}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
     }

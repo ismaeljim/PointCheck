@@ -1,6 +1,7 @@
 package com.pointcheck.features.admin.data.repository
 
 import com.pointcheck.core.network.ApiService
+import com.pointcheck.core.network.NetworkHandler
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 import com.pointcheck.features.auth.data.dto.UserResponseDto
 
@@ -21,13 +22,9 @@ class AdminRepository(private val apiService: ApiService) {
     suspend fun getAllUsers(): Result<List<UserResponseDto>> {
         return try {
             val response = apiService.getAllUsers()
-            if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyList())
-            } else {
-                Result.failure(Exception("Error al obtener usuarios: ${response.code()}"))
-            }
+            NetworkHandler.handleResponse(response, "Error al obtener usuarios")
         } catch (e: Exception) {
-            Result.failure(e)
+            NetworkHandler.handleException(e)
         }
     }
 
@@ -40,13 +37,9 @@ class AdminRepository(private val apiService: ApiService) {
     suspend fun toggleUserStatus(userId: String): Result<UserResponseDto> {
         return try {
             val response = apiService.toggleUserStatus(userId)
-            if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
-            } else {
-                Result.failure(Exception("Error al cambiar estado: ${response.code()}"))
-            }
+            NetworkHandler.handleResponse(response, "Error al cambiar estado")
         } catch (e: Exception) {
-            Result.failure(e)
+            NetworkHandler.handleException(e)
         }
     }
 
@@ -60,31 +53,24 @@ class AdminRepository(private val apiService: ApiService) {
     suspend fun updateUser(userId: String, request: com.pointcheck.features.admin.data.dto.AdminUserUpdateRequestDto): Result<UserResponseDto> {
         return try {
             val response = apiService.updateAdminUser(userId, request)
-            if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
-            } else {
-                Result.failure(Exception("Error al actualizar usuario: ${response.code()}"))
-            }
+            NetworkHandler.handleResponse(response, "Error al actualizar usuario")
         } catch (e: Exception) {
-            Result.failure(e)
+            NetworkHandler.handleException(e)
         }
     }
 
     /**
-     * Obtiene los registros de auditoría históricos del sistema.
+     * Obtiene los registros de auditoría históricos del sistema con paginación.
      * 
-     * @return Result con la lista de [AuditLogDto] o el error correspondiente.
+     * @param page Número de página a solicitar.
+     * @return Result con el [AuditPageDto] o el error correspondiente.
      */
-    suspend fun getAuditLogs(): Result<List<AuditLogDto>> {
+    suspend fun getAuditLogs(page: Int = 0): Result<com.pointcheck.features.admin.data.dto.AuditPageDto> {
         return try {
-            val response = apiService.getAuditLogs()
-            if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyList())
-            } else {
-                Result.failure(Exception("Error al obtener logs: ${response.code()}"))
-            }
+            val response = apiService.getAuditLogs(page)
+            NetworkHandler.handleResponse(response, "Error al obtener logs de auditoría")
         } catch (e: Exception) {
-            Result.failure(e)
+            NetworkHandler.handleException(e)
         }
     }
 }

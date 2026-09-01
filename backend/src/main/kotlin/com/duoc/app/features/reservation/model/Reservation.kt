@@ -1,6 +1,7 @@
 package com.duoc.app.features.reservation.model
 
 import com.duoc.app.features.billing.model.PaymentMethod
+import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
@@ -12,18 +13,18 @@ import java.util.Objects
     name = "reservations",
     indexes = [
         Index(name = "idx_reservations_client", columnList = "client_id"),
-        Index(name = "idx_reservations_specialist", columnList = "specialist_id"),
+        Index(name = "idx_reservations_specialist_profile", columnList = "specialist_profile_id"),
         Index(name = "idx_reservations_service", columnList = "service_id"),
         Index(name = "idx_reservations_start", columnList = "reservationStart"),
         Index(name = "idx_reservations_status", columnList = "status"),
-        Index(name = "idx_reservations_specialist_date", columnList = "specialist_id,reservationStart"),
+        Index(name = "idx_reservations_specialist_date", columnList = "specialist_profile_id,reservationStart"),
         Index(name = "idx_reservations_client_date", columnList = "client_id,reservationStart")
     ]
 )
 class Reservation(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -31,8 +32,8 @@ class Reservation(
     val client: User,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "specialist_id", nullable = false)
-    val specialist: User,
+    @JoinColumn(name = "specialist_profile_id", nullable = false)
+    val specialist: ProfessionalProfile,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_id")
@@ -44,8 +45,8 @@ class Reservation(
     @Column(name = "reservation_end")
     var reservationEnd: LocalDateTime? = null,
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    @Enumerated(EnumType.STRING) // Garantiza persistencia legible en BD
+    @Column(nullable = false, length = 20)
     var status: ReservationStatus = ReservationStatus.PENDING,
 
     @Column(length = 1000)

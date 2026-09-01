@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -18,12 +19,20 @@ import java.util.Locale
 import kotlin.coroutines.resume
 
 /**
+ * Estados del proceso de localización por GPS para feedback visual.
+ */
+enum class GpsStatus {
+    IDLE, LOADING, SUCCESS, ERROR
+}
+
+/**
  * Representa el estado de la interfaz de usuario para la geolocalización.
  *
  * @property lastKnownLat Última latitud conocida del dispositivo.
  * @property lastKnownLng Última longitud conocida del dispositivo.
  * @property addressSuggestions Lista de direcciones sugeridas obtenidas por geocodificación inversa.
  * @property isLocating Indica si se está realizando una operación de obtención de ubicación.
+ * @property gpsStatus Estado actual de la petición GPS para feedback en el botón.
  * @property error Mensaje de error en caso de fallo al localizar o geocodificar.
  */
 data class LocationUiState(
@@ -31,6 +40,7 @@ data class LocationUiState(
     val lastKnownLng: Double? = null,
     val addressSuggestions: List<Address> = emptyList(),
     val isLocating: Boolean = false,
+    val gpsStatus: GpsStatus = GpsStatus.IDLE,
     val error: String? = null
 )
 
@@ -52,31 +62,65 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     /**
      * Solicita la ubicación actual del dispositivo con alta precisión.
      *
-     * @param onSuccess Callback que se ejecuta al obtener las coordenadas exitosamente.
+     * @param onAddressFound Callback que retorna la dirección estructurada tras la geocodificación inversa.
      */
     @SuppressLint("MissingPermission")
-    fun getCurrentLocation(onSuccess: (Double, Double) -> Unit) {
-        _state.update { it.copy(isLocating = true, error = null) }
+    fun getCurrentLocation(onAddressFound: (String, String, String, Double, Double) -> Unit) {
+        _state.update { it.copy(isLocating = true, gpsStatus = GpsStatus.LOADING, error = null) }
         viewModelScope.launch {
             try {
                 fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                     .addOnSuccessListener { location ->
                         if (location != null) {
-                            _state.update { it.copy(
-                                lastKnownLat = location.latitude,
-                                lastKnownLng = location.longitude,
-                                isLocating = false
-                            ) }
-                            onSuccess(location.latitude, location.longitude)
+                            reverseGeocode(location.latitude, location.longitude) { street, number, commune ->
+                                _state.update { it.copy(
+                                    lastKnownLat = location.latitude,
+                                    lastKnownLng = location.longitude,
+                                    isLocating = false,
+                                    gpsStatus = GpsStatus.SUCCESS
+                                ) }
+                                onAddressFound(street, number, commune, location.latitude, location.longitude)
+                            }
                         } else {
-                            _state.update { it.copy(isLocating = false, error = "No se pudo obtener la ubicación") }
+                            _state.update { it.copy(isLocating = false, gpsStatus = GpsStatus.ERROR, error = "No se pudo obtener la ubicación") }
                         }
                     }
                     .addOnFailureListener { e ->
-                        _state.update { it.copy(isLocating = false, error = e.message) }
+                        _state.update { it.copy(isLocating = false, gpsStatus = GpsStatus.ERROR, error = e.message) }
                     }
             } catch (e: Exception) {
-                _state.update { it.copy(isLocating = false, error = e.message) }
+                if (e is CancellationException) throw e
+                _state.update { it.copy(isLocating = false, gpsStatus = GpsStatus.ERROR, error = e.message) }
+            }
+        }
+    }
+
+    /**
+     * Convierte coordenadas en una dirección legible (Geocodificación Inversa).
+     */
+    private fun reverseGeocode(lat: Double, lng: Double, onResult: (String, String, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocation(lat, lng, 1, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: MutableList<Address>) {
+                            val addr = addresses.firstOrNull()
+                            val street = addr?.thoroughfare ?: ""
+                            val number = addr?.subThoroughfare ?: ""
+                            val commune = addr?.locality ?: addr?.subLocality ?: ""
+                            onResult(street, number, commune)
+                        }
+                    })
+                } else {
+                    @Suppress("DEPRECATION")
+                    val addr = geocoder.getFromLocation(lat, lng, 1)?.firstOrNull()
+                    val street = addr?.thoroughfare ?: ""
+                    val number = addr?.subThoroughfare ?: ""
+                    val commune = addr?.locality ?: addr?.subLocality ?: ""
+                    onResult(street, number, commune)
+                }
+            } catch (e: Exception) {
+                onResult("", "", "")
             }
         }
     }
@@ -110,6 +154,7 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
                     _state.update { it.copy(addressSuggestions = addresses ?: emptyList()) }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 // Silently fail for suggestions
             }
         }
@@ -118,5 +163,34 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     /** Limpia la lista de sugerencias de direcciones actuales. */
     fun clearSuggestions() {
         _state.update { it.copy(addressSuggestions = emptyList()) }
+    }
+
+    /**
+     * Convierte una dirección de texto en coordenadas geográficas (Lat/Lng).
+     *
+     * @param address Dirección completa en texto.
+     * @return Par de Latitud y Longitud, o null si no se pudo geocodificar.
+     */
+    suspend fun getLatLngFromAddress(address: String): Pair<Double, Double>? = suspendCancellableCoroutine { continuation ->
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                geocoder.getFromLocationName(address, 1, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<Address>) {
+                        val loc = addresses.firstOrNull()?.let { it.latitude to it.longitude }
+                        continuation.resume(loc)
+                    }
+                    override fun onError(errorMessage: String?) {
+                        continuation.resume(null)
+                    }
+                })
+            } else {
+                @Suppress("DEPRECATION")
+                val addresses = geocoder.getFromLocationName(address, 1)
+                val loc = addresses?.firstOrNull()?.let { it.latitude to it.longitude }
+                continuation.resume(loc)
+            }
+        } catch (e: Exception) {
+            continuation.resume(null)
+        }
     }
 }

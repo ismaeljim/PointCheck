@@ -5,43 +5,33 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.LocalDateTime
-import java.util.NoSuchElementException
-
-data class ErrorResponse(
-    val status: Int,
-    val message: String?,
-    val timestamp: LocalDateTime = LocalDateTime.now()
-)
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException::class, NoSuchElementException::class)
-    fun handleNotFound(e: Exception): ResponseEntity<ErrorResponse> {
-        val error = ErrorResponse(
-            status = HttpStatus.NOT_FOUND.value(),
-            message = e.message
-        )
-        return ResponseEntity(error, HttpStatus.NOT_FOUND)
+    fun handleNotFound(e: Exception): ResponseEntity<Map<String, Any?>> {
+        return buildResponse(HttpStatus.NOT_FOUND, "Not Found", e.message)
     }
 
     @ExceptionHandler(IllegalStateException::class)
-    fun handleIllegalState(e: IllegalStateException): ResponseEntity<ErrorResponse> {
-        val error = ErrorResponse(
-            status = HttpStatus.CONFLICT.value(),
-            message = e.message
-        )
-        return ResponseEntity(error, HttpStatus.CONFLICT)
+    fun handleIllegalState(e: IllegalStateException): ResponseEntity<Map<String, Any?>> {
+        return buildResponse(HttpStatus.CONFLICT, "Business Logic Conflict", e.message)
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneralError(e: Exception): ResponseEntity<ErrorResponse> {
-        // Log del error para depuración
+    fun handleGeneralError(e: Exception): ResponseEntity<Map<String, Any?>> {
         e.printStackTrace()
-        val error = ErrorResponse(
-            status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            message = "Ocurrió un error interno inesperado."
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "Ocurrió un error inesperado")
+    }
+
+    private fun buildResponse(status: HttpStatus, error: String, message: String?): ResponseEntity<Map<String, Any?>> {
+        val body = mapOf(
+            "status" to status.value(),
+            "error" to error,
+            "message" to message,
+            "timestamp" to LocalDateTime.now().toString()
         )
-        return ResponseEntity(error, HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity(body, status)
     }
 }

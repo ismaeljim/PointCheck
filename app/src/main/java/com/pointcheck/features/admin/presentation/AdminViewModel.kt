@@ -6,6 +6,8 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.admin.data.dto.AuditLogDto
 import com.pointcheck.features.admin.data.repository.AdminRepository
 import com.pointcheck.features.auth.data.dto.UserResponseDto
+import com.pointcheck.core.util.MockDataProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +28,8 @@ data class AdminUiState(
     val users: List<UserResponseDto> = emptyList(),
     val filteredUsers: List<UserResponseDto> = emptyList(),
     val auditLogs: List<AuditLogDto> = emptyList(),
+    val auditPage: Int = 0,
+    val isLastAuditPage: Boolean = false,
     val categories: List<com.pointcheck.features.onboarding.presentation.dto.CategoryDto> = emptyList(),
     val selectedUserForEdit: UserResponseDto? = null,
     val isLoading: Boolean = false,
@@ -64,6 +68,8 @@ class AdminViewModel(
                 val cats = api.getCategories()
                 _state.update { it.copy(categories = cats) }
             } catch (e: Exception) {
+                if (e is com.pointcheck.core.network.ApiException && (e.code == 401 || e.code == 403)) return@launch
+                if (e is CancellationException) throw e
                 println("Error loading categories for admin: ${e.message}")
             }
         }
@@ -75,30 +81,47 @@ class AdminViewModel(
      */
     fun loadUsers() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = true) }
             repository.getAllUsers()
                 .onSuccess { users ->
+                    // SPRINT 4 FIX: Eliminamos fallback a MockDataProvider para asegurar datos reales
                     _state.update { it.copy(users = users, filteredUsers = users, isLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(users = emptyList(), filteredUsers = emptyList(), error = e.message, isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && (e.code == 401 || e.code == 403)) return@onFailure
+                    // SPRINT 4 FIX: Reportamos el error real en lugar de mostrar mocks
+                    _state.update { it.copy(isLoading = false, error = e.message) }
                 }
         }
     }
 
     /**
-     * Obtiene los registros de auditoría del sistema.
-     * Estos registros incluyen acciones críticas realizadas por usuarios y administradores.
+     * Obtiene los registros de auditoría del sistema con soporte para paginación.
      */
-    fun loadAuditLogs() {
+    fun loadAuditLogs(isNextPage: Boolean = false) {
+        if (_state.value.isLoading || (isNextPage && _state.value.isLastAuditPage)) return
+
+        val nextPage = if (isNextPage) _state.value.auditPage + 1 else 0
+
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            repository.getAuditLogs()
-                .onSuccess { logs ->
-                    _state.update { it.copy(auditLogs = logs, isLoading = false) }
+            _state.update { it.copy(isLoading = true) }
+            repository.getAuditLogs(nextPage)
+                .onSuccess { pageDto ->
+                    _state.update { 
+                        it.copy(
+                            auditLogs = if (isNextPage) it.auditLogs + pageDto.content else pageDto.content,
+                            auditPage = pageDto.number,
+                            isLastAuditPage = pageDto.last,
+                            isLoading = false
+                        )
+                    }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(auditLogs = emptyList(), error = e.message, isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    // SPRINT 4 FIX: Se elimina la inyección de MockDataProvider.mockAuditLogs
+                    _state.update { it.copy(isLoading = false, error = e.message ?: "Error al cargar logs") }
                 }
         }
     }
@@ -161,6 +184,8 @@ class AdminViewModel(
                     loadAuditLogs() // Recargamos logs para ver el cambio reflejado
                 }
                 .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
                     _state.update { it.copy(error = e.message, isSaving = false) }
                 }
         }
@@ -182,6 +207,8 @@ class AdminViewModel(
                     filterUsers(_state.value.searchQuery)
                 }
                 .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
                     _state.update { it.copy(error = e.message) }
                 }
         }

@@ -7,8 +7,13 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.billing.data.dto.BillingRecordRequestDto
 import com.pointcheck.features.billing.data.dto.BillingRecordResponseDto
 import com.pointcheck.features.billing.data.repository.BillingRepository
+import com.pointcheck.core.prefs.UserPreferences
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -50,9 +55,14 @@ data class BillingUiState(
 class BillingViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = BillingRepository(ApiClient.instance)
+    private val prefs = UserPreferences(application)
 
     private val _state = MutableStateFlow(BillingUiState())
     val state: StateFlow<BillingUiState> = _state
+
+    // Canal para errores de un solo disparo (Sprint 3: Resiliencia)
+    private val _errorEvents = Channel<String>()
+    val errorEvents = _errorEvents.receiveAsFlow()
 
     /** Actualiza el monto a cobrar en el estado de la UI. */
     fun setAmount(value: String) { _state.update { it.copy(amount = value) } }
@@ -70,13 +80,23 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
     fun loadBillingByReservation(reservationId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.getBillingBySpecialist("") // This would need the specialist ID, but the API has no getBillingByReservation
-            // Assuming for now that we might need a specific endpoint or we filter the specialist's billings.
-            // But usually, we want to check if a billing already exists for this reservation.
             
-            // Temporary mock logic or placeholder until the specific endpoint is confirmed
-            // For now, let's keep it simple as the UI expects a "load"
-            _state.update { it.copy(isLoading = false) }
+            // Check if billing already exists for this reservation
+            repository.getBillingBySpecialist(prefs.professionalProfileId.first() ?: "")
+                .onSuccess { list ->
+                    val existing = list.find { it.reservationId == reservationId }
+                    _state.update { it.copy(
+                        currentBilling = existing,
+                        isLoading = false,
+                        amount = existing?.amount?.toString() ?: it.amount,
+                        paymentMethod = existing?.paymentMethod ?: it.paymentMethod
+                    ) }
+                }
+                .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.update { it.copy(error = "Error al cargar cobro: ${e.message}", isLoading = false) }
+                }
         }
     }
 
@@ -108,7 +128,10 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
                     _state.update { it.copy(currentBilling = record, isLoading = false, successMessage = "Cobro registrado exitosamente") }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al crear cobro: ${e.message}", isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.update { it.copy(isLoading = false) }
+                    _errorEvents.send(e.message ?: "Error al crear cobro")
                 }
         }
     }
@@ -130,7 +153,10 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
                     _state.update { it.copy(currentBilling = updated, isLoading = false, successMessage = "Cobro marcado como PAGADO") }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al pagar: ${e.message}", isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.update { it.copy(isLoading = false) }
+                    _errorEvents.send(e.message ?: "Error al procesar el pago")
                 }
         }
     }
@@ -147,31 +173,69 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
                     _state.update { it.copy(currentBilling = updated, isLoading = false, successMessage = "Cobro CANCELADO") }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al cancelar: ${e.message}", isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.update { it.copy(isLoading = false) }
+                    _errorEvents.send(e.message ?: "Error al cancelar cobro")
                 }
         }
     }
 
     /**
      * Obtiene todos los registros de cobro generados por un especialista.
-     * @param specialistId UUID del usuario especialista.
      */
-    fun loadBillingBySpecialist(specialistId: String) {
+    fun loadBillingBySpecialist() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            repository.getBillingBySpecialist(specialistId)
+            val profileId = prefs.professionalProfileId.first() ?: ""
+            repository.getBillingBySpecialist(profileId)
                 .onSuccess { list -> 
                     _state.update { it.copy(
-                        billings = list, 
+                        billings = list,
                         isLoading = false 
                     ) } 
                 }
                 .onFailure { e -> 
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
                     _state.update { it.copy(
-                        billings = emptyList(), 
                         error = e.message,
                         isLoading = false 
                     ) } 
+                }
+        }
+    }
+
+    /**
+     * Carga solo los cobros que están pendientes de pago para el especialista.
+     */
+    fun loadPendingBillingBySpecialist() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            val profileId = prefs.professionalProfileId.first() ?: ""
+            repository.getPendingBillingBySpecialist(profileId)
+                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
+                .onFailure { e -> 
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.update { it.copy(error = e.message, isLoading = false) } 
+                }
+        }
+    }
+
+    /**
+     * Recupera los cobros realizados o generados en el día actual.
+     */
+    fun loadTodayBillingBySpecialist() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            val profileId = prefs.professionalProfileId.first() ?: ""
+            repository.getTodayBillingBySpecialist(profileId)
+                .onSuccess { list -> _state.update { it.copy(billings = list, isLoading = false) } }
+                .onFailure { e -> 
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.update { it.copy(error = e.message, isLoading = false) } 
                 }
         }
     }

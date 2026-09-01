@@ -9,6 +9,7 @@ import com.pointcheck.features.dashboard.data.dto.MonthlyReportResponseDto
 import com.pointcheck.features.dashboard.data.dto.WeeklyReportResponseDto
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 import com.pointcheck.features.dashboard.data.repository.DashboardRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -106,6 +107,8 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
                         }
                     },
                     onFailure = { e ->
+                        if (e is CancellationException) throw e
+                        if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@fold
                         _state.update { it.copy(error = "Error: ${e.message}", isLoading = false) }
                     }
                 )
@@ -171,6 +174,7 @@ class WeeklyReportViewModel(application: Application) : AndroidViewModel(applica
                     }
                 },
                 onFailure = { e ->
+                    if (e is CancellationException) throw e
                     _state.update { it.copy(error = "Error al exportar: ${e.message}") }
                 }
             )

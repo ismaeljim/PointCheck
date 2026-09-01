@@ -4,7 +4,7 @@ package com.pointcheck.features.dashboard.data.dto
  * DTO para resumen de reportes blindado contra nulos.
  */
 data class ReportSummaryResponseDto(
-    val specialistId: String? = "",
+    val specialistProfileId: String? = "",
     val totalReservations: Int? = 0,
     val todayReservations: Int? = 0,
     val completedAttentions: Int? = 0,

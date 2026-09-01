@@ -11,29 +11,17 @@ import com.google.gson.annotations.SerializedName
  * @property name Nombre de la ubicación geográfica (ciudad).
  */
 data class WeatherResponseDto(
-    val main: MainDto,
-    val weather: List<WeatherDescriptionDto>,
-    val name: String
+    val main: MainDto = MainDto(),
+    val weather: List<WeatherDescriptionDto> = emptyList(),
+    val name: String = "Ubicación desconocida"
 )
 
-/**
- * Datos numéricos principales del clima.
- * 
- * @property temp Temperatura actual en grados Celsius.
- * @property humidity Porcentaje de humedad relativa.
- */
 data class MainDto(
-    val temp: Double,
-    val humidity: Int
+    val temp: Double = 0.0,
+    val humidity: Int = 0
 )
 
-/**
- * Descripción visual y textual de la condición climática.
- * 
- * @property description Breve descripción (ej: "cielo despejado").
- * @property icon Código del icono representativo para mostrar en la interfaz.
- */
 data class WeatherDescriptionDto(
-    val description: String,
-    val icon: String
+    val description: String = "",
+    val icon: String = ""
 )

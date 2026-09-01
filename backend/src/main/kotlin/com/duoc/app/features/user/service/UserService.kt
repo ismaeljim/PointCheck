@@ -106,6 +106,14 @@ class UserService(
         user.updatedAt = java.time.LocalDateTime.now()
         
         val savedUser = userRepository.save(user)
+
+        // SINCRONIZACIÓN DDD: Si es especialista, propagamos la dirección al perfil comercial
+        if (savedUser.role == UserRole.SPECIALIST) {
+            professionalProfileRepository.findByUser_Id(savedUser.id!!)?.let { profile ->
+                profile.address = request.address
+                professionalProfileRepository.save(profile)
+            }
+        }
         
         // Registro de auditoría con detalles de cambios
         val details = mutableListOf<String>()
@@ -137,6 +145,14 @@ class UserService(
         user.address = address
         user.updatedAt = java.time.LocalDateTime.now()
         val savedUser = userRepository.save(user)
+
+        // SINCRONIZACIÓN DDD: Propagar al perfil profesional si existe
+        if (savedUser.role == UserRole.SPECIALIST) {
+            professionalProfileRepository.findByUser_Id(savedUser.id!!)?.let { profile ->
+                profile.address = address
+                professionalProfileRepository.save(profile)
+            }
+        }
         
         auditLogger.log(
             action = "ACTUALIZAR_DIRECCION",
@@ -182,6 +198,7 @@ class UserService(
         email = this.email,
         rut = this.rut,
         phone = this.phone,
+        address = this.address,
         role = this.role,
         active = this.active,
         categoryId = categoryId

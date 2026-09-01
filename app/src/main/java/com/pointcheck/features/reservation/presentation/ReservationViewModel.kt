@@ -12,6 +12,8 @@ import com.pointcheck.features.services.data.dto.ServiceResponseDto
 import com.pointcheck.features.reservation.data.dto.SpecialistResponseDto
 import com.pointcheck.features.reservation.data.repository.ReservationRepository
 import com.pointcheck.core.notifications.ReminderScheduler
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -40,42 +42,45 @@ import java.util.Locale
  * @property error Mensaje de error a mostrar en la interfaz.
  * @property successMessage Mensaje de éxito tras una operación exitosa.
  */
-data class BookingUiState(
-    val professionals: List<SpecialistResponseDto> = emptyList(),
-    val services: List<ServiceResponseDto> = emptyList(),
-    val selectedProfessional: SpecialistResponseDto? = null,
-    val selectedService: ServiceResponseDto? = null,
-    val weather: WeatherResponseDto? = null,
-    val reservationStartMillis: Long? = null,
-    val availableSlots: List<String> = emptyList(),
-    val selectedSlot: String? = null,
-    val paymentMethod: String? = null,
-    val notes: String = "",
-    val searchQuery: String = "",
-    val filteredProfessionals: List<SpecialistResponseDto> = emptyList(),
-    val isLoading: Boolean = false,
-    val isAvailabilityLoading: Boolean = false,
-    val isAtHomeAddressMissing: Boolean = false,
-    val isValid: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null
-)
+/**
+ * Jerarquía de estados para el proceso de reserva y gestión de agenda.
+ * Garantiza transiciones de UI consistentes y atómicas.
+ */
+sealed class BookingUiState {
+    object Loading : BookingUiState()
+    
+    data class Success(
+        val professionals: List<SpecialistResponseDto> = emptyList(),
+        val services: List<ServiceResponseDto> = emptyList(),
+        val selectedProfessional: SpecialistResponseDto? = null,
+        val selectedService: ServiceResponseDto? = null,
+        val weather: WeatherResponseDto? = null,
+        val reservationStartMillis: Long? = null,
+        val availableSlots: List<String> = emptyList(),
+        val selectedSlot: String? = null,
+        val paymentMethod: String? = null,
+        val notes: String = "",
+        val searchQuery: String = "",
+        val filteredProfessionals: List<SpecialistResponseDto> = emptyList(),
+        val isAvailabilityLoading: Boolean = false,
+        val isAtHomeAddressMissing: Boolean = false,
+        val isValid: Boolean = false,
+        val successMessage: String? = null
+    ) : BookingUiState()
+
+    data class Error(val message: String) : BookingUiState()
+}
 
 /**
  * ViewModel encargado de orquestar el flujo de reserva de citas.
- * Gestiona la selección de profesional, servicio, fecha y hora, además de la confirmación de pagos
- * y la visualización de la agenda (reservas y atenciones).
- *
- * Implementa un flujo multipaso: Selección Especialista -> Servicio -> Fecha/Hora -> Confirmación.
- *
- * @param app Instancia de la aplicación para acceso a recursos y preferencias.
+ * ... (rest of the class remains similar but adapted to sealed state)
  */
 class ReservationViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = ReservationRepository(ApiClient.instance)
     private val prefs = UserPreferences(app)
     private val scheduler = ReminderScheduler(app)
 
-    private val _state = MutableStateFlow(BookingUiState())
+    private val _state = MutableStateFlow<BookingUiState>(BookingUiState.Loading)
     val state: StateFlow<BookingUiState> = _state
 
     private val _reservations = MutableStateFlow<List<ReservationResponseDto>>(emptyList())
@@ -83,6 +88,10 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _attentions = MutableStateFlow<List<ReservationResponseDto>>(emptyList())
     val attentions: StateFlow<List<ReservationResponseDto>> = _attentions
+
+    private var dualAgendaJob: Job? = null
+    private var loadProsJob: Job? = null
+    private var availabilityJob: Job? = null
 
     init {
         loadProfessionals()
@@ -95,115 +104,132 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             prefs.address.collect { address ->
                 userAddress = address
-                _state.update { it.copy(isValid = validate(it)) }
+                updateState { it.copy(isValid = validate(it)) }
             }
+        }
+    }
+
+    private fun updateState(updater: (BookingUiState.Success) -> BookingUiState.Success) {
+        val current = _state.value
+        if (current is BookingUiState.Success) {
+            _state.value = updater(current)
         }
     }
 
     /**
      * Carga tanto las reservas del cliente como las atenciones del especialista para un usuario.
-     * Utilizado para alimentar la vista de agenda dual.
-     *
-     * @param userId Identificador del usuario.
      */
     fun loadDualAgenda(userId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+        dualAgendaJob?.cancel()
+        dualAgendaJob = viewModelScope.launch {
+            _state.value = BookingUiState.Loading
             
             val role = prefs.role.first() ?: "CLIENT"
 
-            if (role == "ADMIN") {
-                // Modo Administrador: Cargar todas las reservas del sistema
-                repository.getAllReservations()
-                    .onSuccess { list ->
-                        _reservations.value = list
-                        _attentions.value = emptyList() // Admin no tiene atenciones propias por ahora
+            try {
+                if (role == "ADMIN") {
+                    repository.getAllReservations()
+                        .onSuccess { list ->
+                            _reservations.value = list
+                            _attentions.value = emptyList()
+                        }
+                        .onFailure { throw it }
+                } else {
+                    val resResult = repository.getReservationsByClient(userId)
+                    
+                    val profileResult = ApiClient.instance.getProfessionalProfileByUserId(userId)
+                    val attResult = if (profileResult.isSuccessful && profileResult.body() != null) {
+                        repository.getReservationsBySpecialist(profileResult.body()!!.id)
+                    } else {
+                        Result.success(emptyList())
                     }
-                    .onFailure {
-                        _reservations.value = emptyList()
-                    }
-            } else {
-                // Modo Usuario: Cargar Mis Reservas y Mis Atenciones
-                val resResult = repository.getReservationsByClient(userId)
-                val attResult = repository.getReservationsBySpecialist(userId)
 
-                resResult.onSuccess { list -> 
-                    _reservations.value = list
-                }.onFailure {
-                    _reservations.value = emptyList()
+                    resResult.onSuccess { _reservations.value = it }.onFailure { if (it is CancellationException) throw it else throw it }
+                    attResult.onSuccess { _attentions.value = it }.onFailure { if (it is CancellationException) throw it else throw it }
                 }
-
-                attResult.onSuccess { list -> 
-                    _attentions.value = list
-                }.onFailure {
-                    _attentions.value = emptyList()
+                
+                val currentState = _state.value
+                if (currentState is BookingUiState.Success) {
+                    _state.value = currentState.copy(successMessage = null)
+                } else {
+                    _state.value = BookingUiState.Success()
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                // SPRINT 4: Solo forzamos re-login si el error es de identidad real (401/403).
+                // Ahora usamos ApiException para detectar el código exacto de forma segura.
+                val code = when (e) {
+                    is com.pointcheck.core.network.ApiException -> e.code
+                    is retrofit2.HttpException -> e.code()
+                    else -> 0
+                }
+                
+                if (code == 401 || code == 403) {
+                    return@launch
+                } else {
+                    _state.value = BookingUiState.Error(e.localizedMessage ?: "Error al cargar agenda")
                 }
             }
-
-            _state.update { it.copy(isLoading = false) }
         }
     }
 
-    /**
-     * Confirma el pago (ya sea efectivo o digital) y completa la reserva.
-     * Utiliza el endpoint transaccional del backend para asegurar la facturación.
-     */
+
+
     fun confirmPayment(reservationId: String, onDone: () -> Unit = {}) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
             val userId = prefs.userId.first() ?: return@launch
+            _state.value = BookingUiState.Loading
+            
             repository.confirmPayment(userId, reservationId)
                 .onSuccess {
-                    _state.update { it.copy(isLoading = false, successMessage = "Cita completada y pago registrado con éxito") }
                     loadDualAgenda(userId)
                     loadMyReservations(userId)
+                    _state.value = BookingUiState.Success(successMessage = "Cita completada y pago registrado con éxito")
                     onDone()
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false, error = "Error al confirmar pago: ${e.message}") }
+                    if (e is CancellationException) throw e
+                    // Mostramos el mensaje del backend directamente para que sea intuitivo
+                    _state.value = BookingUiState.Error(e.message ?: "No se pudo procesar el pago en este momento")
                 }
         }
     }
 
-    /** Limpia el error actual del estado. */
+    fun clearError() {
+        if (_state.value is BookingUiState.Error) {
+            _state.value = BookingUiState.Success()
+        }
+    }
 
-    /**
-     * Carga la lista de profesionales activos del sistema, opcionalmente filtrados por categoría.
-     *
-     * @param categoryId ID de la categoría para filtrar (opcional).
-     */
     fun loadProfessionals(categoryId: String? = null) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+        loadProsJob?.cancel()
+        loadProsJob = viewModelScope.launch {
+            _state.value = BookingUiState.Loading
             repository.getActiveProfiles(categoryId)
                 .onSuccess { list ->
-                    _state.update { it.copy(
+                    _state.value = BookingUiState.Success(
                         professionals = list, 
-                        filteredProfessionals = list,
-                        isLoading = false 
-                    ) }
+                        filteredProfessionals = list
+                    )
                     filterProfessionals()
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = e.message, isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.value = BookingUiState.Error(e.message ?: "Error al cargar profesionales")
                 }
         }
     }
 
-    /**
-     * Actualiza el término de búsqueda y filtra la lista de profesionales.
-     */
     fun onSearchQueryChange(query: String) {
-        _state.update { it.copy(searchQuery = query) }
+        updateState { it.copy(searchQuery = query) }
         filterProfessionals()
     }
 
-    /**
-     * Filtra los profesionales basándose en el nombre o especialidad.
-     */
     private fun filterProfessionals() {
-        val query = _state.value.searchQuery.trim().lowercase()
-        val all = _state.value.professionals
+        val current = _state.value as? BookingUiState.Success ?: return
+        val query = current.searchQuery.trim().lowercase()
+        val all = current.professionals
         
         val filtered = if (query.isEmpty()) {
             all
@@ -213,16 +239,11 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
                 (it.specialty?.lowercase()?.contains(query) == true)
             }
         }
-        _state.update { it.copy(filteredProfessionals = filtered) }
+        updateState { it.copy(filteredProfessionals = filtered) }
     }
 
-    /**
-     * Selecciona un profesional para la reserva y carga sus servicios y el clima local.
-     *
-     * @param professional Objeto del especialista seleccionado.
-     */
     fun selectProfessional(professional: SpecialistResponseDto) {
-        _state.update { it.copy(
+        updateState { it.copy(
             selectedProfessional = professional,
             selectedService = null,
             availableSlots = emptyList(),
@@ -233,13 +254,6 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         loadAvailabilityIfPossible()
     }
 
-    /**
-     * Selecciona un profesional basado en su ID (o ID de usuario).
-     * Si el profesional no está en la lista cargada, lo busca en el repositorio.
-     *
-     * @param id ID del profesional o del usuario.
-     * @param categoryId Categoría de filtro si es necesario recargar la lista.
-     */
     fun selectProfessionalById(id: String?, categoryId: String? = null) {
         if (id.isNullOrBlank() || id == "null") {
             loadProfessionals(categoryId)
@@ -247,130 +261,101 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.value = BookingUiState.Loading
             
-            val currentList = _state.value.professionals
-            var found = currentList.find { 
-                it.id.trim().equals(id.trim(), ignoreCase = true) || 
-                it.userId.trim().equals(id.trim(), ignoreCase = true) 
-            }
-
-            if (found == null) {
-                repository.getActiveProfiles(null) 
-                    .onSuccess { list ->
-                        found = list.find { 
-                            it.id.trim().equals(id.trim(), ignoreCase = true) || 
-                            it.userId.trim().equals(id.trim(), ignoreCase = true) 
-                        }
-                        
-                        _state.update { s -> s.copy(
-                            professionals = list,
-                            selectedProfessional = found,
-                            isLoading = false
-                        ).let { it.copy(isValid = validate(it)) } }
-                        
-                        val finalFound = found
-                        if (finalFound != null) {
-                            loadServicesForProfessional(finalFound.id)
-                            loadWeather(finalFound.city)
-                            loadAvailabilityIfPossible()
-                        }
+            repository.getActiveProfiles(categoryId) 
+                .onSuccess { list ->
+                    val found = list.find { 
+                        it.id.trim().equals(id.trim(), ignoreCase = true)
                     }
-                    .onFailure { e ->
-                        _state.update { it.copy(error = e.message, isLoading = false) }
+                    
+                    val newState = BookingUiState.Success(
+                        professionals = list,
+                        filteredProfessionals = list,
+                        selectedProfessional = found
+                    ).let { it.copy(isValid = validate(it)) }
+                    
+                    _state.value = newState
+                    
+                    if (found != null) {
+                        loadServicesForProfessional(found.id)
+                        loadWeather(found.city)
+                        loadAvailabilityIfPossible()
                     }
-            } else {
-                _state.update { s -> s.copy(
-                    selectedProfessional = found,
-                    isLoading = false
-                ).let { it.copy(isValid = validate(it)) } }
-                
-                val finalFound = found
-                if (finalFound != null) {
-                    loadServicesForProfessional(finalFound.id)
-                    loadWeather(finalFound.city)
-                    loadAvailabilityIfPossible()
                 }
-            }
+                .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.value = BookingUiState.Error(e.message ?: "Error al cargar profesional")
+                }
         }
     }
 
-    /**
-     * Carga la información climática de una ciudad para informar al usuario sobre condiciones externas.
-     */
     private fun loadWeather(city: String?) {
         if (city == null) return
         viewModelScope.launch {
             repository.getWeather(city)
-                .onSuccess { w -> _state.update { it.copy(weather = w) } }
+                .onSuccess { w -> updateState { it.copy(weather = w) } }
         }
     }
 
-    /**
-     * Carga el catálogo de servicios de un perfil profesional específico.
-     */
     private fun loadServicesForProfessional(professionalProfileId: String) {
         viewModelScope.launch {
             repository.getServices(professionalProfileId)
                 .onSuccess { list ->
-                    _state.update { it.copy(services = list) }
+                    updateState { it.copy(services = list) }
                 }
         }
     }
 
-    /**
-     * Selecciona un servicio del catálogo del profesional.
-     */
     fun selectService(service: ServiceResponseDto) {
-        _state.update { s -> s.copy(selectedService = service).let { it.copy(isValid = validate(it)) } }
+        updateState { s -> s.copy(selectedService = service).let { it.copy(isValid = validate(it)) } }
         loadAvailabilityIfPossible()
     }
 
-    /**
-     * Establece la fecha de la reserva y gatilla la consulta de disponibilidad horaria.
-     *
-     * @param millis Fecha seleccionada en milisegundos.
-     */
     fun setReservationDateTime(millis: Long) {
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = millis
-        cal.set(Calendar.HOUR_OF_DAY, 9)
-        cal.set(Calendar.MINUTE, 0)
+        // 1. Extraer los valores nominales (Año, Mes, Día) tratando el tiempo como UTC Puro
+        val utcCal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        utcCal.timeInMillis = millis
+        val year = utcCal.get(Calendar.YEAR)
+        val month = utcCal.get(Calendar.MONTH)
+        val day = utcCal.get(Calendar.DAY_OF_MONTH)
+
+        // 2. Reconstruir la fecha en el calendario LOCAL del dispositivo
+        val localCal = Calendar.getInstance()
+        localCal.set(year, month, day, 9, 0, 0) // Forzamos las 09:00 AM del día exacto seleccionado
+        localCal.set(Calendar.MILLISECOND, 0)
         
-        _state.update { s -> 
-            s.copy(reservationStartMillis = cal.timeInMillis, selectedSlot = null)
+        updateState { s -> 
+            s.copy(reservationStartMillis = localCal.timeInMillis, selectedSlot = null)
                 .let { it.copy(isValid = validate(it)) } 
         }
         loadAvailabilityIfPossible()
     }
 
-    /**
-     * Consulta al backend los horarios disponibles para el profesional y fecha seleccionados.
-     */
     private fun loadAvailabilityIfPossible() {
-        val s = _state.value
+        val s = _state.value as? BookingUiState.Success ?: return
         if (s.selectedProfessional != null && s.reservationStartMillis != null) {
             val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(s.reservationStartMillis)
-            viewModelScope.launch {
-                _state.update { it.copy(isAvailabilityLoading = true) }
+
+            availabilityJob?.cancel()
+            availabilityJob = viewModelScope.launch {
+                updateState { it.copy(isAvailabilityLoading = true) }
                 repository.getAvailability(s.selectedProfessional.id, dateStr)
                     .onSuccess { resp ->
-                        _state.update { it.copy(availableSlots = resp.availableSlots, isAvailabilityLoading = false) }
+                        updateState { it.copy(availableSlots = resp.availableSlots, isAvailabilityLoading = false) }
                     }
                     .onFailure { e ->
-                        _state.update { it.copy(error = e.message, isAvailabilityLoading = false, availableSlots = emptyList()) }
+                        if (e is CancellationException) throw e
+                        updateState { it.copy(isAvailabilityLoading = false, availableSlots = emptyList()) }
+                        _state.value = BookingUiState.Error(e.message ?: "Error de disponibilidad")
                     }
             }
         }
     }
 
-    /**
-     * Actualiza la hora de inicio de la reserva basándose en el slot seleccionado (HH:mm).
-     *
-     * @param slot Horario seleccionado en formato string.
-     */
     fun updateReservationTimeFromSlot(slot: String) {
-        val s = _state.value
+        val s = _state.value as? BookingUiState.Success ?: return
         val currentMillis = s.reservationStartMillis ?: return
         
         val cal = Calendar.getInstance()
@@ -381,30 +366,21 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             cal.set(Calendar.MINUTE, parts[1].toInt())
         }
         
-        _state.update { it.copy(
+        updateState { it.copy(
             reservationStartMillis = cal.timeInMillis,
             selectedSlot = slot
         ).let { it.copy(isValid = validate(it)) } }
     }
 
-    /**
-     * Establece notas adicionales para la reserva (como dirección o requerimientos).
-     */
     fun setNotes(notes: String) {
-        _state.update { it.copy(notes = notes) }
+        updateState { it.copy(notes = notes) }
     }
 
-    /**
-     * Establece el método de pago seleccionado por el usuario.
-     */
     fun setPaymentMethod(method: String) {
-        _state.update { s -> s.copy(paymentMethod = method).let { it.copy(isValid = validate(it)) } }
+        updateState { s -> s.copy(paymentMethod = method).let { it.copy(isValid = validate(it)) } }
     }
 
-    /**
-     * Valida que el formulario de reserva esté completo según las reglas de negocio.
-     */
-    private fun validate(s: BookingUiState): Boolean {
+    private fun validate(s: BookingUiState.Success): Boolean {
         val isDayUnit = s.selectedService?.priceUnit == "DAY"
         val isAtHome = s.selectedService?.isAtHome == true
         
@@ -416,52 +392,45 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
                
         return if (isAtHome) {
             val hasAddress = !userAddress.isNullOrBlank()
-            _state.update { it.copy(isAtHomeAddressMissing = !hasAddress) }
-            // Para servicios a domicilio, debe tener dirección en perfil O en notas
+            updateState { it.copy(isAtHomeAddressMissing = !hasAddress) }
             basicValid && (hasAddress || s.notes.trim().length >= 5)
         } else {
-            _state.update { it.copy(isAtHomeAddressMissing = false) }
+            updateState { it.copy(isAtHomeAddressMissing = false) }
             basicValid
         }
     }
 
-    /**
-     * Carga las reservas históricas y futuras de un cliente.
-     */
     fun loadMyReservations(userId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.value = BookingUiState.Loading
             repository.getReservationsByClient(userId)
                 .onSuccess { list ->
                     _reservations.value = list
-                    _state.update { it.copy(isLoading = false) }
+                    _state.value = BookingUiState.Success()
                 }
                 .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
                     _reservations.value = emptyList()
-                    _state.update { it.copy(isLoading = false) }
+                    _state.value = BookingUiState.Error(e.message ?: "Error al cargar reservas")
                 }
         }
     }
 
-    /**
-     * Ejecuta la petición para crear una nueva reserva en el sistema.
-     *
-     * @param onDone Callback ejecutado tras el éxito de la creación.
-     */
     fun createReservation(onDone: () -> Unit) {
-        val s = _state.value
+        val s = _state.value as? BookingUiState.Success ?: return
         if (!validate(s)) return
 
-        val specialistId = s.selectedProfessional?.id
+        val specialistProfileId = s.selectedProfessional?.id
         val serviceId = s.selectedService?.id
 
-        if (specialistId == null || serviceId == null) {
-            _state.update { it.copy(error = "Información de selección incompleta") }
+        if (specialistProfileId == null || serviceId == null) {
+            _state.value = BookingUiState.Error("Información de selección incompleta")
             return
         }
 
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.value = BookingUiState.Loading
             val userId = prefs.userId.first() ?: return@launch
             
             val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
@@ -469,7 +438,7 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
             
             val request = ReservationRequestDto(
                 clientId = userId,
-                specialistId = specialistId,
+                specialistProfileId = specialistProfileId,
                 serviceId = serviceId,
                 reservationStart = startStr,
                 notes = s.notes,
@@ -478,11 +447,10 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
 
             repository.createReservation(request)
                 .onSuccess {
-                    _state.update { it.copy(isLoading = false, successMessage = "Reserva creada con éxito") }
+                    _state.value = BookingUiState.Success(successMessage = "Reserva creada con éxito")
                     
-                    // Programar recordatorio local 1 hora antes del inicio
                     s.reservationStartMillis?.let { startMillis ->
-                        val reminderTime = startMillis - (60 * 60 * 1000) // 1 hora antes
+                        val reminderTime = startMillis - (60 * 60 * 1000)
                         if (reminderTime > System.currentTimeMillis()) {
                             scheduler.scheduleAt(
                                 reminderTime,
@@ -491,35 +459,36 @@ class ReservationViewModel(app: Application) : AndroidViewModel(app) {
                             )
                         }
                     }
-
                     onDone()
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isLoading = false, error = e.message) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.value = BookingUiState.Error(e.message ?: "Error al crear reserva")
                 }
         }
     }
 
-    /**
-     * Cancela una reserva existente.
-     */
     fun cancelReservation(reservationId: String) {
         viewModelScope.launch {
             val userId = prefs.userId.first() ?: return@launch
+            _state.value = BookingUiState.Loading
             repository.cancelReservation(userId, reservationId)
                 .onSuccess {
-                    loadMyReservations(userId)
-                    _state.update { it.copy(successMessage = "Reserva cancelada") }
+                    loadDualAgenda(userId)
+                    _state.value = BookingUiState.Success(successMessage = "Reserva cancelada")
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = e.message) }
+                    if (e is CancellationException) throw e
+                    _state.value = BookingUiState.Error(e.message ?: "Error al cancelar")
                 }
         }
     }
 
-    /** Limpia el error actual del estado. */
-    fun clearError() = _state.update { it.copy(error = null) }
-    
-    /** Limpia el mensaje de éxito del estado. */
-    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
+    fun clearSuccess() {
+        val current = _state.value
+        if (current is BookingUiState.Success) {
+            _state.value = current.copy(successMessage = null)
+        }
+    }
 }

@@ -15,10 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.ui.components.PCCard
+import com.pointcheck.core.ui.components.PointCheckCard
+import com.pointcheck.core.ui.components.PointCheckTopBar
 import com.pointcheck.core.ui.components.PCStatusChip
 import com.pointcheck.features.billing.data.dto.BillingRecordResponseDto
 
@@ -28,19 +30,17 @@ fun BillingListScreen(
     nav: NavController,
     vm: BillingViewModel = viewModel()
 ) {
-    val s by vm.state.collectAsState()
-    // In a real scenario, we'd get the specialistId from a UserViewModel or Preferences
+    val s by vm.state.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
-        vm.loadBillingBySpecialist("current_user_id")
+        vm.loadBillingBySpecialist()
     }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Gestión Financiera", style = MaterialTheme.typography.titleLarge) },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            PointCheckTopBar(
+                title = "Gestión Financiera",
+                onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
@@ -78,67 +78,34 @@ fun BillingListScreen(
 
 @Composable
 fun BillingItem(billing: BillingRecordResponseDto, onClick: () -> Unit) {
-    PCCard(onClick = onClick) {
+    PointCheckCard(
+        title = billing.client.name,
+        subtitle = billing.createdAt,
+        icon = Icons.Default.AttachMoney,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        badgeText = billing.status,
+        badgeColor = if (billing.status == "PAID") 
+            MaterialTheme.colorScheme.primaryContainer 
+        else 
+            MaterialTheme.colorScheme.errorContainer
+    ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.AttachMoney,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-            
-            Spacer(Modifier.width(16.dp))
-            
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = billing.client.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = billing.createdAt,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${billing.amount} ${billing.currency}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                PCStatusChip(
-                    text = billing.status,
-                    containerColor = if (billing.status == "PAID") 
-                        MaterialTheme.colorScheme.primaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.errorContainer,
-                    contentColor = if (billing.status == "PAID") 
-                        MaterialTheme.colorScheme.onPrimaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
+            Text(
+                text = "${billing.amount} ${billing.currency}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
             
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(start = 8.dp)
+                tint = MaterialTheme.colorScheme.outline
             )
         }
     }

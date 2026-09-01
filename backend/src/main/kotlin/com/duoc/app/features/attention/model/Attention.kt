@@ -1,5 +1,6 @@
 package com.duoc.app.features.attention.model
 
+import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import com.duoc.app.features.reservation.model.Reservation
 import com.duoc.app.features.user.model.User
 import jakarta.persistence.*
@@ -10,7 +11,7 @@ import java.util.Objects
 @Table(
     name = "attentions",
     indexes = [
-        Index(name = "idx_attentions_specialist_date", columnList = "specialist_id,startedAt"),
+        Index(name = "idx_attentions_specialist_profile_date", columnList = "specialist_profile_id,startedAt"),
         Index(name = "idx_attentions_client", columnList = "client_id"),
         Index(name = "idx_attentions_status", columnList = "status")
     ],
@@ -21,7 +22,7 @@ import java.util.Objects
 class Attention(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -33,8 +34,8 @@ class Attention(
     val client: User,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "specialist_id", nullable = false)
-    val specialist: User,
+    @JoinColumn(name = "specialist_profile_id", nullable = false)
+    val specialist: ProfessionalProfile,
 
     @Column(nullable = false)
     var startedAt: LocalDateTime = LocalDateTime.now(),

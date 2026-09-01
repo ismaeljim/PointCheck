@@ -6,6 +6,7 @@ import com.duoc.app.features.service.dto.ServiceOfferingResponse
 import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.service.repository.ServiceOfferingRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 /**
@@ -15,6 +16,7 @@ import java.time.LocalDateTime
  * precios, duración y modalidad (a domicilio o presencial).
  */
 @Service
+@Transactional(readOnly = true)
 class ServiceOfferingService(
     private val serviceOfferingRepository: ServiceOfferingRepository,
     private val professionalProfileRepository: ProfessionalProfileRepository,
@@ -28,6 +30,7 @@ class ServiceOfferingService(
      * @return [ServiceOfferingResponse] con el servicio persistido.
      * @throws IllegalArgumentException si el perfil profesional no existe o no está activo.
      */
+    @Transactional
     fun create(request: ServiceOfferingRequest): ServiceOfferingResponse {
         // AUDITORÍA: Verificación de integridad referencial manual antes de persistencia.
         val profile = professionalProfileRepository.findById(request.professionalProfileId).orElseThrow {
@@ -68,7 +71,7 @@ class ServiceOfferingService(
      * @return Lista de servicios asociados.
      */
     fun getByProfessionalProfile(professionalProfileId: String): List<ServiceOfferingResponse> {
-        return serviceOfferingRepository.findByProfessionalProfile_Id(professionalProfileId).map { it.toResponse() }
+        return serviceOfferingRepository.findByProfessionalProfile_IdWithDetails(professionalProfileId).map { it.toResponse() }
     }
 
     /**
@@ -89,6 +92,7 @@ class ServiceOfferingService(
      * @param id ID del servicio a desactivar.
      * @return Servicio actualizado con estado inactivo.
      */
+    @Transactional
     fun deactivate(id: String): ServiceOfferingResponse {
         val serviceOffering = serviceOfferingRepository.findById(id).orElseThrow {
             IllegalArgumentException("Servicio no encontrado con ID: $id")

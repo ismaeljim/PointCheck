@@ -12,6 +12,7 @@ data class BillingRecordResponse(
     val attentionId: String?,
     val client: UserSummaryDto,
     val specialist: UserSummaryDto,
+    val specialistProfileId: String = "",
     val amount: BigDecimal,
     val currency: String,
     val paymentMethod: PaymentMethod?,

@@ -107,7 +107,7 @@ class ReservationE2ETest @Autowired constructor(
         val reservationStart = LocalDateTime.now().plusDays(1).withNano(0)
         val request = ReservationRequest(
             clientId = specialistAsClient.id.toString(),
-            specialistId = specialistAsProvider.id.toString(),
+            specialistProfileId = specialistAsProvider.id.toString(),
             serviceId = service.id,
             reservationStart = reservationStart,
             notes = "Test de flujo especialista-como-cliente"
@@ -120,7 +120,7 @@ class ReservationE2ETest @Autowired constructor(
         }.andExpect {
             status { isOk() }
             jsonPath("$.clientId") { value(specialistAsClient.id) }
-            jsonPath("$.specialistId") { value(specialistAsProvider.id) }
+            jsonPath("$.specialistProfileId") { value(specialistAsProvider.id) }
             jsonPath("$.status") { value(ReservationStatus.PENDING.name) }
             jsonPath("$.specialistName") { value(specialistAsProvider.name) }
             jsonPath("$.address") { value("Calle Falsa 123") }
@@ -132,7 +132,7 @@ class ReservationE2ETest @Autowired constructor(
         }.andExpect {
             status { isOk() }
             jsonPath("$.length()") { value(1) }
-            jsonPath("$[0].specialistId") { value(specialistAsProvider.id) }
+            jsonPath("$[0].specialistProfileId") { value(specialistAsProvider.id) }
         }
 
         // Verificar que aparece en la agenda del proveedor (Especialista B)

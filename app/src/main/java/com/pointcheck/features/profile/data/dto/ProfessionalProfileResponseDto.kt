@@ -5,8 +5,8 @@ package com.pointcheck.features.profile.data.dto
  * Campos como address, specialty y description son ahora String no nulos.
  */
 data class ProfessionalProfileResponseDto(
-    val id: String,
-    val userId: String,
+    val id: String = "",
+    val userId: String = "",
     val categoryId: String = "",
     val displayName: String = "",
     val businessName: String = "",
@@ -15,7 +15,7 @@ data class ProfessionalProfileResponseDto(
     val address: String = "",
     val city: String = "",
     val country: String = "Chile",
-    val latitude: Double? = null, // Las coordenadas pueden ser null si no se han seteado
+    val latitude: Double? = null,
     val longitude: Double? = null,
     val isVerified: Boolean = false,
     val rating: Float = 0.0f,

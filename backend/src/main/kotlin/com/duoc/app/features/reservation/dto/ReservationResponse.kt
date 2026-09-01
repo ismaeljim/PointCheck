@@ -14,6 +14,7 @@ data class ReservationResponse(
     val id: String,
     val client: UserSummaryDto,
     val specialist: UserSummaryDto,
+    val specialistProfileId: String = "",
     val city: String = "",
     val address: String = "",
     val serviceId: String = "",

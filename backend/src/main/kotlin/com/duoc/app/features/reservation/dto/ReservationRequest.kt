@@ -7,7 +7,7 @@ import java.time.LocalDateTime
  * DTO para la solicitud de creación de una reservación.
  *
  * @property clientId ID del usuario que solicita el servicio.
- * @property specialistId ID del especialista que realizará el servicio.
+ * @property specialistProfileId ID del perfil profesional que realizará el servicio.
  * @property serviceId ID del servicio específico del catálogo (opcional).
  * @property reservationStart Fecha y hora de inicio de la cita.
  * @property reservationEnd Fecha y hora de término (opcional, calculada según el servicio si no se provee).
@@ -16,7 +16,7 @@ import java.time.LocalDateTime
  */
 data class ReservationRequest(
     val clientId: String,
-    val specialistId: String,
+    val specialistProfileId: String,
     val serviceId: String? = null,
     val reservationStart: LocalDateTime,
     val reservationEnd: LocalDateTime? = null,

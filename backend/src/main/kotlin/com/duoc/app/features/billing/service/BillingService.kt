@@ -31,8 +31,14 @@ import java.time.LocalDateTime
 class BillingService(
     private val billingRecordRepository: BillingRecordRepository,
     private val reservationRepository: ReservationRepository,
-    private val attentionRepository: AttentionRepository
+    private val attentionRepository: AttentionRepository,
+    private val userRepository: com.duoc.app.features.user.repository.UserRepository
 ) {
+
+    fun getUserByEmail(email: String): com.duoc.app.features.user.model.User {
+        return userRepository.findByEmailWithProfile(email)
+            ?: throw IllegalArgumentException("Usuario no encontrado")
+    }
 
     @Transactional
     fun create(request: BillingRecordRequest): BillingRecordResponse {
@@ -50,8 +56,6 @@ class BillingService(
         val billingRecord = BillingRecord(
             reservation = reservation,
             attention = attention,
-            client = reservation.client,
-            specialist = reservation.specialist,
             amount = request.amount,
             currency = request.currency ?: "CLP",
             paymentMethod = request.paymentMethod ?: reservation.paymentMethod,
@@ -98,19 +102,22 @@ class BillingService(
         return billingRecordRepository.save(billingRecord).toResponse()
     }
 
-    fun getBySpecialist(specialistId: String): List<BillingRecordResponse> {
-        return billingRecordRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
+    @Transactional(readOnly = true)
+    fun getBySpecialist(specialistProfileId: String): List<BillingRecordResponse> {
+        return billingRecordRepository.findByReservation_Specialist_Id(specialistProfileId).map { it.toResponse() }
     }
 
-    fun getPendingBySpecialist(specialistId: String): List<BillingRecordResponse> {
-        return billingRecordRepository.findBySpecialist_IdAndStatus(specialistId, PaymentStatus.PENDING)
+    @Transactional(readOnly = true)
+    fun getPendingBySpecialist(specialistProfileId: String): List<BillingRecordResponse> {
+        return billingRecordRepository.findByReservation_Specialist_IdAndStatus(specialistProfileId, PaymentStatus.PENDING)
             .map { it.toResponse() }
     }
 
-    fun getTodayBySpecialist(specialistId: String): List<BillingRecordResponse> {
+    @Transactional(readOnly = true)
+    fun getTodayBySpecialist(specialistProfileId: String): List<BillingRecordResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
-        return billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(specialistId, startOfDay, endOfDay)
+        return billingRecordRepository.findByReservation_Specialist_IdAndCreatedAtBetween(specialistProfileId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
@@ -118,8 +125,9 @@ class BillingService(
         id = this.id!!,
         reservationId = this.reservation.id!!,
         attentionId = this.attention?.id,
-        client = this.client.toSummaryDto(),
-        specialist = this.specialist.toSummaryDto(),
+        client = this.reservation.client.toSummaryDto(),
+        specialist = this.reservation.specialist.toSummaryDto(),
+        specialistProfileId = this.reservation.specialist.id ?: "",
         amount = this.amount,
         currency = this.currency,
         paymentMethod = this.paymentMethod,

@@ -11,6 +11,7 @@ data class BillingRecordResponseDto(
     val attentionId: String? = null,
     val client: UserSummaryDto,
     val specialist: UserSummaryDto,
+    val specialistProfileId: String = "",
     val amount: Double,
     val currency: String = "CLP",
     val paymentMethod: String = "",

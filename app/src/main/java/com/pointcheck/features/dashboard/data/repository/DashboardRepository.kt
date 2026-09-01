@@ -27,13 +27,27 @@ class DashboardRepository(private val api: ApiService) {
     }
 
     /**
+     * Obtiene métricas administrativas exclusivas (Solo para rol ADMIN).
+     */
+    suspend fun getAdminMetrics(): Result<DashboardMetricsDto> {
+        return handleApiCall("Error al obtener métricas administrativas") { api.getAdminMetrics() }
+    }
+
+    /**
+     * Obtiene el perfil profesional de un usuario por su ID.
+     */
+    suspend fun getProfessionalProfileByUserId(userId: String): Result<com.pointcheck.features.profile.data.dto.ProfessionalProfileResponseDto> {
+        return handleApiCall("Error al obtener perfil profesional") { api.getProfessionalProfileByUserId(userId) }
+    }
+
+    /**
      * Obtiene un resumen estadístico de la actividad para un especialista.
      *
-     * @param specialistId Identificador único del perfil profesional.
+     * @param id Identificador único del perfil profesional.
      * @return [Result] con el resumen del reporte [ReportSummaryResponseDto].
      */
-    suspend fun getReportSummaryBySpecialist(specialistId: String): Result<ReportSummaryResponseDto> {
-        return handleApiCall("Error al obtener resumen de reporte") { api.getReportSummaryBySpecialist(specialistId) }
+    suspend fun getReportSummaryBySpecialist(id: String): Result<ReportSummaryResponseDto> {
+        return handleApiCall("Error al obtener resumen de reporte") { api.getReportSummaryBySpecialist(id) }
     }
 
     /**
@@ -173,6 +187,7 @@ class DashboardRepository(private val api: ApiService) {
      */
     suspend fun getAuditLogs(): Result<List<com.pointcheck.features.admin.data.dto.AuditLogDto>> {
         return handleApiCall("Error al obtener logs de auditoría") { api.getAuditLogs() }
+            .map { it.content }
     }
 
     /**

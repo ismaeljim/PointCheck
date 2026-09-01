@@ -17,11 +17,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppOutlinedButton
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.*
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 
 /**
@@ -43,20 +42,24 @@ import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel()) {
-    val s by vm.state.collectAsState()
+    val uiState by vm.state.collectAsStateWithLifecycle()
+    val s = uiState as? SubscriptionUiState.Success
+    val isLoading = uiState is SubscriptionUiState.Loading
+    val error = (uiState as? SubscriptionUiState.Error)?.message
+
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(s.error) {
-        s.error?.let {
+    LaunchedEffect(error) {
+        error?.let {
             snackbarHostState.showSnackbar(it)
             vm.clearError()
         }
     }
 
-    LaunchedEffect(s.successMessage) {
-        s.successMessage?.let {
+    LaunchedEffect(s?.successMessage) {
+        s?.successMessage?.let {
             snackbarHostState.showSnackbar(it)
             vm.clearSuccess()
         }
@@ -88,7 +91,7 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = "Mi Suscripción",
                 onBack = { nav.popBackStack() }
             )
@@ -117,21 +120,21 @@ fun SubscriptionScreen(nav: NavController, vm: SubscriptionViewModel = viewModel
 
             Spacer(Modifier.height(24.dp))
 
-            if (s.isLoading) {
+            if (isLoading) {
                 Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
-                if (s.currentSubscription != null) {
+                if (s?.currentSubscription != null) {
                     ActiveSubscriptionCard(
-                        sub = s.currentSubscription!!,
+                        sub = s.currentSubscription,
                         onCancel = { showCancelDialog = true },
-                        isLoading = s.isLoading
+                        isLoading = isLoading
                     )
                 } else {
                     NoSubscriptionView(
                         onSelectPlan = { vm.createSubscription(it) },
-                        isLoading = s.isLoading
+                        isLoading = isLoading
                     )
                 }
             }
@@ -165,54 +168,21 @@ fun ActiveSubscriptionCard(
     val isActive = sub.status == "ACTIVE"
     val statusColor = if (isActive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) Color(0xFFF1F8E9) else Color(0xFFFFF1F0)
-        )
+    PointCheckCard(
+        title = sub.planName,
+        icon = if (isActive) Icons.Default.CheckCircle else Icons.Default.Info,
+        iconColor = statusColor,
+        badgeText = sub.status,
+        badgeColor = statusColor.copy(alpha = 0.1f),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (isActive) Icons.Default.CheckCircle else Icons.Default.Info,
-                    contentDescription = null,
-                    tint = statusColor,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = sub.planName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = statusColor
-                    )
-                    Surface(
-                        color = statusColor.copy(alpha = 0.1f),
-                        shape = MaterialTheme.shapes.extraSmall
-                    ) {
-                        Text(
-                            text = sub.status,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = statusColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-            
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider(color = statusColor.copy(alpha = 0.2f))
-            Spacer(Modifier.height(16.dp))
-
+        Column {
             SubDetailRow(Icons.Default.Info, "Vigencia desde", sub.startDate)
             SubDetailRow(Icons.Default.Info, "Vigencia hasta", sub.endDate)
             
             if (isActive) {
                 Spacer(Modifier.height(32.dp))
-                AppOutlinedButton(
+                PointCheckOutlinedButton(
                     text = "CANCELAR SUSCRIPCIÓN",
                     onClick = onCancel,
                     isLoading = isLoading
@@ -265,31 +235,17 @@ fun NoSubscriptionView(onSelectPlan: (String) -> Unit, isLoading: Boolean) {
 
 @Composable
 fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = false, onSelect: () -> Unit, isLoading: Boolean) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = if (!isLoading) onSelect else ({}),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isPremium) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-        )
+    PointCheckCard(
+        title = title,
+        icon = if (isPremium) Icons.Default.Stars else Icons.Default.Info,
+        iconColor = if (isPremium) Color(0xFFFBC02D) else MaterialTheme.colorScheme.primary,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    title, 
-                    style = MaterialTheme.typography.titleLarge, 
-                    fontWeight = FontWeight.Bold,
-                    color = if (isPremium) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                )
-                if (isPremium) {
-                    Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Default.Stars, contentDescription = null, tint = Color(0xFFFBC02D))
-                }
-            }
-            Spacer(Modifier.height(8.dp))
+        Column {
             Text(
                 desc, 
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isPremium) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
             Text(
@@ -299,12 +255,11 @@ fun PlanCard(title: String, desc: String, price: String, isPremium: Boolean = fa
                 color = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
             Spacer(Modifier.height(16.dp))
-            AppButton(
+            PointCheckButton(
                 text = "Elegir este plan",
                 onClick = onSelect,
                 enabled = !isLoading,
-                isLoading = isLoading,
-                containerColor = if (isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                isLoading = isLoading
             )
         }
     }

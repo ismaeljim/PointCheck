@@ -8,7 +8,7 @@ import androidx.security.crypto.MasterKey
 
 /**
  * Gestor de seguridad encargado de manejar el almacenamiento encriptado.
- * Implementa las recomendaciones de ISO 27001 para la protección de PII 
+ * Implementa las recomendaciones de ISO 27001 para la protección de PII
  * (Personally Identifiable Information).
  */
 class SecurityManager(context: Context) {

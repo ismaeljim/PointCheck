@@ -14,9 +14,6 @@ import java.util.Objects
     indexes = [
         Index(name = "idx_billing_reservation", columnList = "reservation_id"),
         Index(name = "idx_billing_attention", columnList = "attention_id"),
-        Index(name = "idx_billing_client", columnList = "client_id"),
-        Index(name = "idx_billing_specialist", columnList = "specialist_id"),
-        Index(name = "idx_billing_specialist_date", columnList = "specialist_id,created_at"),
         Index(name = "idx_billing_status", columnList = "status"),
         Index(name = "idx_billing_paid_at", columnList = "paid_at")
     ]
@@ -24,7 +21,7 @@ import java.util.Objects
 class BillingRecord(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -34,14 +31,6 @@ class BillingRecord(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "attention_id")
     val attention: Attention? = null,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false)
-    val client: User,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "specialist_id", nullable = false)
-    val specialist: User,
 
     @Column(nullable = false, precision = 12, scale = 2)
     var amount: BigDecimal,

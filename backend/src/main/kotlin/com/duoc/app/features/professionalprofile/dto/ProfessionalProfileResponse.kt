@@ -17,6 +17,8 @@ data class ProfessionalProfileResponse(
     val city: String?,
     val country: String?,
     val defaultSessionDurationMinutes: Int,
+    val rating: Float = 0.0f,
+    val isVerified: Boolean = false,
     val latitude: Double?,
     val longitude: Double?,
     val workingHoursJson: String?,

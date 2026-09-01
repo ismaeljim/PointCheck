@@ -24,14 +24,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppOutlinedButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckCard
+import com.pointcheck.core.ui.components.PointCheckTextField
+import com.pointcheck.core.ui.components.PointCheckTopBar
 import com.pointcheck.core.util.RutUtils
 import com.pointcheck.core.util.RutVisualTransformation
 
@@ -50,7 +51,7 @@ fun RegisterScreen(
     nav: NavController,
     vm: UserViewModel = viewModel()
 ) {
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
 
@@ -70,7 +71,7 @@ fun RegisterScreen(
 
     Scaffold(
         topBar = { 
-            AppTopBar(
+            PointCheckTopBar(
                 title = "Crear Cuenta",
                 onBack = { nav.popBackStack() }
             ) 
@@ -82,67 +83,65 @@ fun RegisterScreen(
                 .padding(pad)
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(24.dp),
+                .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(24.dp)
+            PointCheckCard(
+                title = "Información Personal",
+                subtitle = "Tus datos básicos para la cuenta",
+                icon = Icons.Default.Person
             ) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Información Personal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    AppTextField(
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PointCheckTextField(
                         value = s.name,
                         onValueChange = { vm.onValueChange("name", it) },
                         label = "Nombre Completo",
+                        placeholder = "Ej: Juan Pérez",
                         leadingIcon = Icons.Default.Person,
                         enabled = !s.isLoading
                     )
 
-                    AppTextField(
+                    PointCheckTextField(
                         value = s.email,
                         onValueChange = { vm.onValueChange("email", it) },
                         label = "Correo Electrónico",
+                        placeholder = "ejemplo@correo.com",
                         leadingIcon = Icons.Default.Email,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        enabled = !s.isLoading
+                        enabled = !s.isLoading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                     )
                     
                     val isRutValid = remember(s.rut) { RutUtils.validateRut(s.rut) || s.rut.isEmpty() }
-                    AppTextField(
+                    PointCheckTextField(
                         value = s.rut,
                         onValueChange = { vm.onValueChange("rut", it) },
-                        label = "RUT (ej: 12.345.678-9)",
+                        label = "RUT",
+                        placeholder = "12.345.678-9",
                         leadingIcon = Icons.Default.Badge,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         enabled = !s.isLoading,
-                        isError = !isRutValid
+                        isError = !isRutValid,
+                        supportingText = if (!isRutValid) "RUT inválido" else null,
+                        visualTransformation = RutVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                     )
-                    if (!isRutValid) {
-                        Text("RUT inválido", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-                    }
 
-                    AppTextField(
+                    PointCheckTextField(
                         value = s.phone,
                         onValueChange = { vm.onValueChange("phone", it) },
                         label = "Teléfono de contacto",
+                        placeholder = "+569 1234 5678",
                         leadingIcon = Icons.Default.Phone,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        enabled = !s.isLoading
+                        enabled = !s.isLoading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                     )
 
-                    AppTextField(
+                    PointCheckTextField(
                         value = s.password,
                         onValueChange = { vm.onValueChange("password", it) },
                         label = "Contraseña",
+                        placeholder = "Mínimo 6 caracteres",
                         leadingIcon = Icons.Default.Lock,
+                        enabled = !s.isLoading,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
@@ -152,11 +151,13 @@ fun RegisterScreen(
                         }
                     )
 
-                    AppTextField(
+                    PointCheckTextField(
                         value = s.confirm,
                         onValueChange = { vm.onValueChange("confirm", it) },
                         label = "Confirmar Contraseña",
+                        placeholder = "Repita su contraseña",
                         leadingIcon = Icons.Default.Lock,
+                        enabled = !s.isLoading,
                         visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
@@ -168,19 +169,17 @@ fun RegisterScreen(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp)
+            PointCheckCard(
+                title = "Configuración de Cuenta",
+                subtitle = "Define tu rol en la plataforma",
+                icon = Icons.Default.Settings
             ) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("Configuración de Cuenta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    
+                Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Perfil de Especialista", style = MaterialTheme.typography.bodyLarge)
+                            Text("Perfil de Especialista", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                             Text("Activa esto si ofrecerás servicios", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                         }
                         Switch(
@@ -191,32 +190,42 @@ fun RegisterScreen(
 
                     if (s.role == "SPECIALIST") {
                         Spacer(Modifier.height(16.dp))
-                        Text("Ubicación del Servicio", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        Spacer(Modifier.height(16.dp))
+                        
+                        Text("Ubicación del Servicio", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(12.dp))
-                        AppTextField(
+                        PointCheckTextField(
                             value = s.city,
                             onValueChange = { vm.onValueChange("city", it) },
                             label = "Ciudad",
+                            placeholder = "Ej: Santiago",
                             leadingIcon = Icons.Default.LocationCity
                         )
                         Spacer(Modifier.height(8.dp))
-                        AppTextField(
+                        PointCheckTextField(
                             value = s.address,
                             onValueChange = { vm.onValueChange("address", it) },
                             label = "Dirección",
+                            placeholder = "Ej: Av. Providencia 1234",
                             leadingIcon = Icons.Default.Place
                         )
                     }
                     
-                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(16.dp))
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        AppOutlinedButton(
-                            text = "Subir Foto",
+                        OutlinedButton(
                             onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.CloudUpload
-                        )
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.CloudUpload, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Subir Foto")
+                        }
                         Spacer(Modifier.width(16.dp))
                         if (s.avatarUri != null) {
                             Image(
@@ -240,22 +249,24 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            AppButton(
-                text = if (s.role == "SPECIALIST") "Siguiente: Especialidad" else "Crear mi cuenta",
-                onClick = {
-                    if (s.role == "SPECIALIST") {
-                        nav.navigate("category_selection")
-                    } else {
-                        vm.save {
-                            nav.navigate(Screen.Dashboard.route) {
-                                popUpTo(Screen.Register.route) { inclusive = true }
+            Box(Modifier.padding(horizontal = 12.dp)) {
+                PointCheckButton(
+                    text = if (s.role == "SPECIALIST") "Siguiente: Especialidad" else "Crear mi cuenta",
+                    onClick = {
+                        if (s.role == "SPECIALIST") {
+                            nav.navigate("category_selection")
+                        } else {
+                            vm.save {
+                                nav.navigate(Screen.Dashboard.route) {
+                                    popUpTo(Screen.Register.route) { inclusive = true }
+                                }
                             }
                         }
-                    }
-                },
-                enabled = (if (s.role == "SPECIALIST") (s.name.isNotBlank() && RutUtils.validateRut(s.rut) && s.email.isNotBlank() && s.password.length >= 6) else s.isValid),
-                isLoading = s.isLoading
-            )
+                    },
+                    enabled = (if (s.role == "SPECIALIST") (s.name.isNotBlank() && RutUtils.validateRut(s.rut) && s.email.isNotBlank() && s.password.length >= 6) else s.isValid),
+                    isLoading = s.isLoading
+                )
+            }
             
             Spacer(Modifier.height(40.dp))
         }

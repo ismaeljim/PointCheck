@@ -7,9 +7,10 @@ import com.pointcheck.core.data.dto.UserSummaryDto
  * Los campos que se muestran en UI se definen como String no nulo con default "".
  */
 data class ReservationResponseDto(
-    val id: String,
-    val client: UserSummaryDto,
-    val specialist: UserSummaryDto,
+    val id: String = "",
+    val client: UserSummaryDto = UserSummaryDto(),
+    val specialist: UserSummaryDto = UserSummaryDto(),
+    val specialistProfileId: String = "",
     val city: String = "",
     val address: String = "",
     val serviceId: String = "",
@@ -17,9 +18,9 @@ data class ReservationResponseDto(
     val categoryIcon: String = "",
     val categoryColor: String = "",
     val isAtHome: Boolean = false,
-    val reservationStart: String,
+    val reservationStart: String = "",
     val reservationEnd: String? = null,
-    val status: String,
+    val status: String = "PENDING",
     val notes: String = "",
-    val createdAt: String
+    val createdAt: String = ""
 )

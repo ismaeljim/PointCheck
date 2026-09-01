@@ -2,6 +2,8 @@ package com.duoc.app.features.service.model
 
 import com.duoc.app.features.professionalprofile.model.ProfessionalProfile
 import jakarta.persistence.*
+import org.hibernate.annotations.SQLDelete
+import org.hibernate.annotations.SQLRestriction
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Objects
@@ -14,10 +16,12 @@ import java.util.Objects
         Index(name = "idx_services_active", columnList = "active")
     ]
 )
+@SQLDelete(sql = "UPDATE services SET active = false WHERE id = ?")
+@SQLRestriction("active = true")
 class ServiceOffering(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)

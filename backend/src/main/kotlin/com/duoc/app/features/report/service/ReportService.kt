@@ -24,29 +24,34 @@ class ReportService(
     private val professionalProfileRepository: ProfessionalProfileRepository
 ) {
 
-    fun getSummaryBySpecialist(userId: String): ReportSummaryResponse {
+    fun getSummaryBySpecialist(userIdOrProfileId: String): ReportSummaryResponse {
+        val profile = professionalProfileRepository.findById(userIdOrProfileId)
+            .orElseGet { professionalProfileRepository.findByUser_Id(userIdOrProfileId) }
+            ?: throw IllegalArgumentException("Perfil profesional no encontrado para: $userIdOrProfileId")
+        val profileId = profile.id!!
+
         val now = LocalDateTime.now()
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN)
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX)
 
-        val totalReservations = reservationRepository.countBySpecialist_IdAndReservationStartBetween(userId, monthStart, monthEnd).toInt()
+        val totalReservations = reservationRepository.countBySpecialist_IdAndReservationStartBetween(profileId, monthStart, monthEnd).toInt()
         val completedAttentionsCount = attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, AttentionStatus.FINISHED
+            profileId, monthStart, monthEnd, AttentionStatus.FINISHED
         ).toInt()
         
         val finishedAttentionsSum = attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, AttentionStatus.FINISHED
+            profileId, monthStart, monthEnd, AttentionStatus.FINISHED
         ) ?: 0L
         
         val completedReservationsSum = reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
-            userId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+            profileId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
         ) ?: 0L
 
-        val totalCompletedCount = attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, AttentionStatus.FINISHED
+        val totalCompletedCount = (attentionRepository.countBySpecialist_IdAndStartedAtBetweenAndStatus(
+            profileId, monthStart, monthEnd, AttentionStatus.FINISHED
         ) + reservationRepository.countBySpecialist_IdAndReservationStartBetweenAndStatus(
-            userId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
-        )
+            profileId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+        )).toInt()
 
         val avgMinutes = if (totalCompletedCount > 0) {
             (finishedAttentionsSum + completedReservationsSum).toDouble() / totalCompletedCount
@@ -54,23 +59,23 @@ class ReportService(
 
         val today = LocalDate.now()
         val todayReservationsCount = reservationRepository.countBySpecialist_IdAndReservationStartBetween(
-            userId, today.atStartOfDay(), today.atTime(LocalTime.MAX)
+            profileId, today.atStartOfDay(), today.atTime(LocalTime.MAX)
         ).toInt()
 
-        val totalCharged = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, PaymentStatus.PAID
+        val totalCharged = billingRecordRepository.sumAmountBySpecialistAndReservationDateBetweenAndStatus(
+            profileId, monthStart, monthEnd, PaymentStatus.PAID
         ) ?: BigDecimal.ZERO
 
-        val pendingAmount = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, PaymentStatus.PENDING
+        val pendingAmount = billingRecordRepository.sumAmountBySpecialistAndReservationDateBetweenAndStatus(
+            profileId, monthStart, monthEnd, PaymentStatus.PENDING
         ) ?: BigDecimal.ZERO
 
-        val paidBillingCount = billingRecordRepository.countBySpecialist_IdAndCreatedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, PaymentStatus.PAID
+        val paidBillingCount = billingRecordRepository.countByReservation_Specialist_IdAndCreatedAtBetweenAndStatus(
+            profileId, monthStart, monthEnd, PaymentStatus.PAID
         ).toInt()
 
-        val pendingBillingCount = billingRecordRepository.countBySpecialist_IdAndCreatedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, PaymentStatus.PENDING
+        val pendingBillingCount = billingRecordRepository.countByReservation_Specialist_IdAndCreatedAtBetweenAndStatus(
+            profileId, monthStart, monthEnd, PaymentStatus.PENDING
         ).toInt()
 
         return ReportSummaryResponse(
@@ -86,9 +91,9 @@ class ReportService(
     }
 
     fun getWeeklyReport(userId: String, weekOffset: Long = 0, serviceId: String? = null): WeeklyReportResponse {
-        if (professionalProfileRepository.findByUser_Id(userId) == null) {
-            return WeeklyReportResponse(0, 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
-        }
+        val profile = professionalProfileRepository.findByUser_Id(userId)
+            ?: return WeeklyReportResponse(0, 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
+        val profileId = profile.id!!
         
         val now = LocalDate.now().minusWeeks(weekOffset)
         val weekFields = WeekFields.of(Locale.getDefault())
@@ -99,36 +104,37 @@ class ReportService(
         val end = lastDayOfWeek.atTime(LocalTime.MAX)
 
         val reservations = if (serviceId != null) {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(userId, start, end, serviceId)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(profileId, start, end, serviceId)
         } else {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetween(userId, start, end)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetween(profileId, start, end)
         }
 
         val billing = if (serviceId != null) {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetweenAndReservation_Service_Id(userId, start, end, serviceId)
+            billingRecordRepository.findByReservation_Specialist_IdAndCreatedAtBetweenAndReservation_Service_Id(profileId, start, end, serviceId)
         } else {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(userId, start, end)
+            billingRecordRepository.findByReservation_Specialist_IdAndCreatedAtBetween(profileId, start, end)
         }
 
         val prevStart = firstDayOfWeek.minusWeeks(1).atStartOfDay()
         val prevEnd = lastDayOfWeek.minusWeeks(1).atTime(LocalTime.MAX)
         
-        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(userId, prevStart, prevEnd, PaymentStatus.PAID)
+        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(profileId, prevStart, prevEnd, PaymentStatus.PAID)
             ?: BigDecimal.ZERO
 
         val totalMinutes = (attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
-            userId, start, end, AttentionStatus.FINISHED
+            profileId, start, end, AttentionStatus.FINISHED
         ) ?: 0L) + (reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
-            userId, start, end, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+            profileId, start, end, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
         ) ?: 0L)
 
         val dailyMetrics = mutableListOf<DailyMetricDto>()
         var currentDay = firstDayOfWeek
 
         while (!currentDay.isAfter(lastDayOfWeek)) {
-            val dayReservations = reservations.filter { it.reservationStart.toLocalDate() == currentDay }
+            val dateForFilter = currentDay
+            val dayReservations = reservations.filter { it.reservationStart.toLocalDate() == dateForFilter }
             val dayRevenue = billing
-                .filter { it.createdAt.toLocalDate() == currentDay && it.status == PaymentStatus.PAID }
+                .filter { it.createdAt.toLocalDate() == dateForFilter && it.status == PaymentStatus.PAID }
                 .sumOf { it.amount.toDouble() }
 
             dailyMetrics.add(DailyMetricDto(
@@ -155,36 +161,36 @@ class ReportService(
     }
 
     fun getMonthlyReport(userId: String, monthOffset: Long = 0, serviceId: String? = null): MonthlyReportResponse {
-        if (professionalProfileRepository.findByUser_Id(userId) == null) {
-            return MonthlyReportResponse("N/A", 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
-        }
+        val profile = professionalProfileRepository.findByUser_Id(userId)
+            ?: return MonthlyReportResponse("N/A", 0, 0, 0, 0.0, 0.0, 0.0, emptyList())
+        val profileId = profile.id!!
         
         val now = LocalDate.now().minusMonths(monthOffset)
         val monthStart = now.with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay()
         val monthEnd = now.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX)
 
         val reservations = if (serviceId != null) {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(userId, monthStart, monthEnd, serviceId)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetweenAndService_Id(profileId, monthStart, monthEnd, serviceId)
         } else {
-            reservationRepository.findBySpecialist_IdAndReservationStartBetween(userId, monthStart, monthEnd)
+            reservationRepository.findBySpecialist_IdAndReservationStartBetween(profileId, monthStart, monthEnd)
         }
 
         val billing = if (serviceId != null) {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetweenAndReservation_Service_Id(userId, monthStart, monthEnd, serviceId)
+            billingRecordRepository.findByReservation_Specialist_IdAndCreatedAtBetweenAndReservation_Service_Id(profileId, monthStart, monthEnd, serviceId)
         } else {
-            billingRecordRepository.findBySpecialist_IdAndCreatedAtBetween(userId, monthStart, monthEnd)
+            billingRecordRepository.findByReservation_Specialist_IdAndCreatedAtBetween(profileId, monthStart, monthEnd)
         }
 
         val prevStart = monthStart.minusMonths(1)
         val prevEnd = monthEnd.minusMonths(1)
 
-        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(userId, prevStart, prevEnd, PaymentStatus.PAID)
+        val prevRevenue = billingRecordRepository.sumAmountBySpecialistAndCreatedAtBetweenAndStatus(profileId, prevStart, prevEnd, PaymentStatus.PAID)
             ?: BigDecimal.ZERO
 
         val totalMinutes = (attentionRepository.sumDurationMinutesBySpecialistAndStartedAtBetweenAndStatus(
-            userId, monthStart, monthEnd, AttentionStatus.FINISHED
+            profileId, monthStart, monthEnd, AttentionStatus.FINISHED
         ) ?: 0L) + (reservationRepository.sumServiceDurationMinutesBySpecialistAndReservationStartBetweenAndStatus(
-            userId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
+            profileId, monthStart, monthEnd, com.duoc.app.features.reservation.model.ReservationStatus.COMPLETED
         ) ?: 0L)
 
         val weeklySummaries = mutableListOf<WeeklySummaryDto>()

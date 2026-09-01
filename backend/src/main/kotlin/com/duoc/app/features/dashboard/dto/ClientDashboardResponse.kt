@@ -9,13 +9,6 @@ data class ClientDashboardResponse(
     val recentNotifications: List<NotificationSummaryDto> = emptyList()
 )
 
-data class FavoriteSpecialistDto(
-    val specialistId: String,
-    val name: String,
-    val specialty: String = "",
-    val visitCount: Long
-)
-
 data class NotificationSummaryDto(
     val id: String,
     val title: String,

@@ -1,189 +1,333 @@
--- 1. LIMPIEZA TOTAL (Orden de dependencias invertido para evitar errores de FK)
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS subscriptions;
-DROP TABLE IF EXISTS billing_records;
-DROP TABLE IF EXISTS attentions;
-DROP TABLE IF EXISTS reservations;
-DROP TABLE IF EXISTS services;
-DROP TABLE IF EXISTS service_templates;
-DROP TABLE IF EXISTS professional_profiles;
-DROP TABLE IF EXISTS categories;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS audit_logs;
-DROP TABLE IF EXISTS global_settings;
-SET FOREIGN_KEY_CHECKS = 1;
+-- MySQL Workbench Forward Engineering
 
--- 2. ESTRUCTURA DE TABLAS (UUID as String)
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
-CREATE TABLE users (
-    id VARCHAR(36) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    rut VARCHAR(12) NOT NULL,
-    phone VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'CLIENT',
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_users_email UNIQUE (email),
-    CONSTRAINT uk_users_rut UNIQUE (rut)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Schema mydb
+-- -----------------------------------------------------
+-- -----------------------------------------------------
+-- Schema pointcheck_db
+-- -----------------------------------------------------
 
-CREATE TABLE categories (
-    id VARCHAR(36) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    icon_key VARCHAR(100) NOT NULL,
-    color_hex VARCHAR(7) NOT NULL,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME(6) NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_categories_name UNIQUE (name)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Schema pointcheck_db
+-- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS `pointcheck_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
+USE `pointcheck_db` ;
 
-CREATE TABLE professional_profiles (
-    id VARCHAR(36) NOT NULL,
-    user_id VARCHAR(36) NOT NULL,
-    category_id VARCHAR(36) NULL,
-    display_name VARCHAR(150) NOT NULL,
-    business_name VARCHAR(150) NULL,
-    specialty VARCHAR(100) NULL,
-    description TEXT NULL,
-    address VARCHAR(255) NULL,
-    city VARCHAR(100) NULL,
-    country VARCHAR(100) NULL,
-    latitude DOUBLE NULL,
-    longitude DOUBLE NULL,
-    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-    rating FLOAT NOT NULL DEFAULT 0.0,
-    working_hours_json TEXT NULL,
-    default_session_duration_minutes INT NOT NULL DEFAULT 60,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_professional_profiles_user UNIQUE (user_id),
-    CONSTRAINT fk_professional_profiles_user FOREIGN KEY (user_id) REFERENCES users(id),
-    CONSTRAINT fk_professional_profiles_category FOREIGN KEY (category_id) REFERENCES categories(id)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`users`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`users` (
+  `active` BIT(1) NOT NULL DEFAULT b'1',
+  `created_at` DATETIME(6) NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `address` VARCHAR(255) NULL DEFAULT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `phone` VARCHAR(255) NOT NULL,
+  `rut` VARCHAR(255) NOT NULL,
+  `role` VARCHAR(20) NOT NULL DEFAULT 'CLIENT',
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_users_email` (`email` ASC) VISIBLE,
+  UNIQUE INDEX `uk_users_rut` (`rut` ASC) VISIBLE,
+  INDEX `idx_users_role` (`role` ASC) VISIBLE,
+  INDEX `idx_users_active` (`active` ASC) VISIBLE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-CREATE TABLE services (
-    id VARCHAR(36) NOT NULL,
-    professional_profile_id VARCHAR(36) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    description VARCHAR(500) NULL,
-    price DECIMAL(10,2) NULL,
-    duration_minutes INT NULL,
-    price_unit VARCHAR(50) NOT NULL DEFAULT 'SESSION',
-    is_at_home BOOLEAN NOT NULL DEFAULT FALSE,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_services_profile FOREIGN KEY (professional_profile_id) REFERENCES professional_profiles(id)
-) ENGINE=InnoDB;
 
-CREATE TABLE reservations (
-    id VARCHAR(36) NOT NULL,
-    client_id VARCHAR(36) NOT NULL,
-    specialist_id VARCHAR(36) NOT NULL,
-    service_id VARCHAR(36) NULL,
-    reservation_start DATETIME(6) NOT NULL,
-    reservation_end DATETIME(6) NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-    notes VARCHAR(1000) NULL,
-    payment_method VARCHAR(50) NULL,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_res_client FOREIGN KEY (client_id) REFERENCES users(id),
-    CONSTRAINT fk_res_specialist FOREIGN KEY (specialist_id) REFERENCES users(id),
-    CONSTRAINT fk_res_service FOREIGN KEY (service_id) REFERENCES services(id)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`categories`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`categories` (
+  `active` BIT(1) NOT NULL DEFAULT b'1',
+  `color_hex` VARCHAR(7) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `icon_key` VARCHAR(100) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_categories_name` (`name` ASC) VISIBLE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-CREATE TABLE attentions (
-    id VARCHAR(36) NOT NULL,
-    reservation_id VARCHAR(36) NOT NULL,
-    client_id VARCHAR(36) NOT NULL,
-    specialist_id VARCHAR(36) NOT NULL,
-    started_at DATETIME(6) NOT NULL,
-    finished_at DATETIME(6) NULL,
-    duration_minutes INT NULL,
-    status VARCHAR(50) NOT NULL,
-    observations VARCHAR(2000) NULL,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_attentions_reservation UNIQUE (reservation_id),
-    CONSTRAINT fk_att_res FOREIGN KEY (reservation_id) REFERENCES reservations(id),
-    CONSTRAINT fk_att_cli FOREIGN KEY (client_id) REFERENCES users(id),
-    CONSTRAINT fk_att_spec FOREIGN KEY (specialist_id) REFERENCES users(id)
-) ENGINE=InnoDB;
 
-CREATE TABLE billing_records (
-    id VARCHAR(36) NOT NULL,
-    reservation_id VARCHAR(36) NOT NULL,
-    attention_id VARCHAR(36) NULL,
-    client_id VARCHAR(36) NOT NULL,
-    specialist_id VARCHAR(36) NOT NULL,
-    amount DECIMAL(12,2) NOT NULL,
-    currency VARCHAR(10) NOT NULL DEFAULT 'CLP',
-    payment_method VARCHAR(50) NULL,
-    status VARCHAR(50) NOT NULL,
-    paid_at DATETIME(6) NULL,
-    external_reference VARCHAR(255) NULL,
-    notes VARCHAR(1000) NULL,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_bill_res FOREIGN KEY (reservation_id) REFERENCES reservations(id),
-    CONSTRAINT fk_bill_att FOREIGN KEY (attention_id) REFERENCES attentions(id),
-    CONSTRAINT fk_bill_cli FOREIGN KEY (client_id) REFERENCES users(id),
-    CONSTRAINT fk_bill_spec FOREIGN KEY (specialist_id) REFERENCES users(id)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`professional_profiles`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`professional_profiles` (
+  `active` BIT(1) NOT NULL DEFAULT b'1',
+  `default_session_duration_minutes` INT NOT NULL DEFAULT '60',
+  `is_verified` BIT(1) NOT NULL DEFAULT b'0',
+  `latitude` DOUBLE NULL DEFAULT NULL,
+  `longitude` DOUBLE NULL DEFAULT NULL,
+  `rating` FLOAT NOT NULL DEFAULT '0',
+  `created_at` DATETIME(6) NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `category_id` VARCHAR(36) NULL DEFAULT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `user_id` VARCHAR(36) NOT NULL,
+  `city` VARCHAR(100) NULL DEFAULT NULL,
+  `country` VARCHAR(100) NULL DEFAULT NULL,
+  `specialty` VARCHAR(100) NULL DEFAULT NULL,
+  `business_name` VARCHAR(150) NULL DEFAULT NULL,
+  `display_name` VARCHAR(150) NOT NULL,
+  `address` VARCHAR(255) NULL DEFAULT NULL,
+  `description` TEXT NULL DEFAULT NULL,
+  `working_hours_json` TEXT NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_professional_profiles_user` (`user_id` ASC) VISIBLE,
+  INDEX `idx_professional_profiles_user` (`user_id` ASC) VISIBLE,
+  INDEX `idx_professional_profiles_active` (`active` ASC) VISIBLE,
+  INDEX `FKqkqjlv6tcm95svnbc2nwncoqq` (`category_id` ASC) VISIBLE,
+  CONSTRAINT `FKefh3bfkpmuc5g8cvx0mj9274x`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `pointcheck_db`.`users` (`id`),
+  CONSTRAINT `FKqkqjlv6tcm95svnbc2nwncoqq`
+    FOREIGN KEY (`category_id`)
+    REFERENCES `pointcheck_db`.`categories` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-CREATE TABLE subscriptions (
-    id VARCHAR(36) NOT NULL,
-    professional_profile_id VARCHAR(36) NOT NULL,
-    plan_name VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_sub_profile FOREIGN KEY (professional_profile_id) REFERENCES professional_profiles(id)
-) ENGINE=InnoDB;
 
-CREATE TABLE audit_logs (
-    id VARCHAR(36) NOT NULL,
-    action VARCHAR(100) NOT NULL,
-    performed_by VARCHAR(255) NOT NULL,
-    target_type VARCHAR(50) NOT NULL,
-    target_id VARCHAR(100) NOT NULL,
-    details VARCHAR(1000) NULL,
-    timestamp DATETIME(6) NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`services`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`services` (
+  `active` BIT(1) NOT NULL DEFAULT b'1',
+  `duration_minutes` INT NULL DEFAULT NULL,
+  `is_at_home` BIT(1) NOT NULL DEFAULT b'0',
+  `price` DECIMAL(10,2) NULL DEFAULT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `professional_profile_id` VARCHAR(36) NOT NULL,
+  `description` VARCHAR(500) NULL DEFAULT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `price_unit` VARCHAR(20) NOT NULL DEFAULT 'SESSION',
+  PRIMARY KEY (`id`),
+  INDEX `idx_services_professional_profile` (`professional_profile_id` ASC) VISIBLE,
+  INDEX `idx_services_active` (`active` ASC) VISIBLE,
+  CONSTRAINT `FK5ewtjocdxq64cjrd12owv813o`
+    FOREIGN KEY (`professional_profile_id`)
+    REFERENCES `pointcheck_db`.`professional_profiles` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-CREATE TABLE global_settings (
-    id VARCHAR(36) NOT NULL,
-    config_key VARCHAR(100) NOT NULL,
-    config_value VARCHAR(255) NOT NULL,
-    description VARCHAR(255) NULL,
-    updated_at DATETIME(6) NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_settings_key UNIQUE (config_key)
-) ENGINE=InnoDB;
 
-CREATE TABLE service_templates (
-    id VARCHAR(36) NOT NULL,
-    category_id VARCHAR(36) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    default_price DECIMAL(10,2) NULL,
-    default_duration INT NULL,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_templates_category FOREIGN KEY (category_id) REFERENCES categories(id)
-) ENGINE=InnoDB;
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`reservations`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`reservations` (
+  `created_at` DATETIME(6) NOT NULL,
+  `reservation_end` DATETIME(6) NULL DEFAULT NULL,
+  `reservation_start` DATETIME(6) NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `client_id` VARCHAR(36) NOT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `service_id` VARCHAR(36) NULL DEFAULT NULL,
+  `specialist_profile_id` VARCHAR(36) NOT NULL,
+  `notes` VARCHAR(1000) NULL DEFAULT NULL,
+  `payment_method` ENUM('CARD_EXTERNAL', 'CASH', 'OTHER', 'TRANSFER') NULL DEFAULT NULL,
+  `status` ENUM('CANCELLED', 'COMPLETED', 'CONFIRMED', 'PENDING') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_reservations_client` (`client_id` ASC) VISIBLE,
+  INDEX `idx_reservations_specialist_profile` (`specialist_profile_id` ASC) VISIBLE,
+  INDEX `idx_reservations_service` (`service_id` ASC) VISIBLE,
+  INDEX `idx_reservations_start` (`reservation_start` ASC) VISIBLE,
+  INDEX `idx_reservations_status` (`status` ASC) VISIBLE,
+  INDEX `idx_reservations_specialist_date` (`specialist_profile_id` ASC, `reservation_start` ASC) VISIBLE,
+  INDEX `idx_reservations_client_date` (`client_id` ASC, `reservation_start` ASC) VISIBLE,
+  CONSTRAINT `FK3ww618ll729ubr3pb5krt9d3h`
+    FOREIGN KEY (`service_id`)
+    REFERENCES `pointcheck_db`.`services` (`id`),
+  CONSTRAINT `FK7hiln8kjpxn0p4acfrfdcihb5`
+    FOREIGN KEY (`specialist_profile_id`)
+    REFERENCES `pointcheck_db`.`professional_profiles` (`id`),
+  CONSTRAINT `FKa8dyjs5cb5gl9chfumr06fsgn`
+    FOREIGN KEY (`client_id`)
+    REFERENCES `pointcheck_db`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`attentions`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`attentions` (
+  `duration_minutes` INT NULL DEFAULT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `finished_at` DATETIME(6) NULL DEFAULT NULL,
+  `started_at` DATETIME(6) NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `client_id` VARCHAR(36) NOT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `reservation_id` VARCHAR(36) NOT NULL,
+  `specialist_profile_id` VARCHAR(36) NOT NULL,
+  `observations` VARCHAR(2000) NULL DEFAULT NULL,
+  `status` ENUM('CANCELLED', 'FINISHED', 'IN_PROGRESS') NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_attentions_reservation` (`reservation_id` ASC) VISIBLE,
+  INDEX `idx_attentions_specialist_profile_date` (`specialist_profile_id` ASC, `started_at` ASC) VISIBLE,
+  INDEX `idx_attentions_client` (`client_id` ASC) VISIBLE,
+  INDEX `idx_attentions_status` (`status` ASC) VISIBLE,
+  CONSTRAINT `FK7f35jqkl560epy42sgjn981gt`
+    FOREIGN KEY (`specialist_profile_id`)
+    REFERENCES `pointcheck_db`.`professional_profiles` (`id`),
+  CONSTRAINT `FKcivas46bbp88vfsak662f50j`
+    FOREIGN KEY (`client_id`)
+    REFERENCES `pointcheck_db`.`users` (`id`),
+  CONSTRAINT `FKl7vfu49b8ne4tu0jg9jx1435v`
+    FOREIGN KEY (`reservation_id`)
+    REFERENCES `pointcheck_db`.`reservations` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`audit_logs`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`audit_logs` (
+  `timestamp` DATETIME(6) NOT NULL,
+  `details` VARCHAR(2000) NULL DEFAULT NULL,
+  `action` VARCHAR(255) NOT NULL,
+  `id` VARCHAR(255) NOT NULL,
+  `ip_address` VARCHAR(255) NULL DEFAULT NULL,
+  `performed_by_email` VARCHAR(255) NOT NULL,
+  `performed_by_name` VARCHAR(255) NOT NULL,
+  `target_id` VARCHAR(255) NOT NULL,
+  `target_name` VARCHAR(255) NULL DEFAULT NULL,
+  `target_type` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`billing_records`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`billing_records` (
+  `amount` DECIMAL(12,2) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `paid_at` DATETIME(6) NULL DEFAULT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `currency` VARCHAR(10) NOT NULL,
+  `attention_id` VARCHAR(36) NULL DEFAULT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `reservation_id` VARCHAR(36) NOT NULL,
+  `notes` VARCHAR(1000) NULL DEFAULT NULL,
+  `external_reference` VARCHAR(255) NULL DEFAULT NULL,
+  `payment_method` ENUM('CARD_EXTERNAL', 'CASH', 'OTHER', 'TRANSFER') NULL DEFAULT NULL,
+  `status` ENUM('CANCELLED', 'PAID', 'PENDING') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_billing_reservation` (`reservation_id` ASC) VISIBLE,
+  INDEX `idx_billing_attention` (`attention_id` ASC) VISIBLE,
+  INDEX `idx_billing_status` (`status` ASC) VISIBLE,
+  INDEX `idx_billing_paid_at` (`paid_at` ASC) VISIBLE,
+  CONSTRAINT `FKdj8nfranjvoga8q8bjwemyxuu`
+    FOREIGN KEY (`attention_id`)
+    REFERENCES `pointcheck_db`.`attentions` (`id`),
+  CONSTRAINT `FKno63jsfsoi8x5t8llblh6n3vl`
+    FOREIGN KEY (`reservation_id`)
+    REFERENCES `pointcheck_db`.`reservations` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`global_settings`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`global_settings` (
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `config_key` VARCHAR(255) NOT NULL,
+  `config_value` VARCHAR(255) NULL DEFAULT NULL,
+  `description` VARCHAR(255) NULL DEFAULT NULL,
+  `id` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `UKa4hxwf1pw06vetmfc6k052106` (`config_key` ASC) VISIBLE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`notifications`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`notifications` (
+  `is_read` BIT(1) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `user_id` VARCHAR(36) NOT NULL,
+  `message` VARCHAR(1000) NOT NULL,
+  `id` VARCHAR(255) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `type` ENUM('ALERT', 'CONFIRMATION', 'INFO') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FK9y21adhxn0ayjhfocscqox7bh` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FK9y21adhxn0ayjhfocscqox7bh`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `pointcheck_db`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`service_templates`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`service_templates` (
+  `active` BIT(1) NOT NULL,
+  `default_duration` INT NULL DEFAULT NULL,
+  `default_price` DECIMAL(10,2) NULL DEFAULT NULL,
+  `category_id` VARCHAR(36) NOT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKng5rsk04sijsh0q8pv5ehwvuk` (`category_id` ASC) VISIBLE,
+  CONSTRAINT `FKng5rsk04sijsh0q8pv5ehwvuk`
+    FOREIGN KEY (`category_id`)
+    REFERENCES `pointcheck_db`.`categories` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `pointcheck_db`.`subscriptions`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pointcheck_db`.`subscriptions` (
+  `end_date` DATE NOT NULL,
+  `start_date` DATE NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `id` VARCHAR(36) NOT NULL,
+  `professional_profile_id` VARCHAR(36) NOT NULL,
+  `plan_name` VARCHAR(255) NOT NULL,
+  `status` ENUM('ACTIVE', 'CANCELLED', 'EXPIRED', 'TRIAL') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_subscriptions_professional_profile` (`professional_profile_id` ASC) VISIBLE,
+  INDEX `idx_subscriptions_status` (`status` ASC) VISIBLE,
+  INDEX `idx_subscriptions_end_date` (`end_date` ASC) VISIBLE,
+  CONSTRAINT `FKa6f30h1waiyje2wnksitmivdg`
+    FOREIGN KEY (`professional_profile_id`)
+    REFERENCES `pointcheck_db`.`professional_profiles` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

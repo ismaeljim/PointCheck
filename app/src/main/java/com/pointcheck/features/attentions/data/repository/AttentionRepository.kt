@@ -52,12 +52,12 @@ class AttentionRepository(private val api: ApiService) {
     /**
      * Obtiene la lista de atenciones programadas o realizadas durante el día actual para un especialista.
      *
-     * @param specialistId Identificador único del perfil profesional.
+     * @param specialistProfileId Identificador único del perfil profesional.
      * @return [Result] con la lista de atenciones de hoy.
      */
-    suspend fun getTodayAttentionsBySpecialist(specialistId: String): Result<List<AttentionResponseDto>> {
+    suspend fun getTodayAttentionsBySpecialist(specialistProfileId: String): Result<List<AttentionResponseDto>> {
         return handleApiCall("Error al obtener atenciones de hoy") { 
-            api.getTodayAttentionsBySpecialist(specialistId) 
+            api.getTodayAttentionsBySpecialist(specialistProfileId)
         }
     }
 

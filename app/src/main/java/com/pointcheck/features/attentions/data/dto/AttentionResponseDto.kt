@@ -8,6 +8,7 @@ import com.pointcheck.core.data.dto.UserSummaryDto
 data class AttentionResponseDto(
     val id: String,
     val reservationId: String,
+    val specialistProfileId: String = "",
     val client: UserSummaryDto,
     val specialist: UserSummaryDto,
     val startedAt: String,

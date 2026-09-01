@@ -26,6 +26,14 @@ class ReservationRepository(private val api: ApiService) {
     }
 
     /**
+     * Obtiene la lista completa de todas las reservas del sistema.
+     * Solo debe ser llamado por usuarios con rol ADMIN.
+     */
+    suspend fun getAllReservations(): Result<List<ReservationResponseDto>> {
+        return handleApiCall("Error al obtener todas las reservas") { api.getAllReservations() }
+    }
+
+    /**
      * Obtiene las reservas futuras (pendientes o confirmadas) de un cliente.
      *
      * @param clientId Identificador único del cliente.
@@ -48,21 +56,21 @@ class ReservationRepository(private val api: ApiService) {
     /**
      * Obtiene todas las reservas asignadas a un especialista/profesional.
      *
-     * @param specialistId Identificador único del perfil profesional.
+     * @param specialistProfileId Identificador único del perfil profesional.
      * @return [Result] con la lista de reservas del especialista.
      */
-    suspend fun getReservationsBySpecialist(specialistId: String): Result<List<ReservationResponseDto>> {
-        return handleApiCall("Error al obtener reservas del especialista") { api.getReservationsBySpecialist(specialistId) }
+    suspend fun getReservationsBySpecialist(specialistProfileId: String): Result<List<ReservationResponseDto>> {
+        return handleApiCall("Error al obtener reservas del especialista") { api.getReservationsBySpecialist(specialistProfileId) }
     }
 
     /**
      * Obtiene las reservas programadas para el día actual para un especialista.
      *
-     * @param specialistId Identificador único del perfil profesional.
+     * @param specialistProfileId Identificador único del perfil profesional.
      * @return [Result] con la lista de reservas de hoy.
      */
-    suspend fun getTodayReservationsBySpecialist(specialistId: String): Result<List<ReservationResponseDto>> {
-        return handleApiCall("Error al obtener reservas de hoy") { api.getTodayReservationsBySpecialist(specialistId) }
+    suspend fun getTodayReservationsBySpecialist(specialistProfileId: String): Result<List<ReservationResponseDto>> {
+        return handleApiCall("Error al obtener reservas de hoy") { api.getTodayReservationsBySpecialist(specialistProfileId) }
     }
 
     /**
@@ -131,12 +139,12 @@ class ReservationRepository(private val api: ApiService) {
     /**
      * Consulta los horarios disponibles para un especialista en una fecha determinada.
      *
-     * @param specialistId Identificador del profesional.
+     * @param specialistProfileId Identificador del profesional.
      * @param date Fecha a consultar en formato ISO.
      * @return [Result] con la disponibilidad horaria.
      */
-    suspend fun getAvailability(specialistId: String, date: String): Result<AvailabilityResponseDto> {
-        return handleApiCall("Error al obtener disponibilidad") { api.getAvailability(specialistId, date) }
+    suspend fun getAvailability(specialistProfileId: String, date: String): Result<AvailabilityResponseDto> {
+        return handleApiCall("Error al obtener disponibilidad") { api.getAvailability(specialistProfileId, date) }
     }
 
     /**
@@ -147,13 +155,6 @@ class ReservationRepository(private val api: ApiService) {
      */
     suspend fun getWeather(city: String): Result<com.pointcheck.features.external.data.dto.WeatherResponseDto> {
         return handleApiCall("Error al obtener clima") { api.getWeather(city) }
-    }
-
-    /**
-     * Obtiene todas las reservas del sistema (Solo ADMIN).
-     */
-    suspend fun getAllReservations(): Result<List<ReservationResponseDto>> {
-        return handleApiCall("Error al obtener todas las reservas") { api.getAllReservations() }
     }
 
     /**

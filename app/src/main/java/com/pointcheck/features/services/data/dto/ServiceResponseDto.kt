@@ -14,13 +14,13 @@ package com.pointcheck.features.services.data.dto
  * @property active Estado de disponibilidad del servicio.
  */
 data class ServiceResponseDto(
-    val id: String,
-    val professionalProfileId: String,
-    val name: String,
-    val description: String? = null,
-    val price: Double? = null,
-    val durationMinutes: Int? = null,
+    val id: String = "",
+    val professionalProfileId: String = "",
+    val name: String = "Servicio sin nombre",
+    val description: String? = "",
+    val price: Double? = 0.0,
+    val durationMinutes: Int? = 0,
     val priceUnit: String? = "SESSION",
     val isAtHome: Boolean = false,
-    val active: Boolean
+    val active: Boolean = true
 )

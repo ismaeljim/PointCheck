@@ -18,12 +18,12 @@ import com.google.gson.annotations.SerializedName
  * @property phone Teléfono de contacto del profesional.
  */
 data class SpecialistResponseDto(
-    val id: String,
-    val userId: String,
+    val id: String = "",
+    val userId: String = "",
     @SerializedName("displayName")
-    val name: String,
-    val specialty: String?,
-    val city: String?,
+    val name: String = "Especialista",
+    val specialty: String? = null,
+    val city: String? = null,
     val defaultSessionDurationMinutes: Int? = 30,
     val latitude: Double? = null,
     val longitude: Double? = null,

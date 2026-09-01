@@ -32,6 +32,7 @@ import com.pointcheck.features.admin.presentation.AuditLogScreen
 import com.pointcheck.features.admin.presentation.AdminViewModel
 import com.pointcheck.features.auth.presentation.UserViewModel
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pointcheck.core.prefs.UserPreferences
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +41,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import kotlinx.coroutines.flow.first
 
 /**
@@ -65,16 +72,16 @@ sealed class Screen(val route: String) {
      * Pantalla de reserva de servicios.
      * Permite seleccionar profesional, servicio, fecha y hora.
      */
-    object Booking : Screen("booking?specialistId={specialistId}&categoryId={categoryId}") {
+    object Booking : Screen("booking?specialistProfileId={specialistProfileId}&categoryId={categoryId}") {
         /**
          * Crea la ruta para navegar a la reserva.
-         * @param specialistId UUID del especialista pre-seleccionado.
+         * @param specialistProfileId UUID del especialista pre-seleccionado.
          * @param categoryId UUID de la categoría para filtrar especialistas.
          */
-        fun createRoute(specialistId: String? = null, categoryId: String? = null) =
+        fun createRoute(specialistProfileId: String? = null, categoryId: String? = null) =
             "booking?" + 
-            (specialistId?.let { "specialistId=$it" } ?: "") +
-            (if (specialistId != null && categoryId != null) "&" else "") +
+            (specialistProfileId?.let { "specialistProfileId=$it" } ?: "") +
+            (if (specialistProfileId != null && categoryId != null) "&" else "") +
             (categoryId?.let { "categoryId=$it" } ?: "")
     }
 
@@ -156,6 +163,13 @@ fun AppNavigation(
     snackbar: SnackbarHostState,
     nav: NavHostController = rememberNavController()
 ) {
+    val context = LocalContext.current
+    val userPrefs = remember { UserPreferences(context) }
+    
+    // Sincronización de RAM Cache para evitar redirecciones fantasma (ADR-006 Extension)
+    val isSessionInitialized by userPrefs.isInitialized.collectAsStateWithLifecycle()
+    val isLogged by userPrefs.isLogged.collectAsStateWithLifecycle(initialValue = userPrefs.isLoggedCached)
+
     // authVm se comparte en el grafo si es necesario (ej: registro)
     val authVm: UserViewModel = viewModel()
     
@@ -186,7 +200,7 @@ fun AppNavigation(
         composable(
             route = Screen.Booking.route,
             arguments = listOf(
-                navArgument("specialistId") { 
+                navArgument("specialistProfileId") { 
                     type = NavType.StringType 
                     nullable = true
                     defaultValue = null
@@ -198,7 +212,7 @@ fun AppNavigation(
                 }
             )
         ) { backStackEntry ->
-            val specId = backStackEntry.arguments?.getString("specialistId")
+            val specId = backStackEntry.arguments?.getString("specialistProfileId")
             val catId = backStackEntry.arguments?.getString("categoryId")
             BookingScreen(nav, snackbar, specId, catId)
         }
@@ -305,6 +319,10 @@ fun AppNavigation(
 /**
  * Componente de protección de rutas basado en roles.
  * Si el usuario no tiene el rol necesario, es redirigido al Dashboard.
+ * 
+ * BLINDAJE ADR-006: 
+ * 1. Congela la UI si el rol es nulo/vacío para evitar redirecciones falsas.
+ * 2. Redirección suave al Dashboard sin destruir el stack base.
  */
 @Composable
 fun RoleProtectedRoute(
@@ -313,19 +331,31 @@ fun RoleProtectedRoute(
     allowedRoles: List<String>,
     content: @Composable () -> Unit
 ) {
-    val userState by authVm.state.collectAsState()
-    val userRole = userState.role?.uppercase()
+    val userState by authVm.state.collectAsStateWithLifecycle()
+    // userRole inicializa en "" en UserViewModel hasta que UserPreferences sincroniza RAM.
+    val userRole = userState.userRole.uppercase()
 
-    if (userRole == null) {
-        // Si aún no carga el rol, podríamos mostrar un loading o esperar
-        // Por ahora, asumimos que el Splash ya validó la sesión
-        content()
-    } else if (userRole in allowedRoles) {
+    if (userRole.isEmpty()) {
+        // Bloqueamos la navegación y mostramos un loader mientras se resuelve la sesión en RAM.
+        // Esto evita que un Especialista sea redirigido al Login por un estado CLIENT/NULL transitorio.
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (userRole in allowedRoles) {
         content()
     } else {
-        LaunchedEffect(Unit) {
+        LaunchedEffect(userRole) {
+            // Redirección controlada: Volvemos al punto de entrada seguro (Dashboard).
+            // IMPORTANTE: NO usamos popUpTo(0) para no romper el ciclo de vida del NavHost.
             nav.navigate(Screen.Dashboard.route) {
-                popUpTo(0) { inclusive = true }
+                popUpTo(nav.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
             }
         }
     }

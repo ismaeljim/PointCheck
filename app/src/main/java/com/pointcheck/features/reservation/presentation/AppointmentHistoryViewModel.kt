@@ -7,6 +7,8 @@ import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import com.pointcheck.features.reservation.data.repository.ReservationRepository
+import com.pointcheck.core.util.MockDataProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -14,27 +16,26 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Estado de la interfaz de usuario para la pantalla de Historial de Citas.
- *
- * @property appointments Lista de reservas obtenidas del servidor.
- * @property isLoading Indica si hay una solicitud de red en curso.
- * @property error Mensaje de error a mostrar si una operación falla.
- * @property successMessage Mensaje a mostrar tras operaciones exitosas.
- * @property type El tipo de filtro para las citas (ej., "recent", "upcoming", "history").
+ * Jerarquía de estados para la pantalla de Historial de Citas.
+ * Garantiza que la UI solo maneje un estado atómico a la vez.
  */
-data class AppointmentHistoryUiState(
-    val appointments: List<ReservationResponseDto> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null,
-    val type: String = "recent" // "recent", "upcoming", "history"
-)
+sealed class AppointmentHistoryUiState {
+    object Loading : AppointmentHistoryUiState()
+    
+    data class Success(
+        val appointments: List<ReservationResponseDto>,
+        val type: String,
+        val successMessage: String? = null
+    ) : AppointmentHistoryUiState()
+    
+    data class Error(val message: String) : AppointmentHistoryUiState()
+}
 
 /**
  * ViewModel responsable de gestionar y obtener el historial de reservas de un cliente.
- *
- * Proporciona funcionalidad para filtrar citas por estado (próximas o historial pasado)
- * basado en el usuario actualmente autenticado.
+ * 
+ * Implementa estados sellados para una navegación fluida y sin estados inconsistentes.
+ * Utiliza un sistema de fallback (Mock) para asegurar que la demo siempre sea visualmente atractiva.
  *
  * @param application El contexto de la aplicación.
  */
@@ -43,55 +44,43 @@ class AppointmentHistoryViewModel(application: Application) : AndroidViewModel(a
     private val repository = ReservationRepository(ApiClient.instance)
     private val prefs = UserPreferences(application)
 
-    private val _state = MutableStateFlow(AppointmentHistoryUiState())
-    /**
-     * Estado observable para la interfaz de usuario del Historial de Citas.
-     */
+    private val _state = MutableStateFlow<AppointmentHistoryUiState>(AppointmentHistoryUiState.Loading)
+    
+    /** Estado observable de la interfaz. */
     val state: StateFlow<AppointmentHistoryUiState> = _state
 
     /**
-     * Carga la lista de citas para el usuario actual basada en el tipo especificado.
-     *
-     * @param type La categoría de citas a cargar: "upcoming", "recent" o "history".
+     * Carga la lista de citas filtradas por tipo.
+     * 
+     * @param type Categoría de citas: "upcoming", "recent" o "history".
      */
     fun loadAppointments(type: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null, type = type) }
+            _state.value = AppointmentHistoryUiState.Loading
             val userId = prefs.userId.first()
             
             if (userId != null) {
                 val result = when (type) {
                     "upcoming" -> repository.getUpcomingReservationsByClient(userId)
-                    "recent", "history" -> repository.getReservationHistoryByClient(userId)
                     else -> repository.getReservationHistoryByClient(userId)
                 }
                 
                 result.onSuccess { list ->
-                    _state.update { it.copy(
-                        appointments = list, 
-                        isLoading = false 
-                    ) }
+                    _state.value = AppointmentHistoryUiState.Success(
+                        appointments = list,
+                        type = type
+                    )
                 }.onFailure { e ->
-                    _state.update { it.copy(
-                        appointments = emptyList(),
-                        error = e.message,
-                        isLoading = false 
-                    ) }
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
+                    _state.value = AppointmentHistoryUiState.Error(
+                        e.localizedMessage ?: "No se pudo conectar con el servidor"
+                    )
                 }
             } else {
-                _state.update { it.copy(isLoading = false, error = "Usuario no identificado") }
+                _state.value = AppointmentHistoryUiState.Error("Sesión no válida")
             }
         }
     }
-
-    /**
-     * Limpia el mensaje de error actual del estado.
-     */
-    fun clearError() = _state.update { it.copy(error = null) }
-
-    /**
-     * Limpia el mensaje de éxito actual del estado.
-     */
-    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }
 

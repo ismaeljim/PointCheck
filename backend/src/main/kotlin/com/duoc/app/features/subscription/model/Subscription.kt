@@ -18,7 +18,7 @@ import java.util.Objects
 class Subscription(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)

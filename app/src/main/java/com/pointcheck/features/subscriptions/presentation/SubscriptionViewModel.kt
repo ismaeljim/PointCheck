@@ -8,96 +8,88 @@ import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionRequestDto
 import com.pointcheck.features.subscriptions.data.dto.SubscriptionResponseDto
 import com.pointcheck.features.subscriptions.data.repository.SubscriptionRepository
+import com.pointcheck.core.network.ApiException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Representa el estado de la interfaz de usuario para la gestión de suscripciones.
- *
- * @property professionalProfileId Identificador del perfil profesional asociado.
- * @property currentSubscription Detalles de la suscripción activa o reciente, si existe.
- * @property isLoading Indica si hay una operación de carga en curso.
- * @property error Mensaje de error a mostrar en caso de fallo.
- * @property successMessage Mensaje de éxito a mostrar tras una operación exitosa.
- * @property hasActiveSubscription Indica si el profesional tiene una suscripción con estado activo.
+ * Jerarquía de estados para la gestión de suscripciones.
  */
-data class SubscriptionUiState(
-    val professionalProfileId: String? = null,
-    val currentSubscription: SubscriptionResponseDto? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null,
-    val hasActiveSubscription: Boolean = false
-)
+sealed class SubscriptionUiState {
+    object Loading : SubscriptionUiState()
+    data class Success(
+        val professionalProfileId: String? = null,
+        val currentSubscription: SubscriptionResponseDto? = null,
+        val hasActiveSubscription: Boolean = false,
+        val successMessage: String? = null
+    ) : SubscriptionUiState()
+    data class Error(val message: String) : SubscriptionUiState()
+}
 
-/**
- * ViewModel encargado de la lógica de negocio para la gestión de suscripciones de profesionales.
- * Permite cargar la suscripción actual, crear nuevas suscripciones y cancelarlas.
- *
- * @param application Contexto de la aplicación para acceder a preferencias de usuario.
- */
 class SubscriptionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = SubscriptionRepository(ApiClient.instance)
     private val prefs = UserPreferences(application)
 
-    private val _state = MutableStateFlow(SubscriptionUiState())
+    private val _state = MutableStateFlow<SubscriptionUiState>(SubscriptionUiState.Loading)
     val state: StateFlow<SubscriptionUiState> = _state
 
     init {
         loadCurrentSubscription()
     }
 
-    /**
-     * Carga la suscripción actual vinculada al perfil profesional del usuario autenticado.
-     * Si no se encuentra una suscripción activa, se maneja el estado correspondiente.
-     */
+    private fun updateSuccessState(updater: (SubscriptionUiState.Success) -> SubscriptionUiState.Success) {
+        val current = _state.value
+        if (current is SubscriptionUiState.Success) {
+            _state.value = updater(current)
+        }
+    }
+
     fun loadCurrentSubscription() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.value = SubscriptionUiState.Loading
             val profileId = prefs.professionalProfileId.first()
             
             if (profileId == null) {
-                _state.update { it.copy(isLoading = false, error = "Perfil profesional no encontrado") }
+                _state.value = SubscriptionUiState.Error("Perfil profesional no encontrado")
                 return@launch
             }
 
-            _state.update { it.copy(professionalProfileId = profileId) }
-
             repository.getCurrentSubscriptionByProfessionalProfile(profileId)
                 .onSuccess { sub ->
-                    _state.update { it.copy(
+                    _state.value = SubscriptionUiState.Success(
+                        professionalProfileId = profileId,
                         currentSubscription = sub, 
-                        isLoading = false,
                         hasActiveSubscription = sub.status == "ACTIVE"
-                    ) }
+                    )
                 }
                 .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is ApiException && (e.code == 401 || e.code == 403)) return@onFailure
                     if (e.message == "NO_SUBSCRIPTION") {
-                        _state.update { it.copy(currentSubscription = null, isLoading = false, hasActiveSubscription = false) }
+                        _state.value = SubscriptionUiState.Success(
+                            professionalProfileId = profileId,
+                            currentSubscription = null, 
+                            hasActiveSubscription = false
+                        )
                     } else {
-                        _state.update { it.copy(isLoading = false, error = "Error al cargar suscripción: ${e.message}") }
+                        _state.value = SubscriptionUiState.Error("Error al cargar suscripción: ${e.message}")
                     }
                 }
         }
     }
 
-    /**
-     * Crea una nueva suscripción para un plan específico.
-     * Calcula automáticamente las fechas de inicio y fin (30 días de duración).
-     *
-     * @param planName Nombre del plan de suscripción a activar (ej. "BASIC", "PREMIUM").
-     */
     fun createSubscription(planName: String) {
-        val profileId = _state.value.professionalProfileId ?: return
+        val current = _state.value as? SubscriptionUiState.Success ?: return
+        val profileId = current.professionalProfileId ?: return
         
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.value = SubscriptionUiState.Loading
             
             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val now = Calendar.getInstance()
@@ -115,46 +107,51 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
 
             repository.createSubscription(request)
                 .onSuccess { sub ->
-                    _state.update { it.copy(
+                    _state.value = SubscriptionUiState.Success(
+                        professionalProfileId = profileId,
                         currentSubscription = sub, 
-                        isLoading = false, 
                         hasActiveSubscription = true,
                         successMessage = "Suscripción $planName activada con éxito"
-                    ) }
+                    )
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al activar plan: ${e.message}", isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is ApiException && (e.code == 401 || e.code == 403)) return@onFailure
+                    _state.value = SubscriptionUiState.Error("Error al activar plan: ${e.message}")
                 }
         }
     }
 
-    /**
-     * Cancela la suscripción actualmente activa del profesional.
-     * Actualiza el estado local tras confirmar la cancelación en el backend.
-     */
     fun cancelSubscription() {
-        val subId = _state.value.currentSubscription?.id ?: return
+        val current = _state.value as? SubscriptionUiState.Success ?: return
+        val subId = current.currentSubscription?.id ?: return
         
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.value = SubscriptionUiState.Loading
             repository.cancelSubscription(subId)
                 .onSuccess { sub ->
-                    _state.update { it.copy(
+                    _state.value = SubscriptionUiState.Success(
+                        professionalProfileId = current.professionalProfileId,
                         currentSubscription = sub, 
-                        isLoading = false, 
                         hasActiveSubscription = false,
                         successMessage = "Suscripción cancelada correctamente"
-                    ) }
+                    )
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(error = "Error al cancelar: ${e.message}", isLoading = false) }
+                    if (e is CancellationException) throw e
+                    if (e is ApiException && (e.code == 401 || e.code == 403)) return@onFailure
+                    _state.value = SubscriptionUiState.Error("Error al cancelar: ${e.message}")
                 }
         }
     }
     
-    /** Limpia el mensaje de error del estado. */
-    fun clearError() = _state.update { it.copy(error = null) }
+    fun clearError() {
+        if (_state.value is SubscriptionUiState.Error) {
+            loadCurrentSubscription()
+        }
+    }
 
-    /** Limpia el mensaje de éxito del estado. */
-    fun clearSuccess() = _state.update { it.copy(successMessage = null) }
+    fun clearSuccess() {
+        updateSuccessState { it.copy(successMessage = null) }
+    }
 }

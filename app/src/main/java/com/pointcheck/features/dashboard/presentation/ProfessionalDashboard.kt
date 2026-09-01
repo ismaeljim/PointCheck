@@ -18,14 +18,14 @@ import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.core.entry.entryModelOf
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.ui.components.PCCard
-import com.pointcheck.core.ui.components.PCOutlinedButton
+import com.pointcheck.core.ui.components.PointCheckCard
+import com.pointcheck.core.ui.components.PointCheckButton
 import com.pointcheck.features.dashboard.data.dto.ReportSummaryResponseDto
 
 @Composable
-fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: DashboardUiState) {
+fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: DashboardUiState.Success) {
     Column(Modifier.fillMaxWidth()) {
-        Text("Panel de Control", style = MaterialTheme.typography.titleLarge)
+        Text("Panel de Control", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         
         if (r != null) {
@@ -50,18 +50,13 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: D
             Spacer(Modifier.height(16.dp))
             
             // Card Principal de Reporte: Único punto de acceso a detalles y finanzas
-            PCCard(
-                modifier = Modifier.fillMaxWidth(),
+            PointCheckCard(
+                title = "Reporte de Desempeño",
+                subtitle = "Ver desglose semanal y estadísticas",
+                icon = Icons.Default.Insights,
                 onClick = { nav.navigate(Screen.WeeklyReport.route) }
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Insights, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Reporte de Desempeño", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    Spacer(Modifier.height(12.dp))
+                Column(Modifier.fillMaxWidth()) {
                     FinancialRow("Ingresos del Mes", "$${r.totalCharged ?: 0.0}", MaterialTheme.colorScheme.primary)
                     FinancialRow("Por Cobrar", "$${r.pendingAmount ?: 0.0}", MaterialTheme.colorScheme.error)
                     FinancialRow("Tiempo Promedio", "${(r.averageAttentionMinutes ?: 0.0).toInt()} min")
@@ -81,17 +76,18 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: D
                         )
                     }
 
-                    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(12.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Ver desglose semanal y estadísticas",
+                            "Ver más",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
                         )
                         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                     }
@@ -108,17 +104,15 @@ fun ProfessionalDashboard(r: ReportSummaryResponseDto?, nav: NavController, s: D
         }
 
         Spacer(Modifier.height(24.dp))
-        Text("Accesos Rápidos", style = MaterialTheme.typography.titleMedium)
+        Text("Accesos Rápidos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         
-        PCOutlinedButton(text = "Perfil Profesional", icon = Icons.Default.Person, onClick = { nav.navigate(Screen.ProfessionalProfile.route) }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        PCOutlinedButton(text = "Mi Agenda", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        PCOutlinedButton(text = "Mis Cobros", icon = Icons.Default.Payments, onClick = { nav.navigate(Screen.BillingList.route) }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        PCOutlinedButton(text = "Servicios", icon = Icons.AutoMirrored.Filled.List, onClick = { nav.navigate(Screen.ServiceManagement.route) }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        PCOutlinedButton(text = "Suscripción", icon = Icons.Default.Star, onClick = { nav.navigate(Screen.Subscription.route) }, modifier = Modifier.fillMaxWidth())
+        PointCheckButton(text = "Perfil Profesional", icon = Icons.Default.Person, onClick = { nav.navigate(Screen.ProfessionalProfile.route) }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+        PointCheckButton(text = "Mi Agenda", icon = Icons.Default.CalendarMonth, onClick = { nav.navigate(Screen.Scheduled.route) }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+        PointCheckButton(text = "Servicios", icon = Icons.AutoMirrored.Filled.List, onClick = { nav.navigate(Screen.ServiceManagement.route) }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+        PointCheckButton(text = "Suscripción", icon = Icons.Default.Star, onClick = { nav.navigate(Screen.Subscription.route) }, modifier = Modifier.fillMaxWidth())
     }
 }

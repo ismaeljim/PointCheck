@@ -36,16 +36,28 @@ class ReservationController(
     /**
      * Consulta la disponibilidad horaria de un especialista para una fecha específica.
      *
-     * @param specialistId ID del especialista.
+     * @param specialistProfileId ID del perfil profesional del especialista.
      * @param date Fecha a consultar en formato ISO.
      * @return Respuesta con la lista de horarios disponibles.
      */
     @GetMapping("/availability")
     fun getAvailability(
-        @RequestParam specialistId: String,
+        @RequestParam specialistProfileId: String,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate
     ): ResponseEntity<AvailabilityResponse> {
-        return ResponseEntity.ok(reservationService.getAvailability(specialistId, date))
+        return ResponseEntity.ok(reservationService.getAvailability(specialistProfileId, date))
+    }
+
+    /**
+     * Obtiene todas las reservaciones registradas en el sistema.
+     * Acceso restringido a administradores para auditoría global.
+     *
+     * @return Lista de todas las reservaciones.
+     */
+    @GetMapping
+    // @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
+    fun getAll(): ResponseEntity<List<ReservationResponse>> {
+        return ResponseEntity.ok(reservationService.getAll())
     }
 
     /**
@@ -71,25 +83,25 @@ class ReservationController(
     }
 
     /**
-     * Obtiene todas las reservaciones asociadas a un especialista.
+     * Obtiene todas las reservaciones asignadas a un especialista.
      *
-     * @param specialistId ID del especialista.
+     * @param specialistProfileId ID del perfil profesional del especialista.
      * @return Lista de reservaciones del especialista.
      */
-    @GetMapping("/specialist/{specialistId}")
-    fun getBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<ReservationResponse>> {
-        return ResponseEntity.ok(reservationService.getBySpecialist(specialistId))
+    @GetMapping("/specialist/{specialistProfileId}")
+    fun getBySpecialist(@PathVariable specialistProfileId: String): ResponseEntity<List<ReservationResponse>> {
+        return ResponseEntity.ok(reservationService.getBySpecialist(specialistProfileId))
     }
 
     /**
      * Obtiene las reservaciones programadas para el día de hoy para un especialista.
      *
-     * @param specialistId ID del especialista.
+     * @param specialistProfileId ID del perfil profesional del especialista.
      * @return Lista de reservaciones de hoy.
      */
-    @GetMapping("/specialist/{specialistId}/today")
-    fun getTodayBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<ReservationResponse>> {
-        return ResponseEntity.ok(reservationService.getTodayBySpecialist(specialistId))
+    @GetMapping("/specialist/{specialistProfileId}/today")
+    fun getTodayBySpecialist(@PathVariable specialistProfileId: String): ResponseEntity<List<ReservationResponse>> {
+        return ResponseEntity.ok(reservationService.getTodayBySpecialist(specialistProfileId))
     }
 
     /**

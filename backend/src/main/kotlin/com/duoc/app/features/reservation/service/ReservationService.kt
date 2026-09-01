@@ -10,6 +10,7 @@ import com.duoc.app.features.reservation.repository.ReservationRepository
 import com.duoc.app.features.service.model.ServiceOffering
 import com.duoc.app.features.service.repository.ServiceOfferingRepository
 import com.duoc.app.features.user.repository.UserRepository
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.scheduling.annotation.Scheduled
@@ -18,15 +19,11 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
  * Motor de Reservas y Disponibilidad.
- *
- * Este componente es el núcleo del negocio. Gestiona la intersección entre
- * la agenda del especialista y las necesidades del cliente. Se encarga de
- * calcular horarios disponibles, gestionar el ciclo de vida de las citas
- * y coordinar con el sistema de notificaciones y facturación.
  */
 @Service
 class ReservationService(
@@ -41,34 +38,32 @@ class ReservationService(
 
     private val objectMapper = jacksonObjectMapper()
 
-    /**
-     * Calcula los bloques de tiempo disponibles para un especialista en una fecha específica.
-     *
-     * La lógica incluye:
-     * - Normalización de días de la semana (soporte multi-idioma para configuración JSON).
-     * - Validación de horas de trabajo configuradas en el perfil profesional.
-     * - Exclusión de bloques ya reservados o en conflicto.
-     * - Cálculo dinámico basado en la duración predeterminada de la sesión.
-     *
-     * @param specialistId ID del especialista o del usuario asociado.
-     * @param date Fecha para la cual se consulta la disponibilidad.
-     * @return [AvailabilityResponse] con la lista de horarios (HH:mm) disponibles.
-     */
-    fun getAvailability(specialistId: String, date: LocalDate): AvailabilityResponse {
-        val profile = professionalProfileRepository.findById(specialistId)
-            .orElseGet { professionalProfileRepository.findByUser_Id(specialistId) }
-            ?: throw IllegalArgumentException("Perfil profesional no encontrado para el especialista.")
+    @Transactional(readOnly = true)
+    fun getAvailability(specialistProfileId: String, date: LocalDate): AvailabilityResponse {
+        val chileZone = ZoneId.of("America/Santiago")
+        val today = LocalDate.now(chileZone)
+        val nowTime = LocalTime.now(chileZone)
 
-        val actualUserId = profile.user.id!!
+        // Validar que no se pida disponibilidad para días pasados
+        if (date.isBefore(today)) {
+            return AvailabilityResponse(specialistProfileId, date, emptyList())
+        }
+
+        val profile = professionalProfileRepository.findById(specialistProfileId)
+            .orElseGet { professionalProfileRepository.findByUser_Id(specialistProfileId) }
+            ?: throw IllegalArgumentException("Perfil profesional no encontrado")
+
+        val profileId = profile.id!!
 
         val workingHours = try {
-            if (!profile.workingHoursJson.isNullOrBlank()) {
-                val rawMap: Map<String, Any> = objectMapper.readValue(profile.workingHoursJson!!)
-                rawMap.mapKeys { it.key.uppercase() }
+            val json = profile.workingHoursJson
+            if (!json.isNullOrBlank() && json != "null" && json != "{}") {
+                val rawMap: Map<String, Any> = objectMapper.readValue(json, object : TypeReference<Map<String, Any>>() {})
+                rawMap.mapKeys { it.key.trim().uppercase() }
             } else {
                 emptyMap()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             emptyMap()
         }
 
@@ -99,19 +94,19 @@ class ReservationService(
         }
 
         val config = dayConfigEntry?.value as? Map<*, *>
-        val isActive = config?.get("isActive") as? Boolean ?: false
+        val isActive = config?.get("isActive")?.toString()?.toBoolean() ?: false
         
-        if (dayConfigEntry == null || !isActive) {
-            return AvailabilityResponse(specialistId, date, emptyList())
+        if (dayConfigEntry == null || config == null || !isActive) {
+            return AvailabilityResponse(specialistProfileId, date, emptyList())
         }
 
         fun parseFlexTime(timeStr: String?, default: LocalTime): LocalTime {
-            if (timeStr.isNullOrBlank()) return default
+            if (timeStr.isNullOrBlank() || timeStr == "null") return default
             return try {
                 val clean = timeStr.trim()
                 val parts = clean.split(":")
                 val h = parts[0].padStart(2, '0').toInt()
-                val m = if (parts.size > 1) parts[1].padStart(2, '0').toInt() else 0
+                val m = if (parts.size > 1) parts[1].trim().padStart(2, '0').toInt() else 0
                 LocalTime.of(h, m)
             } catch (_: Exception) {
                 default
@@ -122,11 +117,11 @@ class ReservationService(
         val endTime = parseFlexTime(config["end"]?.toString(), LocalTime.of(18, 0))
         val slotDuration = if (profile.defaultSessionDurationMinutes > 0) profile.defaultSessionDurationMinutes.toLong() else 60L
 
-        val allReservations = reservationRepository.findBySpecialist_IdAndReservationStartBetween(
-            actualUserId,
-            date.atStartOfDay(),
-            date.atTime(LocalTime.MAX)
-        ).filter { it.status != ReservationStatus.CANCELLED }
+        val allReservations = try {
+            reservationRepository.findBySpecialistIdAndDate(profileId, date)
+        } catch (e: Exception) {
+            emptyList()
+        }
 
         val availableSlots = mutableListOf<String>()
         val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -136,88 +131,72 @@ class ReservationService(
             val slotStart = date.atTime(current)
             val slotEnd = slotStart.plusMinutes(slotDuration)
 
+            // REGLA FLEXIBLE: Solo permitir slots futuros para el día de hoy
+            val isPast = (date == today && current.isBefore(nowTime))
+
             val isOccupied = allReservations.any { res ->
                 val resEnd = res.reservationEnd ?: res.reservationStart.plusMinutes(60)
                 res.reservationStart.isBefore(slotEnd) && resEnd.isAfter(slotStart)
             }
 
-            if (!isOccupied) {
+            if (!isOccupied && !isPast) {
                 availableSlots.add(current.format(timeFormatter))
             }
             current = current.plusMinutes(slotDuration)
             if (slotDuration <= 0) break
         }
 
-        return AvailabilityResponse(specialistId, date, availableSlots)
+        return AvailabilityResponse(specialistProfileId, date, availableSlots)
     }
 
-    /**
-     * Crea una nueva reservación en el sistema.
-     *
-     * Realiza validaciones críticas:
-     * - Existencia y estado del cliente y especialista.
-     * - Pertenencia del servicio al especialista seleccionado.
-     * - Detección de traslapes (overlaps) horarios para evitar citas duplicadas.
-     *
-     * @param request Datos de la reservación a crear.
-     * @return [ReservationResponse] con la reservación persistida.
-     * @throws IllegalArgumentException si los IDs no existen o el servicio no es válido.
-     * @throws IllegalStateException si existe un conflicto de horario.
-     */
     @Transactional
     fun create(request: ReservationRequest): ReservationResponse {
-        val now = LocalDateTime.now()
+        val zoneId = ZoneId.of("America/Santiago")
+        val now = LocalDateTime.now(zoneId)
         
-        // 1. Validar que la reserva no sea en el pasado
-        if (request.reservationStart.isBefore(now.plusMinutes(5))) { // Margen de 5 min
+        if (request.reservationStart.isBefore(now.minusMinutes(1))) {
             throw IllegalArgumentException("No se pueden realizar reservas para una fecha/hora pasada.")
         }
 
         val client = userRepository.findById(request.clientId).orElseThrow {
-            IllegalArgumentException("El cliente con ID ${request.clientId} no existe.")
+            IllegalArgumentException("El cliente no existe.")
         }
 
-        val profile = professionalProfileRepository.findById(request.specialistId)
-            .orElseGet { professionalProfileRepository.findByUser_Id(request.specialistId) }
-            ?: throw IllegalArgumentException("Perfil profesional no encontrado para el especialista.")
+        val specialistProfile = professionalProfileRepository.findById(request.specialistProfileId)
+            .orElseGet { professionalProfileRepository.findByUser_Id(request.specialistProfileId) }
+            ?: throw IllegalArgumentException("Perfil profesional no encontrado.")
 
-        val specialist = profile.user
-
-        // 2. Validar que el cliente no se reserve a sí mismo
-        if (client.id == specialist.id) {
+        if (client.id == specialistProfile.user.id) {
             throw IllegalArgumentException("Un especialista no puede agendar citas consigo mismo.")
         }
 
-        // 3. Validar Perfil Completo del especialista (Regla de Negocio)
-        val hasServices = serviceOfferingRepository.findByProfessionalProfile_Id(profile.id!!).isNotEmpty()
-        val isProfileComplete = !specialist.rut.isNullOrBlank() && 
-                               !specialist.phone.isNullOrBlank() && 
+        val hasServices = serviceOfferingRepository.findByProfessionalProfile_Id(specialistProfile.id!!).isNotEmpty()
+        val isProfileComplete = !specialistProfile.user.rut.isNullOrBlank() && 
+                               !specialistProfile.user.phone.isNullOrBlank() && 
                                hasServices
         
         if (!isProfileComplete) {
-            throw IllegalStateException("El especialista seleccionado no tiene su perfil completo y no puede recibir reservas.")
+            throw IllegalStateException("El especialista no tiene su perfil completo.")
         }
 
         var service: ServiceOffering? = null
         if (request.serviceId != null) {
             val serviceEntity = serviceOfferingRepository.findById(request.serviceId).orElseThrow {
-                IllegalArgumentException("El servicio con ID ${request.serviceId} no existe.")
+                IllegalArgumentException("El servicio no existe.")
             }
             if (!serviceEntity.active) {
-                throw IllegalArgumentException("El servicio con ID ${request.serviceId} no está activo.")
+                throw IllegalArgumentException("El servicio no está activo.")
             }
-
-            if (serviceEntity.professionalProfile.user.id != specialist.id) {
-                throw IllegalArgumentException("El servicio seleccionado no pertenece al especialista de la reserva.")
+            if (serviceEntity.professionalProfile.id != specialistProfile.id) {
+                throw IllegalArgumentException("El servicio no pertenece al especialista.")
             }
             service = serviceEntity
         }
 
         val reservationEnd = request.reservationEnd ?: request.reservationStart.plusMinutes(service?.durationMinutes?.toLong() ?: 60L)
 
-        // 4. Validar traslapes ignorando citas canceladas
         val hasConflict = reservationRepository.existsBySpecialist_IdAndReservationStartLessThanAndReservationEndGreaterThanAndStatusNot(
-            specialist.id!!,
+            specialistProfile.id!!,
             reservationEnd,
             request.reservationStart,
             ReservationStatus.CANCELLED
@@ -227,14 +206,13 @@ class ReservationService(
             throw IllegalStateException("El especialista ya tiene una cita agendada en este horario.")
         }
 
-        // 5. Validar dirección para servicios a domicilio
         if (service?.isAtHome == true && client.address.isNullOrBlank()) {
-            throw IllegalArgumentException("Debes configurar una dirección en tu perfil para solicitar servicios a domicilio.")
+            throw IllegalArgumentException("Debes configurar una dirección en tu perfil.")
         }
 
         val reservation = Reservation(
             client = client,
-            specialist = specialist,
+            specialist = specialistProfile,
             service = service,
             reservationStart = request.reservationStart,
             reservationEnd = reservationEnd,
@@ -245,247 +223,146 @@ class ReservationService(
 
         val savedReservation = reservationRepository.save(reservation)
 
-        // AUDITORÍA: Registro de creación de cita
-        auditLogger.log(
-            action = "CREAR_RESERVA",
-            targetType = "RESERVATION",
-            targetId = savedReservation.id ?: "",
-            targetName = "${client.name} con ${specialist.name}",
-            details = "Nueva reserva creada para el ${reservation.reservationStart} por un valor de ${service?.price ?: 0}"
-        )
+        auditLogger.log("CREAR_RESERVA", "RESERVATION", savedReservation.id ?: "", "${client.name} con ${specialistProfile.displayName}", "Nueva reserva")
 
-        notificationService.createNotification(
-            user = client,
-            title = "Nueva Cita Agendada",
-            message = "Tu cita con ${specialist.name} para el ${reservation.reservationStart} ha sido confirmada.",
-            type = com.duoc.app.features.notification.model.NotificationType.CONFIRMATION
-        )
+        notificationService.createNotification(client, "Nueva Cita Agendada", "Tu cita con ${specialistProfile.displayName} ha sido confirmada.", com.duoc.app.features.notification.model.NotificationType.CONFIRMATION)
+        notificationService.createNotification(specialistProfile.user, "Nueva Reserva Recibida", "Has recibido una nueva cita de ${client.name}.", com.duoc.app.features.notification.model.NotificationType.CONFIRMATION)
 
         return savedReservation.toResponse()
     }
 
-    /**
-     * Obtiene el historial completo de reservaciones de un cliente.
-     *
-     * @param clientId ID del cliente.
-     * @return Lista de [ReservationResponse].
-     */
-    fun getByClient(clientId: String): List<ReservationResponse> {
-        return reservationRepository.findByClient_Id(clientId).map { it.toResponse() }
-    }
+    @Transactional(readOnly = true)
+    fun getAll(): List<ReservationResponse> = reservationRepository.findAll().map { it.toResponse() }
 
-    /**
-     * Obtiene todas las reservaciones asignadas a un especialista.
-     *
-     * @param specialistId ID del especialista.
-     * @return Lista de [ReservationResponse].
-     */
-    fun getBySpecialist(specialistId: String): List<ReservationResponse> {
-        return reservationRepository.findBySpecialist_Id(specialistId).map { it.toResponse() }
-    }
+    @Transactional(readOnly = true)
+    fun getByClient(clientId: String): List<ReservationResponse> = reservationRepository.findByClient_IdOrderByCreatedAtDesc(clientId).map { it.toResponse() }
 
-    /**
-     * Recupera las citas programadas para el día actual para un especialista.
-     *
-     * @param specialistId ID del especialista.
-     * @return Lista de reservaciones filtradas por el rango del día de hoy.
-     */
-    fun getTodayBySpecialist(specialistId: String): List<ReservationResponse> {
-        val startOfDay = LocalDate.now().atStartOfDay()
+    @Transactional(readOnly = true)
+    fun getBySpecialist(specialistProfileId: String): List<ReservationResponse> = reservationRepository.findBySpecialist_IdOrderByCreatedAtDesc(specialistProfileId).map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    fun getTodayBySpecialist(specialistProfileId: String): List<ReservationResponse> {
+        val chileZone = ZoneId.of("America/Santiago")
+        val startOfDay = LocalDate.now(chileZone).atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
-        return reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistId, startOfDay, endOfDay)
-            .map { it.toResponse() }
+        return reservationRepository.findBySpecialist_IdAndReservationStartBetween(specialistProfileId, startOfDay, endOfDay).map { it.toResponse() }
     }
 
-    /**
-     * Obtiene las próximas reservaciones (futuras) de un cliente.
-     *
-     * @param clientId ID del cliente.
-     * @return Lista de reservaciones con fecha de inicio posterior a la actual.
-     */
+    @Transactional(readOnly = true)
     fun getUpcomingByClient(clientId: String): List<ReservationResponse> {
-        return reservationRepository.findByClient_IdAndReservationStartAfter(clientId, LocalDateTime.now())
-            .map { it.toResponse() }
+        val chileZone = ZoneId.of("America/Santiago")
+        return reservationRepository.findByClient_IdAndReservationStartAfter(clientId, LocalDateTime.now(chileZone)).map { it.toResponse() }
     }
 
-    /**
-     * Actualiza el estado de una reservación y notifica al cliente si es necesario.
-     *
-     * @param id ID de la reservación.
-     * @param status Nuevo estado a aplicar.
-     * @return Reservación actualizada.
-     */
     @Transactional
     fun updateStatus(id: String, status: ReservationStatus): ReservationResponse {
-        val reservation = reservationRepository.findById(id).orElseThrow {
-            IllegalArgumentException("Reserva no encontrada con ID: $id")
-        }
-
-        reservation.apply {
-            this.status = status
-            this.updatedAt = LocalDateTime.now()
-        }
+        val reservation = reservationRepository.findById(id).orElseThrow { IllegalArgumentException("Reserva no encontrada") }
+        val oldStatus = reservation.status
+        reservation.status = status
+        reservation.updatedAt = LocalDateTime.now()
         val saved = reservationRepository.save(reservation)
-
+        
+        auditLogger.log(
+            action = "EDITAR",
+            targetType = "Reserva",
+            targetId = id,
+            targetName = "Reserva #${id.take(8)}",
+            details = "Estado cambiado de $oldStatus a $status"
+        )
+        
         if (status == ReservationStatus.CANCELLED) {
-            notificationService.createNotification(
-                user = reservation.client,
-                title = "Cita Cancelada",
-                message = "Tu cita con ${reservation.specialist.name} para el ${reservation.reservationStart} ha sido cancelada.",
-                type = com.duoc.app.features.notification.model.NotificationType.ALERT
-            )
+            notificationService.createNotification(reservation.client, "Cita Cancelada", "Tu cita ha sido cancelada.", com.duoc.app.features.notification.model.NotificationType.ALERT)
         }
-
         return saved.toResponse()
     }
 
-    /**
-     * Cancela una reservación existente.
-     *
-     * @param id ID de la reservación.
-     * @param requesterId ID del usuario que solicita la cancelación (Seguridad).
-     * @return Reservación con estado [ReservationStatus.CANCELLED].
-     */
     @Transactional
     fun cancel(id: String, requesterId: String): ReservationResponse {
-        val reservation = reservationRepository.findById(id).orElseThrow {
-            IllegalArgumentException("Reserva no encontrada con ID: $id")
+        val reservation = reservationRepository.findById(id).orElseThrow { IllegalArgumentException("Reserva no encontrada") }
+        if (reservation.client.id != requesterId && reservation.specialist.user.id != requesterId) {
+            throw IllegalStateException("No tienes permiso")
         }
-
-        // BLINDAJE: Solo el cliente o el especialista pueden cancelar
-        if (reservation.client.id != requesterId && reservation.specialist.id != requesterId) {
-            throw IllegalStateException("No tienes permiso para cancelar esta reserva.")
-        }
-
-        return updateStatus(id, ReservationStatus.CANCELLED)
+        val response = updateStatus(id, ReservationStatus.CANCELLED)
+        auditLogger.log("ELIMINAR", "Reserva", id, "Reserva #${id.take(8)}", "Cita cancelada")
+        return response
     }
 
-    /**
-     * Confirma el pago de una reservación y la marca como completada.
-     *
-     * @param id ID de la reservación.
-     * @param requesterId ID del usuario que confirma el pago (Seguridad - Solo especialista).
-     * @return Reservación actualizada con el pago confirmado.
-     * @throws IllegalStateException si la reserva ya está cancelada o el usuario no tiene permiso.
-     */
     @Transactional
     fun confirmPayment(id: String, requesterId: String): ReservationResponse {
-        val reservation = reservationRepository.findById(id).orElseThrow {
-            IllegalArgumentException("Reserva no encontrada con ID: $id")
+        val chileZone = ZoneId.of("America/Santiago")
+        val now = LocalDateTime.now(chileZone)
+        
+        val reservation = reservationRepository.findById(id).orElseThrow { IllegalArgumentException("Reserva no encontrada") }
+        if (reservation.specialist.user.id != requesterId) throw IllegalStateException("No tienes permiso para realizar esta acción.")
+        if (reservation.status == ReservationStatus.CANCELLED) throw IllegalStateException("No se puede cobrar una cita que ha sido cancelada.")
+        if (reservation.status == ReservationStatus.COMPLETED) throw IllegalStateException("Esta cita ya ha sido pagada y finalizada.")
+
+        // REGLA DE NEGOCIO: Solo se puede cobrar si faltan 60 minutos o menos para el inicio, o si ya pasó.
+        val limitForEarlyPayment = reservation.reservationStart.minusMinutes(60)
+        if (now.isBefore(limitForEarlyPayment)) {
+            val formatter = DateTimeFormatter.ofPattern("HH:mm")
+            throw IllegalStateException("La atención no puede finalizarse todavía. Por seguridad y para garantizar la integridad del registro, el cierre de la cita se habilitará 60 minutos antes de la hora acordada (disponible desde las ${limitForEarlyPayment.format(formatter)} hrs).")
         }
 
-        // BLINDAJE: Solo el especialista asignado puede confirmar el pago
-        if (reservation.specialist.id != requesterId) {
-            throw IllegalStateException("Solo el especialista puede confirmar el pago de esta reserva.")
-        }
-
-        if (reservation.status == ReservationStatus.CANCELLED) {
-            throw IllegalStateException("No se puede confirmar el pago de una reserva cancelada.")
-        }
-
-        // 1. Actualizar estado de la reserva
-        reservation.apply {
-            status = ReservationStatus.COMPLETED
-            updatedAt = LocalDateTime.now()
-        }
+        reservation.status = ReservationStatus.COMPLETED
+        reservation.updatedAt = now
         val saved = reservationRepository.save(reservation)
 
-        // AUDITORÍA: Registro de pago confirmado
-        auditLogger.log(
-            action = "CONFIRMAR_PAGO",
-            targetType = "RESERVATION",
-            targetId = id,
-            targetName = "Pago Cita #${id.take(8)}",
-            details = "Especialista ${reservation.specialist.name} confirmó pago de ${reservation.client.name}"
-        )
+        auditLogger.log("CONFIRMAR_PAGO", "RESERVATION", id, "Pago Cita #${id.take(8)}", "Confirmación de pago")
 
-        // 2. Gestionar el registro de facturación (BillingRecord)
-        // Buscamos si ya existe uno vinculado a esta reserva
         val existingBilling = billingRecordRepository.findByReservation_Id(id).firstOrNull()
-
         if (existingBilling != null) {
-            existingBilling.apply {
-                status = com.duoc.app.features.billing.model.PaymentStatus.PAID
-                paidAt = LocalDateTime.now()
-                paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH
-                updatedAt = LocalDateTime.now()
-            }
+            existingBilling.status = com.duoc.app.features.billing.model.PaymentStatus.PAID
+            existingBilling.paidAt = LocalDateTime.now()
             billingRecordRepository.save(existingBilling)
         } else {
-            // Si no existe, lo creamos como pagado (flujo simplificado para efectivo)
-            val servicePrice = reservation.service?.price ?: java.math.BigDecimal.ZERO
-            val newBilling = com.duoc.app.features.billing.model.BillingRecord(
-                reservation = saved,
-                client = reservation.client,
-                specialist = reservation.specialist,
-                amount = servicePrice,
-                status = com.duoc.app.features.billing.model.PaymentStatus.PAID,
-                paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH,
-                paidAt = LocalDateTime.now(),
-                notes = "Pago confirmado manualmente por el especialista"
-            )
-            billingRecordRepository.save(newBilling)
+            billingRecordRepository.save(com.duoc.app.features.billing.model.PaymentStatus.PAID.let { 
+                com.duoc.app.features.billing.model.BillingRecord(
+                    reservation = saved,
+                    amount = reservation.service?.price ?: java.math.BigDecimal.ZERO,
+                    status = it,
+                    paymentMethod = reservation.paymentMethod ?: com.duoc.app.features.billing.model.PaymentMethod.CASH,
+                    paidAt = LocalDateTime.now()
+                )
+            })
         }
-
         return saved.toResponse()
     }
 
-    /**
-     * Tarea programada para limpiar la agenda de citas expiradas.
-     * Se ejecuta cada hora.
-     * Si una reserva sigue PENDING y ya pasaron más de 2 horas de su inicio, 
-     * se marca como EXPIRED para liberar la agenda.
-     */
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     fun cleanupExpiredReservations() {
         val expirationThreshold = LocalDateTime.now().minusHours(2)
-        val expiredReservations = reservationRepository.findByStatusAndReservationStartBefore(
-            ReservationStatus.PENDING,
-            expirationThreshold
-        )
-
-        expiredReservations.forEach { res ->
+        reservationRepository.findByStatusAndReservationStartBefore(ReservationStatus.PENDING, expirationThreshold).forEach { res ->
             res.status = ReservationStatus.CANCELLED
             res.updatedAt = LocalDateTime.now()
             reservationRepository.save(res)
             
-            notificationService.createNotification(
-                user = res.client,
-                title = "Cita Expirada",
-                message = "Tu cita con ${res.specialist.name} ha expirado por falta de confirmación.",
-                type = com.duoc.app.features.notification.model.NotificationType.ALERT
+            auditLogger.log(
+                action = "EXPIRAR",
+                targetType = "Reserva",
+                targetId = res.id ?: "",
+                targetName = "Reserva #${res.id?.take(8)}",
+                details = "Cita expirada automáticamente por falta de confirmación/pago"
             )
+
+            notificationService.createNotification(res.client, "Cita Expirada", "Tu cita ha expirado.", com.duoc.app.features.notification.model.NotificationType.ALERT)
         }
     }
 
-    /**
-     * Conversión de Entidad a DTO.
-     * 
-     * ¿POR QUÉ ESTO?:
-     * Anteriormente, este mapeador realizaba llamadas al professionalProfileRepository 
-     * de forma imperativa para cada elemento de una lista (N+1).
-     * 
-     * AHORA:
-     * El servicio es agnóstico a la carga. Confía en que el Repositorio ha inyectado 
-     * las relaciones necesarias vía EntityGraph. Si 'this.service' está presente, 
-     * sus propiedades anidadas ya están en memoria (Eager Loading controlado).
-     * 
-     * BENEFICIO: Código más limpio, desacoplado de la persistencia y extremadamente rápido.
-     */
     private fun Reservation.toResponse(): ReservationResponse {
-        val profile = this.service?.professionalProfile
-
+        val specialistProfile = this.specialist
         return ReservationResponse(
             id = this.id ?: "",
             client = this.client.toSummaryDto(),
-            specialist = this.specialist.toSummaryDto(),
-            city = profile?.city ?: "",
-            address = profile?.address ?: "",
+            specialist = this.specialist.user.toSummaryDto(),
+            specialistProfileId = specialistProfile.id ?: "",
+            city = specialistProfile.city ?: "",
+            address = specialistProfile.address ?: "",
             serviceId = this.service?.id ?: "",
-            serviceName = this.service?.name ?: "Servicio no especificado",
-            categoryIcon = profile?.category?.iconKey ?: "medical_services",
-            categoryColor = profile?.category?.colorHex ?: "#000000",
+            serviceName = this.service?.name ?: "No especificado",
+            categoryIcon = specialistProfile.category?.iconKey ?: "medical_services",
+            categoryColor = specialistProfile.category?.colorHex ?: "#000000",
             isAtHome = this.service?.isAtHome ?: false,
             reservationStart = this.reservationStart,
             reservationEnd = this.reservationEnd,

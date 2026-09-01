@@ -57,31 +57,31 @@ class BillingRepository(private val api: ApiService) {
     /**
      * Obtiene todos los registros de facturación asociados a un especialista.
      *
-     * @param specialistId Identificador único del profesional.
+     * @param id Identificador único del profesional (ProfessionalProfileId).
      * @return [Result] con la lista de registros de facturación.
      */
-    suspend fun getBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
-        return handleApiCall("Error al obtener historial de cobros") { api.getBillingBySpecialist(specialistId) }
+    suspend fun getBillingBySpecialist(id: String): Result<List<BillingRecordResponseDto>> {
+        return handleApiCall("Error al obtener historial de cobros") { api.getBillingBySpecialist(id) }
     }
 
     /**
      * Obtiene los registros de facturación con estado pendiente para un especialista.
      *
-     * @param specialistId Identificador único del profesional.
+     * @param id Identificador único del profesional.
      * @return [Result] con la lista de registros pendientes.
      */
-    suspend fun getPendingBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
-        return handleApiCall("Error al obtener cobros pendientes") { api.getPendingBillingBySpecialist(specialistId) }
+    suspend fun getPendingBillingBySpecialist(id: String): Result<List<BillingRecordResponseDto>> {
+        return handleApiCall("Error al obtener cobros pendientes") { api.getPendingBillingBySpecialist(id) }
     }
 
     /**
      * Obtiene los registros de facturación generados durante el día actual para un especialista.
      *
-     * @param specialistId Identificador único del profesional.
+     * @param id Identificador único del profesional.
      * @return [Result] con la lista de registros de hoy.
      */
-    suspend fun getTodayBillingBySpecialist(specialistId: String): Result<List<BillingRecordResponseDto>> {
-        return handleApiCall("Error al obtener cobros de hoy") { api.getTodayBillingBySpecialist(specialistId) }
+    suspend fun getTodayBillingBySpecialist(id: String): Result<List<BillingRecordResponseDto>> {
+        return handleApiCall("Error al obtener cobros de hoy") { api.getTodayBillingBySpecialist(id) }
     }
 
     /**

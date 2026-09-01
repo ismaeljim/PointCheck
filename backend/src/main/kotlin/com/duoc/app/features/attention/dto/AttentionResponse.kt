@@ -9,6 +9,7 @@ data class AttentionResponse(
     val reservationId: String,
     val client: UserSummaryDto,
     val specialist: UserSummaryDto,
+    val specialistProfileId: String = "",
     val startedAt: LocalDateTime,
     val finishedAt: LocalDateTime?,
     val durationMinutes: Int?,

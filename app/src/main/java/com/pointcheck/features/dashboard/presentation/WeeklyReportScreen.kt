@@ -24,20 +24,20 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckTopBar
 import com.pointcheck.features.dashboard.data.dto.DailyMetricDto
 import com.pointcheck.features.dashboard.data.dto.WeeklySummaryDto
 import com.pointcheck.features.services.data.dto.ServiceResponseDto
 import androidx.compose.foundation.lazy.LazyRow
-import com.pointcheck.core.utils.FileUtil
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel()) {
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -45,19 +45,14 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
     LaunchedEffect(s.exportContent) {
         s.exportContent?.let { content ->
             val fileName = if (s.period == ReportPeriod.WEEKLY) "Reporte_Semanal.csv" else "Reporte_Mensual.csv"
-            val uri = FileUtil.saveTextToCache(context, fileName, content)
-            
-            if (uri != null) {
-                val sendIntent: Intent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_SUBJECT, fileName)
-                    type = "text/csv"
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                val shareIntent = Intent.createChooser(sendIntent, "Exportar $fileName")
-                context.startActivity(shareIntent)
+            val sendIntent: Intent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, content)
+                putExtra(Intent.EXTRA_SUBJECT, fileName)
+                type = "text/csv"
             }
+            val shareIntent = Intent.createChooser(sendIntent, "Exportar $fileName")
+            context.startActivity(shareIntent)
             vm.clearExport()
         }
     }
@@ -72,7 +67,7 @@ fun WeeklyReportScreen(nav: NavController, vm: WeeklyReportViewModel = viewModel
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = if (s.period == ReportPeriod.WEEKLY) "Reporte Semanal" else "Reporte Mensual",
                 onBack = { nav.popBackStack() },
                 actions = {

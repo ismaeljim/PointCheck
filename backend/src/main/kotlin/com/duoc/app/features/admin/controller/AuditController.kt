@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 class AuditController(private val adminService: AdminService) {
 
     @GetMapping("", "/")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    // @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
     fun getAuditLogs(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int

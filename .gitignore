@@ -19,3 +19,9 @@ backend/build/
 
 # Logs
 *.log
+
+# Configuracion local con secretos (no versionar)
+application-local.properties
+*-local.properties
+.env
+.env.local

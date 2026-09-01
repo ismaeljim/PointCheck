@@ -6,51 +6,95 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Estado de la UI para la pantalla de inicio de sesión.
- *
- * @property email Correo electrónico ingresado por el usuario.
- * @property password Contraseña ingresada.
- * @property isValid Indica si el formulario cumple con las validaciones básicas (formato de email y longitud).
- */
-data class LoginUiState(
-    val email: String = "",
-    val password: String = "",
-    val isValid: Boolean = false
-)
+import androidx.lifecycle.viewModelScope
+import com.pointcheck.core.prefs.UserPreferences
+import com.pointcheck.features.auth.data.repository.AuthRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
- * ViewModel encargado de la lógica de la pantalla de Login.
- * Maneja el estado de los campos de entrada y realiza la validación reactiva en el cliente.
- *
- * @param application Contexto de la aplicación.
+ * Jerarquía de estados para la pantalla de Login.
+ */
+sealed class LoginUiState {
+    data class Input(
+        val email: String = "",
+        val password: String = "",
+        val isValid: Boolean = false,
+        val error: String? = null
+    ) : LoginUiState()
+    
+    object Loading : LoginUiState()
+    object Success : LoginUiState()
+}
+
+/**
+ * ViewModel que gestiona la autenticación.
+ * Implementa validación reactiva y comunicación con el backend.
  */
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
-    private val _uiState = MutableStateFlow(LoginUiState())
-    val uiState: StateFlow<LoginUiState> = _uiState
+    
+    private val repository = AuthRepository()
+    private val userPrefs = UserPreferences(application)
+
+    private val _state = MutableStateFlow<LoginUiState>(LoginUiState.Input())
+    val state: StateFlow<LoginUiState> = _state
 
     /**
-     * Actualiza un campo específico del estado de la UI y recalcula la validez del formulario.
-     *
-     * @param field Nombre del campo a actualizar ("email" o "password").
-     * @param value Nuevo valor ingresado.
+     * Actualiza los campos de entrada y valida el formato.
      */
     fun onValueChange(field: String, value: String) {
-        val s = _uiState.value
-        _uiState.value = when(field) {
-            "email" -> s.copy(email = value, isValid = isValid(value, s.password))
-            "password" -> s.copy(password = value, isValid = isValid(s.email, value))
-            else -> s
+        val current = _state.value
+        if (current is LoginUiState.Input) {
+            _state.value = when (field) {
+                "email" -> current.copy(email = value, isValid = validate(value, current.password))
+                "password" -> current.copy(password = value, isValid = validate(current.email, value))
+                else -> current
+            }
         }
     }
 
+    private fun validate(email: String, pass: String) = 
+        Patterns.EMAIL_ADDRESS.matcher(email).matches() && pass.length >= 4
+
     /**
-     * Realiza una validación básica del formato de email y longitud mínima de contraseña.
-     *
-     * @param email Email a validar.
-     * @param pass Contraseña a validar.
-     * @return true si ambos campos son válidos.
+     * Ejecuta la petición de login al backend real.
      */
-    private fun isValid(email: String, pass: String) =
-        Patterns.EMAIL_ADDRESS.matcher(email).matches() && pass.length >= 6
+    fun login() {
+        val current = _state.value as? LoginUiState.Input ?: return
+        
+        viewModelScope.launch {
+            _state.value = LoginUiState.Loading
+            
+            repository.login(current.email, current.password)
+                .onSuccess { user ->
+                    // Guardamos la sesión completa para evitar inconsistencias en el perfil
+                    userPrefs.saveSession(
+                        token = user.token,
+                        userId = user.id ?: "",
+                        name = user.name ?: "Usuario",
+                        email = user.email ?: "",
+                        role = user.role ?: "CLIENT",
+                        phone = user.phone ?: "",
+                        rut = user.rut ?: "",
+                        address = user.address
+                    )
+                    _state.value = LoginUiState.Success
+                }
+                .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    _state.value = LoginUiState.Input(
+                        email = current.email,
+                        password = current.password,
+                        isValid = true,
+                        error = e.localizedMessage ?: "Error de conexión con el servidor"
+                    )
+                }
+        }
+    }
+
+    fun clearError() {
+        val current = _state.value as? LoginUiState.Input ?: return
+        _state.value = current.copy(error = null)
+    }
 }

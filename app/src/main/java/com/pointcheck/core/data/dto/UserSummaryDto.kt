@@ -12,9 +12,9 @@ package com.pointcheck.core.data.dto
  * @property profilePicture URL o ruta de la imagen de perfil del usuario.
  */
 data class UserSummaryDto(
-    val id: String,
-    val name: String,
-    val rut: String,
+    val id: String = "",
+    val name: String = "Usuario",
+    val rut: String = "",
     val email: String = "",
     val phone: String = "",
     val profilePicture: String = ""

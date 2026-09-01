@@ -8,9 +8,13 @@ import com.duoc.app.features.billing.model.PaymentStatus
 import com.duoc.app.features.billing.repository.BillingRecordRepository
 import com.duoc.app.features.user.model.User
 import com.duoc.app.features.user.repository.UserRepository
+import com.duoc.app.features.reservation.repository.ReservationRepository
+import com.duoc.app.features.dashboard.dto.ChartDataDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * Servicio de administración global de la plataforma.
@@ -26,7 +30,8 @@ class AdminService(
     private val settingsRepository: GlobalSettingsRepository,
     private val auditLogRepository: AuditLogRepository,
     private val categoryRepository: com.duoc.app.features.service.repository.CategoryRepository,
-    private val auditLogger: com.duoc.app.core.audit.AuditLogger
+    private val auditLogger: com.duoc.app.core.audit.AuditLogger,
+    private val reservationRepository: ReservationRepository
 ) {
 
     /**
@@ -56,7 +61,7 @@ class AdminService(
             targetType = "Usuario",
             targetId = userId,
             targetName = user.name,
-            details = "Estado cambiado a ${if (savedUser.active) "Activo" else "Inactivo"}"
+            details = "Estado cambiado a ${if (savedUser.active) "Activo" else "Inactivo"} para el usuario ${user.email}"
         )
         
         return savedUser.toAdminResponse()
@@ -140,8 +145,8 @@ class AdminService(
      */
     fun getFinancialReport(): Map<String, Any> {
         val billing = billingRecordRepository.findAll()
-        val totalRevenue = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount.toDouble() }
-        val pendingRevenue = billing.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount.toDouble() }
+        val totalRevenue = billing.filter { it.status == PaymentStatus.PAID }.sumOf { it.amount?.toDouble() ?: 0.0 }
+        val pendingRevenue = billing.filter { it.status == PaymentStatus.PENDING }.sumOf { it.amount?.toDouble() ?: 0.0 }
         
         return mapOf(
             "totalRevenue" to totalRevenue,
@@ -168,7 +173,7 @@ class AdminService(
      * @return Configuración actualizada.
      */
     @Transactional
-    fun updateSetting(key: String, value: String): GlobalSettings {
+    fun updateSetting(key: String, value: String, adminEmail: String? = null): GlobalSettings {
         val setting = settingsRepository.findByKey(key).orElseGet {
             GlobalSettings(key = key, value = value, description = "Auto-generated setting")
         }
@@ -180,17 +185,74 @@ class AdminService(
         auditLogger.log(
             action = "EDITAR",
             targetType = "Configuración",
-            targetId = key,
+            targetId = saved.id ?: key,
             targetName = key,
-            details = "Cambio en '$key': '$oldValue' -> '$value'"
+            details = "Cambio en parámetro global '$key': '$oldValue' -> '$value'",
+            performedByEmail = adminEmail
         )
 
         return saved
     }
 
     /**
-     * Recupera el historial completo de acciones administrativas (Audit Log)
+     * Recupera una página del historial de acciones administrativas (Audit Log)
      * ordenado por fecha descendente.
      */
-    fun getAuditLogs(): List<AuditLog> = auditLogRepository.findAllByOrderByTimestampDesc()
+    fun getAuditLogs(page: Int, size: Int): org.springframework.data.domain.Page<AuditLog> = 
+        auditLogRepository.findAllByOrderByTimestampDesc(org.springframework.data.domain.PageRequest.of(page, size))
+
+    /**
+     * Genera métricas consolidadas para el Dashboard de Administrador.
+     */
+    fun getAdminMetrics(): com.duoc.app.features.dashboard.dto.DashboardMetricsResponse {
+        val financial = getFinancialReport()
+        val users = userRepository.findAll()
+        
+        // Generar series para los últimos 7 días
+        val endDate = LocalDateTime.now()
+        val startDate = endDate.minusDays(6).toLocalDate().atStartOfDay()
+        
+        val billingRecords = billingRecordRepository.findByCreatedAtBetween(startDate, endDate)
+        val reservations = reservationRepository.findByReservationStartBetween(startDate, endDate)
+        
+        val dateFormatter = DateTimeFormatter.ofPattern("dd/MM")
+        
+        val revenueSeries = (0..6).map { i ->
+            val date = startDate.plusDays(i.toLong()).toLocalDate()
+            val dailyRevenue = billingRecords
+                .filter { 
+                    it.createdAt != null && 
+                    it.createdAt.toLocalDate() == date && 
+                    it.status == PaymentStatus.PAID 
+                }
+                .sumOf { it.amount?.toDouble() ?: 0.0 }
+            
+            ChartDataDto(
+                label = date.format(dateFormatter),
+                value = dailyRevenue
+            )
+        }
+        
+        val activitySeries = (0..6).map { i ->
+            val date = startDate.plusDays(i.toLong()).toLocalDate()
+            val dailyCount = reservations
+                .count { it.reservationStart.toLocalDate() == date }
+                .toDouble()
+            
+            ChartDataDto(
+                label = date.format(dateFormatter),
+                value = dailyCount
+            )
+        }
+
+        return com.duoc.app.features.dashboard.dto.DashboardMetricsResponse(
+            totalUsers = users.size,
+            totalRevenue = financial["totalRevenue"] as Double,
+            pendingRevenue = financial["pendingRevenue"] as Double,
+            activeSpecialists = users.count { it.role.name == "SPECIALIST" && it.active },
+            systemAlerts = auditLogRepository.count().toInt(), // Usar conteo real de logs
+            revenueSeries = revenueSeries,
+            activitySeries = activitySeries
+        )
+    }
 }

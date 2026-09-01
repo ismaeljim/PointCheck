@@ -77,6 +77,13 @@ class ProfessionalProfileService(
 
         val saved = professionalProfileRepository.save(profile)
 
+        // SINCRONIZACIÓN: Si se proporcionó dirección en la creación, actualizar usuario base
+        request.address?.let { addr ->
+            user.address = addr
+            user.updatedAt = LocalDateTime.now()
+            userRepository.save(user)
+        }
+
         auditLogger.log(
             action = "CREAR",
             targetType = "Perfil Profesional",
@@ -97,6 +104,7 @@ class ProfessionalProfileService(
      * @param categoryId ID opcional de la categoría para filtrar resultados.
      * @return Lista de [ProfessionalProfileResponse] que cumplen con el criterio.
      */
+    @Transactional(readOnly = true)
     fun getActive(categoryId: String? = null): List<ProfessionalProfileResponse> {
         return if (categoryId != null) {
             professionalProfileRepository.findByCategoryIdAndActiveTrue(categoryId).map { it.toResponse() }
@@ -112,6 +120,7 @@ class ProfessionalProfileService(
      * @return [ProfessionalProfileResponse] correspondiente al usuario.
      * @throws NoSuchElementException Si el usuario no tiene un perfil configurado.
      */
+    @Transactional(readOnly = true)
     fun getByUserId(userId: String): ProfessionalProfileResponse {
         val profile = professionalProfileRepository.findByUser_Id(userId)
             ?: throw NoSuchElementException("Perfil profesional no encontrado para el usuario $userId")
@@ -153,6 +162,13 @@ class ProfessionalProfileService(
             defaultSessionDurationMinutes = request.defaultSessionDurationMinutes
             workingHoursJson = request.workingHoursJson
             updatedAt = LocalDateTime.now()
+        }
+
+        // SINCRONIZACIÓN: Actualiza también la dirección en la entidad User base
+        profile.user.apply {
+            this.address = request.address
+            this.updatedAt = LocalDateTime.now()
+            userRepository.save(this)
         }
 
         val saved = professionalProfileRepository.save(profile)

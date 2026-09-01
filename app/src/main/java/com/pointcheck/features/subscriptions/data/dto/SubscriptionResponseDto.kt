@@ -14,12 +14,12 @@ package com.pointcheck.features.subscriptions.data.dto
  * @property updatedAt Marca de tiempo de la última actualización, puede ser nulo.
  */
 data class SubscriptionResponseDto(
-    val id: String,
-    val professionalProfileId: String,
-    val planName: String,
-    val status: String,
-    val startDate: String,
-    val endDate: String,
-    val createdAt: String,
-    val updatedAt: String?
+    val id: String = "",
+    val professionalProfileId: String = "",
+    val planName: String = "FREE",
+    val status: String = "INACTIVE",
+    val startDate: String = "",
+    val endDate: String = "",
+    val createdAt: String = "",
+    val updatedAt: String? = null
 )

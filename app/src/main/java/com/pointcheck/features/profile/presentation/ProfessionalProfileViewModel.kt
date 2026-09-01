@@ -8,6 +8,8 @@ import com.pointcheck.core.prefs.UserPreferences
 import com.pointcheck.features.profile.data.dto.ProfessionalProfileRequestDto
 import com.pointcheck.features.profile.data.dto.ProfessionalProfileResponseDto
 import com.pointcheck.features.profile.data.repository.ProfessionalProfileRepository
+import com.pointcheck.core.util.MockDataProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.pointcheck.features.auth.data.dto.UserUpdateRequestDto
 
 /**
  * Configuración de las horas de trabajo para un día específico.
@@ -81,6 +84,14 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
      */
     val state: StateFlow<ProfessionalProfileUiState> = _state
 
+    private val _navigationEvent = MutableStateFlow<String?>(null)
+    /**
+     * Evento de navegación para ser consumido por la UI.
+     */
+    val navigationEvent: StateFlow<String?> = _navigationEvent
+
+    fun clearNavigationEvent() { _navigationEvent.value = null }
+
     init {
         loadProfile()
         loadCategories()
@@ -95,6 +106,8 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                 val cats = categoryApi.getCategories()
                 _state.update { it.copy(categories = cats) }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is com.pointcheck.core.network.ApiException && (e.code == 401 || e.code == 403)) return@launch
                 _state.update { it.copy(error = "Error al cargar categorías") }
             }
         }
@@ -144,6 +157,8 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                     prefs.saveProfessionalProfileId(profile.id)
                 }
                 .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
                     _state.update { it.copy(profile = null, isLoading = false) }
                 }
         }
@@ -241,17 +256,21 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
             result.onSuccess { updated ->
                 _state.update { it.copy(profile = updated, isLoading = false, successMessage = "Perfil guardado con éxito", isEditing = false) }
                 prefs.saveProfessionalProfileId(updated.id)
-
-                // Sincronización de dirección si se solicita
-                if (updateBaseAddress) {
+                
+                // Persistir Nombre y Teléfono en las preferencias locales y backend para consistencia
+                viewModelScope.launch {
                     val authApi = ApiClient.retrofitInstance.create(com.pointcheck.core.network.ApiService::class.java)
                     try {
-                        val response = authApi.updateUserAddress(userId, address)
-                        if (response.isSuccessful) {
-                            val user = response.body()
+                        val updateResponse = authApi.updateUserProfile(userId, UserUpdateRequestDto(
+                            name = displayName,
+                            phone = phone,
+                            address = if (updateBaseAddress) address else null
+                        ))
+                        
+                        if (updateResponse.isSuccessful) {
+                            val user = updateResponse.body()
                             if (user != null) {
                                 prefs.saveSession(
-                                    token = user.token,
                                     userId = user.id ?: "",
                                     name = user.name ?: "",
                                     email = user.email ?: "",
@@ -263,10 +282,19 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
                             }
                         }
                     } catch (e: Exception) {
-                        // Error no crítico para el perfil profesional
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        if (e is com.pointcheck.core.network.ApiException && (e.code == 401 || e.code == 403)) return@launch
+                        // Error no crítico para el flujo principal
                     }
                 }
+
+                // Si es un perfil nuevo, redirigir a configuración de servicios para evitar el estado "Incompleto"
+                if (currentProfile == null) {
+                    _navigationEvent.value = "service_management"
+                }
             }.onFailure { e ->
+                if (e is CancellationException) throw e
+                if (e is com.pointcheck.core.network.ApiException && e.code in listOf(401, 403)) return@onFailure
                 _state.update { it.copy(isLoading = false, error = "Error al guardar perfil: ${e.message}") }
             }
         }
@@ -289,4 +317,3 @@ class ProfessionalProfileViewModel(application: Application) : AndroidViewModel(
      */
     fun clearSuccess() = _state.update { it.copy(successMessage = null) }
 }
-

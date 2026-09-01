@@ -30,27 +30,17 @@
         </activity>
 
         <receiver
-            android:name=".notifications.ReminderReceiver"
+            android:name=".core.notifications.ReminderReceiver"
             android:exported="false" />
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="{GOOGLE_MAPS_API_KEY}" />
+            android:value="${GOOGLE_MAPS_API_KEY}" />
 
         <!-- Configuración para Places SDK (usa la misma llave) -->
         <meta-data
             android:name="com.google.android.libraries.places.API_KEY"
-            android:value="{GOOGLE_MAPS_API_KEY}" />
+            android:value="${GOOGLE_MAPS_API_KEY}" />
 
     </application>
 

@@ -9,9 +9,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckTextField
+import com.pointcheck.core.ui.components.PointCheckTopBar
 
 /**
  * Pantalla para la recuperación de contraseña.
@@ -27,7 +27,7 @@ fun ForgotPasswordScreen(
     var message by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Recuperar contraseña", onBack = onBack) }
+        topBar = { PointCheckTopBar(title = "Recuperar contraseña", onBack = onBack) }
     ) { pad ->
         Column(
             Modifier
@@ -53,10 +53,11 @@ fun ForgotPasswordScreen(
             
             Spacer(Modifier.height(32.dp))
 
-            AppTextField(
+            PointCheckTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = "Correo electrónico",
+                placeholder = "ejemplo@correo.com",
                 leadingIcon = Icons.Default.Email,
                 enabled = !isLoading
             )
@@ -72,7 +73,7 @@ fun ForgotPasswordScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            AppButton(
+            PointCheckButton(
                 text = "Enviar instrucciones",
                 onClick = {
                     isLoading = true

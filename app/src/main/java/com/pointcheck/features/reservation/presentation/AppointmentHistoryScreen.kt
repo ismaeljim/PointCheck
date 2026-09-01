@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.foundation.BorderStroke
@@ -21,9 +22,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckTopBar
 import com.pointcheck.core.utils.CategoryIdentityMapper
+import androidx.compose.foundation.clickable
+import com.pointcheck.core.navigation.Screen
 import com.pointcheck.features.reservation.data.dto.ReservationResponseDto
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,15 +38,8 @@ fun AppointmentHistoryScreen(
     nav: NavController,
     vm: AppointmentHistoryViewModel = viewModel()
 ) {
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(s.error) {
-        s.error?.let {
-            snackbarHostState.showSnackbar(it)
-            vm.clearError()
-        }
-    }
 
     LaunchedEffect(type) {
         vm.loadAppointments(type)
@@ -52,46 +48,73 @@ fun AppointmentHistoryScreen(
     val title = when (type) {
         "upcoming" -> "Próximas Citas"
         "recent" -> "Citas Recientes"
-        else -> "Historial de Citas"
+        else -> "Mis Citas"
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = title,
                 onBack = { nav.popBackStack() }
             )
         }
     ) { pad ->
         Box(modifier = Modifier.padding(pad).fillMaxSize()) {
-            if (s.isLoading && s.appointments.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (s.appointments.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(Icons.Default.Info, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
-                    Spacer(Modifier.height(16.dp))
-                    Text("No hay citas para mostrar", color = Color.Gray)
-                    if (s.error != null) {
+            when (val state = s) {
+                is AppointmentHistoryUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                is AppointmentHistoryUiState.Error -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Info, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp))
-                        AppButton(
+                        Text(state.message, color = Color.Gray)
+                        Spacer(Modifier.height(16.dp))
+                        PointCheckButton(
                             text = "Reintentar",
                             onClick = { vm.loadAppointments(type) }
                         )
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(s.appointments) { appointment ->
-                        AppointmentItem(appointment)
+                is AppointmentHistoryUiState.Success -> {
+                    if (state.appointments.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
+                            Spacer(Modifier.height(16.dp))
+                            Text("No hay citas registradas", color = Color.Gray)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(state.appointments) { appointment ->
+                                AppointmentItem(
+                        res = appointment,
+                        onClick = {
+                            if (appointment.status == "COMPLETED" || appointment.status == "PENDING_PAYMENT") {
+                                nav.navigate(Screen.Billing.createRoute(appointment.id, null))
+                            }
+                        }
+                    )
+                            }
+                        }
+                    }
+                    
+                    // Mostrar snackbar si hay mensaje de éxito/informativo
+                    state.successMessage?.let { msg ->
+                        LaunchedEffect(msg) {
+                            snackbarHostState.showSnackbar(msg)
+                        }
                     }
                 }
             }
@@ -100,10 +123,10 @@ fun AppointmentHistoryScreen(
 }
 
 @Composable
-fun AppointmentItem(res: ReservationResponseDto) {
+fun AppointmentItem(res: ReservationResponseDto, onClick: () -> Unit = {}) {
     val formattedDate = try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("dd 'de' MMM, HH:mm", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
         val date = inputFormat.parse(res.reservationStart)
         if (date != null) outputFormat.format(date) else res.reservationStart
     } catch (e: Exception) {
@@ -114,7 +137,9 @@ fun AppointmentItem(res: ReservationResponseDto) {
     val catIcon = CategoryIdentityMapper.mapIcon(res.categoryIcon)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, catColor.copy(alpha = 0.5f)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

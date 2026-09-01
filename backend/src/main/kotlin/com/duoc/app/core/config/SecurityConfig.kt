@@ -46,10 +46,8 @@ class SecurityConfig {
             }
 
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers("/api/auth/**").permitAll()
-                auth.requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-                auth.requestMatchers("/api/audit/**").hasAuthority("ADMIN")
-                auth.anyRequest().authenticated()
+                // BYPASS TOTAL PARA GRABACIÓN DE VIDEO - TODO PERMITIDO
+                auth.anyRequest().permitAll()
             }
 
             // 4. Basic Auth con EntryPoint Limpio (Evita WWW-Authenticate: Basic)

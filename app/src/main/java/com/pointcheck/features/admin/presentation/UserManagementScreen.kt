@@ -10,15 +10,18 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.scale
+import com.pointcheck.core.ui.components.PointCheckTextField
+import com.pointcheck.core.ui.components.PointCheckTopBar
+import com.pointcheck.core.ui.components.PointCheckCard
 import com.pointcheck.features.auth.data.dto.UserResponseDto
 
 /**
@@ -36,7 +39,7 @@ fun UserManagementScreen(
     onBack: () -> Unit,
     viewModel: AdminViewModel = viewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Mostrar diálogo de edición si hay un usuario seleccionado
     state.selectedUserForEdit?.let { user ->
@@ -44,19 +47,16 @@ fun UserManagementScreen(
             user = user,
             categories = state.categories,
             onDismiss = { viewModel.selectUserForEdit(null) },
-            onConfirm = { request -> 
-                user.id?.let { id -> 
-                    viewModel.updateUser(id, request) 
-                } ?: viewModel.clearError() // O manejar error de ID faltante
-            },
+            onConfirm = { request -> viewModel.updateUser(user.id ?: "", request) },
             isSaving = state.isSaving
         )
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            AppTopBar(
-                title = "Gestión de Usuarios",
+            PointCheckTopBar(
+                title = "PointCheck | Usuarios",
                 onBack = onBack
             )
         }
@@ -65,13 +65,16 @@ fun UserManagementScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            AppTextField(
+            Spacer(modifier = Modifier.height(16.dp))
+            PointCheckTextField(
                 value = state.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
-                label = "Buscar por nombre, email o RUT",
-                leadingIcon = Icons.Default.Search
+                label = "Buscar",
+                placeholder = "Nombre, email o RUT",
+                leadingIcon = Icons.Default.Search,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -81,7 +84,11 @@ fun UserManagementScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                LazyColumn {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
                     items(state.filteredUsers) { user ->
                         UserItem(
                             user = user,
@@ -108,47 +115,54 @@ fun UserItem(
     onEdit: () -> Unit,
     onToggleStatus: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    PointCheckCard(
+        title = user.name ?: "",
+        subtitle = user.email ?: "",
+        icon = if (user.role == "ADMIN") Icons.Default.CheckCircle else Icons.Default.Edit,
+        onClick = onEdit
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = user.name ?: "", style = MaterialTheme.typography.titleMedium)
-                Text(text = user.email ?: "", style = MaterialTheme.typography.bodySmall)
-                Text(text = "RUT: ${user.rut ?: ""}", style = MaterialTheme.typography.bodySmall)
-                Text(
-                    text = "Rol: ${user.role ?: "CLIENT"}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar",
-                        tint = MaterialTheme.colorScheme.primary
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "RUT: ${user.rut ?: ""}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "Rol: ${user.role ?: "CLIENT"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-                IconButton(onClick = onToggleStatus) {
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     val isActive = user.active ?: true
-                    Icon(
-                        imageVector = if (isActive) Icons.Default.Block else Icons.Default.CheckCircle,
-                        contentDescription = if (isActive) "Banear" else "Activar",
-                        tint = if (isActive) Color.Red else Color.Green
+                    Text(
+                        text = if (isActive) "Activo" else "Inactivo",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isActive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Switch(
+                        checked = isActive,
+                        onCheckedChange = { onToggleStatus() },
+                        modifier = Modifier.scale(0.85f),
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF4CAF50),
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     )
                 }
             }
         }
     }
 }
+
+// Extension to help with Switch scaling if needed, or just use standard Switch
+// Assuming PointCheckCard is better used with its internal structure.
+// Let's refine UserItem to use PointCheckCard correctly.
+

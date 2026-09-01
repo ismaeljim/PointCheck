@@ -15,13 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.text.style.TextAlign
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppOutlinedButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.*
 
 /**
  * Empty state component for Billing lists or summaries.
@@ -76,9 +74,20 @@ fun BillingScreen(
     attentionId: String?,
     vm: BillingViewModel = viewModel()
 ) {
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Sprint 3: Suscripción al canal de errores del ViewModel (Resiliencia de Negocio)
+    LaunchedEffect(Unit) {
+        vm.errorEvents.collect { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+                withDismissAction = true
+            )
+        }
+    }
 
     LaunchedEffect(reservationId) {
         vm.loadBillingByReservation(reservationId)
@@ -101,7 +110,7 @@ fun BillingScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = "Gestión de Cobro",
                 onBack = { nav.popBackStack() }
             )
@@ -123,6 +132,8 @@ fun BillingScreen(
                 // For now, if reservationId is provided, we assume we want to create or load it.
                 // If the VM finished loading and currentBilling is still null, we show the creation form.
 
+                val isPaid = s.currentBilling?.status == "PAID"
+
                 // Formulario de creación
                 Text(
                     "Información del Cobro",
@@ -130,24 +141,28 @@ fun BillingScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Complete los datos para generar el registro de pago.",
+                    if (isPaid) "Este cobro ya ha sido procesado." else "Complete los datos para generar el registro de pago.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isPaid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Spacer(Modifier.height(24.dp))
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                PointCheckCard(
+                    title = "Información del Cobro",
+                    subtitle = if (isPaid) "Este cobro ya ha sido procesado." else "Complete los datos para generar el registro de pago.",
+                    icon = Icons.Default.Payments,
+                    iconColor = if (isPaid) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(16.dp)) {
-                        AppTextField(
+                    Column {
+                        PointCheckTextField(
                             value = s.amount,
                             onValueChange = { vm.setAmount(it) },
-                            label = "Monto a Cobrar",
-                            leadingIcon = Icons.Default.AttachMoney,
-                            enabled = !s.isLoading
+                            label = "Monto a Cobrar ($)",
+                            placeholder = "0.0",
+                            leadingIcon = Icons.Default.Payments,
+                            enabled = !s.isLoading && !isPaid
                         )
 
                         Spacer(Modifier.height(20.dp))
@@ -155,7 +170,7 @@ fun BillingScreen(
                         Text(
                             "Método de Pago",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = if (isPaid) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.height(8.dp))
@@ -173,47 +188,80 @@ fun BillingScreen(
                                     .fillMaxWidth()
                                     .selectable(
                                         selected = s.paymentMethod == code,
-                                        onClick = { if (!s.isLoading) vm.setPaymentMethod(code) }
+                                        onClick = { if (!s.isLoading && !isPaid) vm.setPaymentMethod(code) }
                                     )
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
                                     selected = s.paymentMethod == code,
-                                    onClick = { if (!s.isLoading) vm.setPaymentMethod(code) },
-                                    enabled = !s.isLoading
+                                    onClick = { if (!s.isLoading && !isPaid) vm.setPaymentMethod(code) },
+                                    enabled = !s.isLoading && !isPaid
                                 )
-                                Text(label, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    label, 
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isPaid) MaterialTheme.colorScheme.outline else Color.Unspecified
+                                )
                             }
                         }
 
                         Spacer(Modifier.height(16.dp))
 
-                        AppTextField(
+                        PointCheckTextField(
                             value = s.notes,
                             onValueChange = { vm.setNotes(it) },
                             label = "Notas (Opcional)",
+                            placeholder = "Comentarios adicionales",
                             leadingIcon = Icons.Default.Description,
-                            enabled = !s.isLoading
+                            enabled = !s.isLoading && !isPaid
                         )
                     }
                 }
 
                 Spacer(Modifier.height(32.dp))
 
-                AppButton(
-                    text = "Generar Cobro",
-                    onClick = { vm.createBillingRecord(reservationId, attentionId) },
-                    enabled = !s.isLoading && s.amount.isNotBlank(),
-                    isLoading = s.isLoading
-                )
+                if (isPaid) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                "SERVICIO PAGADO",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    PointCheckOutlinedButton(
+                        text = "Volver al Listado",
+                        onClick = { nav.popBackStack() },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    PointCheckButton(
+                        text = "Generar Cobro",
+                        onClick = { vm.createBillingRecord(reservationId, attentionId) },
+                        enabled = !s.isLoading && s.amount.isNotBlank(),
+                        isLoading = s.isLoading
+                    )
+                }
             } else {
                 // Detalle del cobro creado
                 val billing = s.currentBilling!!
                 
                 if (billing.status == "PENDING") {
                     // Botón para abrir el Modal de Selección de Pago
-                    AppButton(
+                    PointCheckButton(
                         text = "Seleccionar Método de Pago",
                         onClick = { vm.setShowPaymentModal(true) },
                         modifier = Modifier.fillMaxWidth()
@@ -228,11 +276,14 @@ fun BillingScreen(
                 )
                 Spacer(Modifier.height(16.dp))
 
-                Card(
+                PointCheckCard(
+                    title = "Resumen de Transacción",
+                    icon = Icons.AutoMirrored.Filled.ReceiptLong,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                    badgeText = billing.status,
+                    badgeColor = if (billing.status == "PAID") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
                 ) {
-                    Column(Modifier.padding(20.dp)) {
+                    Column {
                         BillingInfoRow(Icons.Default.Receipt, "ID Cobro", "#${billing.id}")
                         BillingInfoRow(
                             Icons.Default.Payment, 
@@ -263,24 +314,26 @@ fun BillingScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     
-                    AppTextField(
+                    PointCheckTextField(
                         value = s.externalReference,
                         onValueChange = { vm.setExternalReference(it) },
                         label = "Número de Referencia / Comprobante",
+                        placeholder = "Ej: 12345678",
+                        leadingIcon = Icons.Default.ConfirmationNumber,
                         enabled = !s.isLoading
                     )
                     
                     Spacer(Modifier.height(24.dp))
                     
                     Row(Modifier.fillMaxWidth()) {
-                        AppButton(
+                        PointCheckButton(
                             text = "Registrar Pago",
                             onClick = { vm.markAsPaid(billing.id) },
                             modifier = Modifier.weight(1f),
                             isLoading = s.isLoading
                         )
                         Spacer(Modifier.width(12.dp))
-                        AppOutlinedButton(
+                        PointCheckOutlinedButton(
                             text = "Anular",
                             onClick = { vm.cancelBillingRecord(billing.id) },
                             modifier = Modifier.weight(1f),
@@ -288,7 +341,7 @@ fun BillingScreen(
                         )
                     }
                 } else {
-                    AppButton(
+                    PointCheckButton(
                         text = "Finalizar y Volver",
                         onClick = { nav.popBackStack() }
                     )

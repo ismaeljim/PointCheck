@@ -12,12 +12,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckTextField
+import com.pointcheck.core.ui.components.PointCheckTopBar
+import androidx.compose.material.icons.filled.AttachMoney
 import com.pointcheck.features.auth.presentation.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,7 +30,7 @@ fun ServiceConfigurationScreen(
     authVm: UserViewModel,
     vm: CategoryViewModel = viewModel()
 ) {
-    val state by vm.state.collectAsState()
+    val state by vm.state.collectAsStateWithLifecycle()
     val selectedServices = remember { mutableStateMapOf<String, ServiceOfferingDto>() }
 
     LaunchedEffect(categoryId) {
@@ -37,7 +39,7 @@ fun ServiceConfigurationScreen(
 
     Scaffold(
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = "Configura tus Servicios",
                 onBack = { nav.popBackStack() }
             )
@@ -74,7 +76,7 @@ fun ServiceConfigurationScreen(
                     }
                 }
 
-                AppButton(
+                PointCheckButton(
                     text = "Finalizar Registro",
                     onClick = {
                         authVm.onServicesSelected(selectedServices.values.toList())
@@ -126,11 +128,13 @@ fun ServiceTemplateItem(
                 Text(template.description, style = MaterialTheme.typography.bodySmall)
             }
 
-            AppTextField(
+            PointCheckTextField(
                 value = price,
                 onValueChange = { price = it },
                 label = "Precio",
-                modifier = Modifier.width(100.dp),
+                placeholder = "0.0",
+                leadingIcon = Icons.Default.AttachMoney,
+                modifier = Modifier.width(160.dp),
                 trailingIcon = { Text(if (template.unit == "SESSION") "Ses" else "Hr", modifier = Modifier.padding(end = 8.dp), style = MaterialTheme.typography.bodySmall) },
                 enabled = enabled
             )

@@ -15,13 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppOutlinedButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckOutlinedButton
+import com.pointcheck.core.ui.components.PointCheckTextField
+import com.pointcheck.core.ui.components.PointCheckTopBar
 
 /**
  * Screen for managing a service attention session.
@@ -43,18 +44,22 @@ fun AttentionScreen(
     reservationId: String,
     vm: AttentionViewModel = viewModel()
 ) {
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Sprint 3: Suscripción al canal de errores del ViewModel
+    LaunchedEffect(Unit) {
+        vm.errorEvents.collect { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+                withDismissAction = true
+            )
+        }
+    }
 
     LaunchedEffect(reservationId) {
         vm.loadAttentionByReservation(reservationId)
-    }
-
-    LaunchedEffect(s.error) {
-        s.error?.let {
-            snackbarHostState.showSnackbar(it)
-            vm.clearError()
-        }
     }
 
     LaunchedEffect(s.successMessage) {
@@ -69,7 +74,7 @@ fun AttentionScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = "Módulo de Atención",
                 onBack = { nav.popBackStack() }
             )
@@ -137,10 +142,12 @@ fun AttentionScreen(
                 
                 Spacer(Modifier.height(16.dp))
 
-                AppTextField(
+                PointCheckTextField(
                     value = s.observations,
                     onValueChange = { vm.setObservations(it) },
                     label = "Observaciones iniciales",
+                    placeholder = "Ingrese observaciones previas al servicio...",
+                    leadingIcon = Icons.AutoMirrored.Filled.Notes,
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     enabled = !s.isLoading
@@ -148,7 +155,7 @@ fun AttentionScreen(
                 
                 Spacer(Modifier.height(24.dp))
                 
-                AppButton(
+                PointCheckButton(
                     text = "Iniciar Atención",
                     onClick = { vm.startAttention(reservationId) },
                     enabled = !s.isLoading,
@@ -181,10 +188,11 @@ fun AttentionScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                AppTextField(
+                PointCheckTextField(
                     value = s.observations,
                     onValueChange = { vm.setObservations(it) },
                     label = "Bitácora de la sesión",
+                    placeholder = "Registro de avances y novedades...",
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5,
                     enabled = !isFinished && !s.isLoading,
@@ -194,14 +202,14 @@ fun AttentionScreen(
                 Spacer(Modifier.height(32.dp))
 
                 if (!isFinished) {
-                    AppButton(
+                    PointCheckButton(
                         text = "Finalizar y Guardar",
                         onClick = { vm.finishAttention() },
                         enabled = !s.isLoading,
                         isLoading = s.isLoading
                     )
                 } else {
-                    AppButton(
+                    PointCheckButton(
                         text = "Ir a Registrar Cobro",
                         onClick = { 
                             nav.navigate(
@@ -216,7 +224,7 @@ fun AttentionScreen(
                     
                     Spacer(Modifier.height(12.dp))
                     
-                    AppOutlinedButton(
+                    PointCheckOutlinedButton(
                         text = "Volver a Agenda",
                         onClick = { nav.popBackStack() }
                     )

@@ -1,6 +1,8 @@
 package com.duoc.app.features.service.model
 
 import jakarta.persistence.*
+import org.hibernate.annotations.SQLDelete
+import org.hibernate.annotations.SQLRestriction
 import java.time.LocalDateTime
 import java.util.Objects
 
@@ -15,10 +17,12 @@ import java.util.Objects
         UniqueConstraint(name = "uk_categories_name", columnNames = ["name"])
     ]
 )
+@SQLDelete(sql = "UPDATE categories SET active = false WHERE id = ?")
+@SQLRestriction("active = true")
 class Category(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @Column(nullable = false, length = 100)

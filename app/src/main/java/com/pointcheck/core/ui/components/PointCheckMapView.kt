@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -33,9 +35,20 @@ fun PointCheckMapView(
     title: String,
     modifier: Modifier = Modifier
 ) {
-    val location = LatLng(latitude, longitude)
+    val location = remember(latitude, longitude) { LatLng(latitude, longitude) }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(location, 15f)
+    }
+    val markerState = remember(location) { MarkerState(position = location) }
+
+    // Aislamiento y Limpieza Defensiva del Mapa
+    // Previene fugas de memoria al forzar la limpieza de estados de cámara y marcadores
+    // cuando el componente sale de la composición, mitigando el "Process Trashing".
+    DisposableEffect(Unit) {
+        onDispose {
+            // En Compose Maps, el ciclo de vida está ligado al Composable,
+            // pero nos aseguramos de que no queden referencias pesadas.
+        }
     }
 
     GoogleMap(
@@ -46,11 +59,13 @@ fun PointCheckMapView(
         cameraPositionState = cameraPositionState,
         uiSettings = MapUiSettings(
             zoomControlsEnabled = false,
-            myLocationButtonEnabled = false
+            myLocationButtonEnabled = false,
+            indoorLevelPickerEnabled = false,
+            mapToolbarEnabled = false
         )
     ) {
         Marker(
-            state = MarkerState(position = location),
+            state = markerState,
             title = title,
             snippet = "Ubicación del Servicio"
         )

@@ -65,6 +65,12 @@ interface ApiService {
     suspend fun getReservationsByClient(@Path("clientId") clientId: String): Response<List<ReservationResponseDto>>
 
     /**
+     * Obtiene todas las reservas registradas en el sistema (Uso administrativo).
+     */
+    @GET("api/reservations")
+    suspend fun getAllReservations(): Response<List<ReservationResponseDto>>
+
+    /**
      * Obtiene las próximas citas activas de un cliente.
      */
     @GET("api/reservations/client/{clientId}/upcoming")
@@ -79,14 +85,14 @@ interface ApiService {
     /**
      * Obtiene todas las reservas asignadas a un especialista.
      */
-    @GET("api/reservations/specialist/{specialistId}")
-    suspend fun getReservationsBySpecialist(@Path("specialistId") specialistId: String): Response<List<ReservationResponseDto>>
+    @GET("api/reservations/specialist/{specialistProfileId}")
+    suspend fun getReservationsBySpecialist(@Path("specialistProfileId") specialistProfileId: String): Response<List<ReservationResponseDto>>
 
     /**
      * Obtiene las citas programadas para el día de hoy de un especialista.
      */
-    @GET("api/reservations/specialist/{specialistId}/today")
-    suspend fun getTodayReservationsBySpecialist(@Path("specialistId") specialistId: String): Response<List<ReservationResponseDto>>
+    @GET("api/reservations/specialist/{specialistProfileId}/today")
+    suspend fun getTodayReservationsBySpecialist(@Path("specialistProfileId") specialistProfileId: String): Response<List<ReservationResponseDto>>
 
     /**
      * Actualiza el estado de una reserva (ej: Confirmada, Cancelada).
@@ -120,7 +126,7 @@ interface ApiService {
      */
     @GET("api/reservations/availability")
     suspend fun getAvailability(
-        @Query("specialistId") specialistId: String,
+        @Query("specialistProfileId") specialistProfileId: String,
         @Query("date") date: String
     ): Response<AvailabilityResponseDto>
 
@@ -206,9 +212,9 @@ interface ApiService {
     /**
      * Obtiene las atenciones realizadas o en curso hoy por un especialista.
      */
-    @GET("api/attentions/specialist/{specialistId}/today")
+    @GET("api/attentions/specialist/{specialistProfileId}/today")
     suspend fun getTodayAttentionsBySpecialist(
-        @Path("specialistId") specialistId: String
+        @Path("specialistProfileId") specialistProfileId: String
     ): Response<List<AttentionResponseDto>>
 
     /**
@@ -220,7 +226,7 @@ interface ApiService {
     ): Response<List<AttentionResponseDto>>
 
     /**
-     * Obtiene una atención por el ID de su reserva.
+     * Obtiene los detalles de una atención vinculada a una reserva específica.
      */
     @GET("api/attentions/reservation/{reservationId}")
     suspend fun getAttentionByReservation(
@@ -257,25 +263,25 @@ interface ApiService {
     /**
      * Lista toda la facturación de un especialista.
      */
-    @GET("api/billing/specialist/{specialistId}")
+    @GET("api/billing/specialist/{id}")
     suspend fun getBillingBySpecialist(
-        @Path("specialistId") specialistId: String
+        @Path("id") id: String
     ): Response<List<BillingRecordResponseDto>>
 
     /**
      * Obtiene cobros pendientes de pago para un especialista.
      */
-    @GET("api/billing/specialist/{specialistId}/pending")
+    @GET("api/billing/specialist/{id}/pending")
     suspend fun getPendingBillingBySpecialist(
-        @Path("specialistId") specialistId: String
+        @Path("id") id: String
     ): Response<List<BillingRecordResponseDto>>
 
     /**
      * Resumen de facturación del día para un especialista.
      */
-    @GET("api/billing/specialist/{specialistId}/today")
+    @GET("api/billing/specialist/{id}/today")
     suspend fun getTodayBillingBySpecialist(
-        @Path("specialistId") specialistId: String
+        @Path("id") id: String
     ): Response<List<BillingRecordResponseDto>>
 
     // --- Endpoints de Suscripciones (Subscription) ---
@@ -313,11 +319,17 @@ interface ApiService {
     suspend fun getDashboardMetrics(): Response<DashboardMetricsDto>
 
     /**
+     * Obtiene métricas administrativas exclusivas para el rol ADMIN.
+     */
+    @GET("api/admin/metrics")
+    suspend fun getAdminMetrics(): Response<DashboardMetricsDto>
+
+    /**
      * Obtiene un resumen consolidado de desempeño para reportes.
      */
-    @GET("api/reports/summary/specialist/{specialistId}")
+    @GET("api/reports/summary/specialist/{id}")
     suspend fun getReportSummaryBySpecialist(
-        @Path("specialistId") specialistId: String
+        @Path("id") id: String
     ): Response<ReportSummaryResponseDto>
 
     /**
@@ -423,16 +435,13 @@ interface ApiService {
     ): Response<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto>
 
     /**
-     * Obtiene los logs de auditoría del sistema.
+     * Obtiene los logs de auditoría del sistema con paginación.
      */
-    @GET("api/admin/audit-logs")
-    suspend fun getAuditLogs(): Response<List<com.pointcheck.features.admin.data.dto.AuditLogDto>>
-
-    /**
-     * Obtiene todas las reservas del sistema para supervisión global (Solo ADMIN).
-     */
-    @GET("api/admin/reservations")
-    suspend fun getAllReservations(): Response<List<ReservationResponseDto>>
+    @GET("api/audit")
+    suspend fun getAuditLogs(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
+    ): Response<com.pointcheck.features.admin.data.dto.AuditPageDto>
 
     // --- Endpoints de Usuarios ---
 

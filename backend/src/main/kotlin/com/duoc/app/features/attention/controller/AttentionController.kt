@@ -27,9 +27,9 @@ class AttentionController(
         return ResponseEntity.ok(attentionService.finish(attentionId, request))
     }
 
-    @GetMapping("/specialist/{specialistId}/today")
-    fun getTodayBySpecialist(@PathVariable specialistId: String): ResponseEntity<List<AttentionResponse>> {
-        return ResponseEntity.ok(attentionService.getTodayBySpecialist(specialistId))
+    @GetMapping("/specialist/{specialistProfileId}/today")
+    fun getTodayBySpecialist(@PathVariable specialistProfileId: String): ResponseEntity<List<AttentionResponse>> {
+        return ResponseEntity.ok(attentionService.getTodayBySpecialist(specialistProfileId))
     }
 
     @GetMapping("/client/{clientId}/history")

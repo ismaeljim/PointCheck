@@ -15,7 +15,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.pointcheck.core.ui.components.PCCard
+import com.pointcheck.core.ui.components.PointCheckCard
 
 @Composable
 fun MetricCard(
@@ -25,46 +25,41 @@ fun MetricCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    PCCard(
+    PointCheckCard(
+        title = value,
         modifier = modifier,
-        onClick = onClick
-    ) {
-        Column(
-            Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            ) {
-                Icon(
-                    icon,
-                    null,
-                    modifier = Modifier.padding(8.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                maxLines = 1
-            )
-        }
-    }
+        subtitle = label,
+        icon = icon,
+        isVertical = true,
+        onClick = onClick ?: {},
+        titleMaxLines = 1,
+        titleOverflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+    )
 }
 
 @Composable
 fun FinancialRow(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(
+            label, 
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            value, 
+            style = MaterialTheme.typography.bodyLarge, 
+            fontWeight = FontWeight.Bold, 
+            color = valueColor,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
     }
 }
 

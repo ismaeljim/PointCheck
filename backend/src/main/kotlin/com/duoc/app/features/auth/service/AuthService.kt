@@ -27,6 +27,8 @@ class AuthService(
     private val userRepository: UserRepository,
     private val professionalProfileRepository: com.duoc.app.features.professionalprofile.repository.ProfessionalProfileRepository,
     private val categoryRepository: CategoryRepository,
+    private val serviceTemplateRepository: com.duoc.app.features.service.repository.ServiceTemplateRepository,
+    private val serviceOfferingRepository: com.duoc.app.features.service.repository.ServiceOfferingRepository,
     private val passwordEncoder: PasswordEncoder,
     private val auditLogger: com.duoc.app.core.audit.AuditLogger
 ) {
@@ -100,6 +102,29 @@ class AuthService(
             )
             val savedProfile = professionalProfileRepository.save(profile)
             assignedCategoryId = savedProfile.category?.id
+
+            // Persistencia de servicios iniciales si vienen en el request
+            request.services?.forEach { serviceReq ->
+                val template = serviceTemplateRepository.findById(serviceReq.templateId).orElseThrow {
+                    IllegalArgumentException("La plantilla de servicio ${serviceReq.templateId} no existe.")
+                }
+
+                val unit = try {
+                    com.duoc.app.features.service.model.PriceUnit.valueOf(serviceReq.unit.uppercase())
+                } catch (e: Exception) {
+                    com.duoc.app.features.service.model.PriceUnit.SESSION
+                }
+
+                val offering = com.duoc.app.features.service.model.ServiceOffering(
+                    professionalProfile = savedProfile,
+                    name = template.name,
+                    price = serviceReq.price,
+                    priceUnit = unit,
+                    durationMinutes = template.defaultDuration ?: 60,
+                    active = true
+                )
+                serviceOfferingRepository.save(offering)
+            }
         }
 
         return savedUser.toResponse(assignedCategoryId)
@@ -142,6 +167,17 @@ class AuthService(
 
         println("AUTH-DEBUG: LOGIN EXITOSO para [${request.email}]")
 
+        // Auditoría de acceso exitoso
+        auditLogger.log(
+            action = "ACCESO",
+            targetType = "Sesión",
+            targetId = user.id!!,
+            targetName = "Inicio de sesión exitoso",
+            details = "El usuario ${user.name} ha ingresado al sistema desde la aplicación móvil.",
+            performedByEmail = user.email,
+            performedByName = user.name
+        )
+
         // Obtención eficiente del categoryId desde la relación ya cargada
         val categoryId = user.professionalProfile?.category?.id
 
@@ -163,6 +199,7 @@ class AuthService(
         email = this.email,
         rut = this.rut,
         phone = this.phone,
+        address = this.address,
         role = this.role,
         active = this.active,
         categoryId = categoryId,

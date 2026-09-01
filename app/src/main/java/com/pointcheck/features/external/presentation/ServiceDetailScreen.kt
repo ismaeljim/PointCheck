@@ -6,16 +6,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,7 +24,7 @@ fun ServiceDetailScreen(
     nav: NavController,
     vm: ExternalApiViewModel = viewModel()
 ) {
-    val state by vm.state.collectAsState()
+    val state by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.error) {
@@ -50,7 +50,7 @@ fun ServiceDetailScreen(
 
     Scaffold(
         topBar = {
-            AppTopBar(
+            PointCheckTopBar(
                 title = "Detalle: $serviceName",
                 onBack = { nav.popBackStack() }
             )
@@ -99,7 +99,7 @@ fun ServiceDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    AppButton(
+                    PointCheckButton(
                         text = "Volver",
                         onClick = { nav.popBackStack() },
                         enabled = !state.isLoading

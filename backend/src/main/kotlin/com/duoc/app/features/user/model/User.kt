@@ -24,7 +24,7 @@ import java.util.Objects
 class User(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @Column(nullable = false)
@@ -65,7 +65,9 @@ class User(
         id = this.id!!,
         name = this.name,
         rut = this.rut,
-        role = this.role
+        role = this.role,
+        email = this.email,
+        phone = this.phone
     )
 
     override fun equals(other: Any?): Boolean {

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.core.network.NetworkHandler
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
+import com.pointcheck.core.network.ApiException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -50,9 +52,19 @@ class ExternalApiViewModel : ViewModel() {
                 result.onSuccess { data ->
                     _state.update { it.copy(weatherData = data, isLoading = false) }
                 }.onFailure { e ->
+                    if (e is CancellationException) throw e
+                    if (e is ApiException && (e.code == 401 || e.code == 403)) {
+                        _state.update { it.copy(isLoading = false) }
+                        return@onFailure
+                    }
                     _state.update { it.copy(error = e.message, isLoading = false) }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                if (e is ApiException && (e.code == 401 || e.code == 403)) {
+                    _state.update { it.copy(isLoading = false) }
+                    return@launch
+                }
                 val result = NetworkHandler.handleException(e)
                 _state.update { it.copy(error = result.exceptionOrNull()?.message, isLoading = false) }
             }

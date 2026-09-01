@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
 import com.pointcheck.features.onboarding.presentation.dto.CategoryDto
 import com.pointcheck.features.onboarding.presentation.dto.ServiceTemplateDto
+import com.pointcheck.core.network.ApiException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -66,6 +68,11 @@ class CategoryViewModel : ViewModel() {
                 val cats = api.getCategories()
                 _state.value = _state.value.copy(categories = cats, isLoading = false)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                if (e is ApiException && (e.code == 401 || e.code == 403)) {
+                    _state.value = _state.value.copy(isLoading = false)
+                    return@launch
+                }
                 _state.value = _state.value.copy(error = e.message, isLoading = false)
             }
         }
@@ -82,6 +89,11 @@ class CategoryViewModel : ViewModel() {
                 val temps = api.getTemplates(categoryId)
                 _state.value = _state.value.copy(templates = temps, isLoading = false)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                if (e is ApiException && (e.code == 401 || e.code == 403)) {
+                    _state.value = _state.value.copy(isLoading = false)
+                    return@launch
+                }
                 _state.value = _state.value.copy(error = e.message, isLoading = false)
             }
         }

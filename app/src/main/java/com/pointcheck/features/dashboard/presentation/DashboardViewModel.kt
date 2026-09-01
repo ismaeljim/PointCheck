@@ -1,7 +1,6 @@
 package com.pointcheck.features.dashboard.presentation
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointcheck.core.network.ApiClient
@@ -13,55 +12,51 @@ import com.pointcheck.features.dashboard.data.repository.DashboardRepository
 import com.pointcheck.features.external.data.dto.WeatherResponseDto
 import com.pointcheck.features.onboarding.presentation.dto.CategoryDto
 import com.pointcheck.features.onboarding.presentation.CategoryApi
+import com.pointcheck.features.auth.data.dto.UserResponseDto
+import com.pointcheck.features.dashboard.data.dto.GlobalSettingDto
+import com.pointcheck.features.admin.data.dto.AuditLogDto
+import com.pointcheck.core.network.ApiException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 
-/**
- * Representa el estado de la interfaz de usuario para el panel de control principal (Dashboard).
- * El contenido de este estado varía significativamente según el rol del usuario (Cliente, Profesional, Admin).
- *
- * @property metrics Métricas de alto nivel (total usuarios, citas, etc.).
- * @property clientDashboard Datos específicos para el rol de cliente (próximas citas, notificaciones).
- * @property reportSummary Resumen de actividad y desempeño para el rol de profesional.
- * @property weather Información climática basada en la ubicación de la próxima cita.
- * @property isLoading Indica si los datos principales están en proceso de carga.
- * @property isLoadingWeather Indica si la información del clima se está recuperando.
- * @property error Mensaje de error a mostrar en caso de fallos en la red o el servidor.
- * @property userName Nombre del usuario autenticado para personalización de la UI.
- * @property userRole Rol del usuario para determinar qué componentes mostrar.
- * @property categories Lista de categorías de servicios disponibles.
- * @property adminUsers Lista de usuarios para gestión administrativa (solo ADMIN).
- * @property financialReport Datos de facturación y ganancias globales (solo ADMIN).
- * @property adminSettings Configuraciones globales del sistema (solo ADMIN).
- * @property auditLogs Registro de eventos críticos del sistema (solo ADMIN).
- */
-data class DashboardUiState(
-    val metrics: DashboardMetricsDto = DashboardMetricsDto(),
-    val clientDashboard: ClientDashboardResponseDto? = null,
-    val reportSummary: ReportSummaryResponseDto? = null,
-    val weather: WeatherResponseDto? = null,
-    val isLoading: Boolean = false,
-    val isLoadingWeather: Boolean = false,
-    val error: String? = null,
-    val userName: String = "",
-    val userRole: String = "",
-    val categories: List<CategoryDto> = emptyList(),
-    val adminUsers: List<com.pointcheck.features.auth.data.dto.UserResponseDto> = emptyList(),
-    val financialReport: Map<String, Any>? = null,
-    val adminSettings: List<com.pointcheck.features.dashboard.data.dto.GlobalSettingDto> = emptyList(),
-    val auditLogs: List<com.pointcheck.features.admin.data.dto.AuditLogDto> = emptyList()
-)
+enum class AdminChartType { LINE, BAR }
 
 /**
- * ViewModel central para la gestión del panel de control.
- * Implementa una carga de datos polimórfica basada en el rol del usuario.
- * Orquestra la recuperación de métricas, reportes, clima y notificaciones en una única fuente de verdad.
- *
- * @param application Contexto de la aplicación.
+ * Jerarquía de estados para el Dashboard.
+ * Implementa el patrón de "Single Source of Truth" con estados atómicos.
+ */
+sealed class DashboardUiState {
+    object Loading : DashboardUiState()
+    
+    data class Success(
+        val userName: String,
+        val userRole: String,
+        val metrics: DashboardMetricsDto = DashboardMetricsDto(),
+        val clientDashboard: ClientDashboardResponseDto? = null,
+        val reportSummary: ReportSummaryResponseDto? = null,
+        val weather: WeatherResponseDto? = null,
+        val categories: List<CategoryDto> = emptyList(),
+        val adminUsers: List<UserResponseDto> = emptyList(),
+        val financialReport: Map<String, Any>? = null,
+        val adminSettings: List<GlobalSettingDto> = emptyList(),
+        val auditLogs: List<AuditLogDto> = emptyList(),
+        val isLoadingWeather: Boolean = false,
+        val adminChartType: AdminChartType = AdminChartType.LINE
+    ) : DashboardUiState()
+    
+    data class Error(val message: String) : DashboardUiState()
+    
+    object ProfileIncomplete : DashboardUiState()
+}
+
+/**
+ * ViewModel encargado de la lógica de negocio del Dashboard.
+ * 
+ * Gestiona la carga de datos multidimensionales (Métricas, Reservas, Clima, Categorías)
+ * basándose en el rol del usuario autenticado (ADMIN, SPECIALIST, CLIENT).
  */
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -69,238 +64,196 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val categoryApi = ApiClient.retrofitInstance.create(CategoryApi::class.java)
     private val prefs = UserPreferences(application)
 
-    private val _state = MutableStateFlow(DashboardUiState())
+    private val _state = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
     val state: StateFlow<DashboardUiState> = _state
 
     private var loadJob: Job? = null
 
     init {
-        Log.d("DashboardVM", "Iniciando DashboardViewModel")
         loadDashboard()
     }
 
     /**
-     * Coordina la carga de datos del Dashboard.
-     * Determina el rol del usuario desde las preferencias y dispara las peticiones correspondientes
-     * (Admin, Profesional o Cliente).
+     * Carga o refresca todos los datos necesarios para el Dashboard según el rol del usuario.
+     * @param silent Si es true, no cambia el estado a Loading si ya hay datos cargados.
      */
-    fun loadDashboard() {
+    fun loadDashboard(silent: Boolean = false) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            Log.d("DashboardVM", "loadDashboard() ejecutado")
-            
-            // Si ya tenemos datos, no limpiamos todo para evitar el "flasheo" de la UI.
-            // Solo marcamos como cargando si el estado está realmente vacío.
-            _state.update { 
-                it.copy(isLoading = it.clientDashboard == null && it.reportSummary == null && it.metrics.totalUsers == 0) 
+            if (!silent || _state.value !is DashboardUiState.Success) {
+                _state.value = DashboardUiState.Loading
             }
-            
+
             try {
                 val userId = prefs.userId.first()
                 val role = prefs.role.first() ?: "CLIENT"
                 val name = prefs.name.first() ?: "Usuario"
-                
-                Log.d("DashboardVM", "User data: id=$userId, role=$role, name=$name")
 
-                _state.update { it.copy(userName = name, userRole = role) }
+                if (userId == null) {
+                    _state.value = DashboardUiState.Error("Sesión no válida")
+                    return@launch
+                }
 
-                if (userId != null) {
-                    loadCategories()
+                // Carga de categorías común
+                val categories = try { 
+                    categoryApi.getCategories() 
+                } catch (e: Exception) { 
+                    emptyList() 
+                }
 
-                    if (role == "ADMIN") {
-                        Log.d("DashboardVM", "Cargando datos ADMIN")
-                        repository.getDashboardMetrics()
-                            .onSuccess { metrics ->
-                                _state.update { it.copy(metrics = metrics) }
-                            }
-                            .onFailure { e ->
-                                Log.e("DashboardVM", "Error obteniendo métricas admin: ${e.message}")
-                                _state.update { it.copy(error = "Error al cargar métricas: ${e.message}") }
-                            }
-                        loadAdminData()
-                    } else if (role == "SPECIALIST" || role == "PROFESSIONAL") {
-                        Log.d("DashboardVM", "Cargando datos SPECIALIST")
-                        
-                        // 1. Cargar métricas generales para verificar estado del perfil
-                        val metricsResult = repository.getDashboardMetrics()
-                        metricsResult.onSuccess { metrics ->
-                            if (metrics.isProfileComplete == false) {
-                                _state.update { it.copy(error = "PROFILE_INCOMPLETE", isLoading = false) }
-                            } else {
-                                _state.update { it.copy(metrics = metrics) }
-                                // Guardar especialidad si cambió
-                                metrics.specialty?.let { sp ->
-                                    viewModelScope.launch { prefs.saveSpecialty(sp) }
-                                }
-                            }
-                        }.onFailure { e ->
-                            Log.e("DashboardVM", "Error obteniendo métricas specialist: ${e.message}")
-                            _state.update { it.copy(error = "Error al cargar métricas: ${e.message}", isLoading = false) }
+                when (role) {
+                    "ADMIN" -> {
+                        val metricsResult = repository.getAdminMetrics()
+                        val usersResult = repository.getAllUsers()
+                        val settingsResult = repository.getSettings()
+                        val logsResult = repository.getAuditLogs()
+                        val financeResult = repository.getFinancialReport()
+
+                        // SPRINT 4 FIX: No abortar silenciosamente. Si hay error de seguridad, el Interceptor
+                        // ya maneja el logout. Aquí debemos informar el error para salir de 'Loading'.
+                        val results = listOf(metricsResult, usersResult, settingsResult, logsResult, financeResult)
+                        val firstError = results.mapNotNull { it.exceptionOrNull() }.firstOrNull()
+                        if (firstError != null) {
+                            _state.value = DashboardUiState.Error(firstError.localizedMessage ?: "Error de permisos")
+                            return@launch
                         }
 
-                        // 2. Cargar resumen de reportes
-                        val summaryResult = repository.getReportSummaryBySpecialist(userId)
-                        summaryResult.onSuccess { summary ->
-                            Log.d("DashboardVM", "Reporte cargado con éxito")
-                            _state.update { it.copy(reportSummary = summary, isLoading = false) }
-                        }.onFailure { e ->
-                            Log.e("DashboardVM", "Error en reporte: ${e.message}")
-                            _state.update { it.copy(error = "Error al cargar reporte: ${e.message}", isLoading = false) }
-                        }
-                    } else {
-                        Log.d("DashboardVM", "Cargando datos CLIENT")
-                        repository.getClientDashboard(userId)
-                            .onSuccess { dashboard ->
-                                Log.d("DashboardVM", "Dashboard cliente cargado")
-                                _state.update { it.copy(clientDashboard = dashboard, isLoading = false) }
-                                // Cargar clima si hay una cita próxima con ciudad
-                                dashboard.nextAppointment?.city?.let { city ->
-                                    loadWeather(city)
-                                }
-                            }
-                            .onFailure { e ->
-                                Log.e("DashboardVM", "Error en dashboard cliente: ${e.message}")
-                                _state.update { it.copy(error = "Error al cargar dashboard: ${e.message}", isLoading = false) }
-                            }
+                        _state.value = DashboardUiState.Success(
+                            userName = name,
+                            userRole = role,
+                            metrics = metricsResult.getOrNull() ?: DashboardMetricsDto(),
+                            adminUsers = usersResult.getOrNull() ?: emptyList(),
+                            adminSettings = settingsResult.getOrNull() ?: emptyList(),
+                            auditLogs = logsResult.getOrNull() ?: emptyList(),
+                            financialReport = financeResult.getOrNull(),
+                            categories = categories
+                        )
                     }
-                } else {
-                    Log.w("DashboardVM", "No hay userId en preferencias")
-                    _state.update { it.copy(isLoading = false) }
+                    "SPECIALIST", "PROFESSIONAL" -> {
+                        var profileId = prefs.professionalProfileId.first() ?: ""
+                        
+                        if (profileId.isEmpty()) {
+                            val profileResult = repository.getProfessionalProfileByUserId(userId)
+                            if (profileResult.exceptionOrNull() is ApiException && (profileResult.exceptionOrNull() as ApiException).code in listOf(401, 403)) return@launch
+                            profileId = profileResult.getOrNull()?.id ?: ""
+                            if (profileId.isNotEmpty()) {
+                                prefs.saveProfessionalProfileId(profileId)
+                            }
+                        }
+
+                        val metricsResult = repository.getDashboardMetrics()
+                        
+                        val metrics = metricsResult.getOrNull()
+
+                        if (metricsResult.exceptionOrNull() is ApiException && (metricsResult.exceptionOrNull() as ApiException).code == 401) return@launch
+                        
+                        if (metrics == null && metricsResult.isFailure) {
+                            _state.value = DashboardUiState.Error(metricsResult.exceptionOrNull()?.localizedMessage ?: "Error al cargar métricas")
+                            return@launch
+                        }
+
+                        if (metrics?.isProfileComplete == false) {
+                            _state.value = DashboardUiState.ProfileIncomplete
+                        } else {
+                            val summaryResult = if (profileId.isNotEmpty()) {
+                                repository.getReportSummaryBySpecialist(profileId)
+                            } else {
+                                Result.success(ReportSummaryResponseDto())
+                            }
+                            
+                            if (summaryResult.exceptionOrNull() is ApiException && (summaryResult.exceptionOrNull() as ApiException).code in listOf(401, 403)) return@launch
+
+                            _state.value = DashboardUiState.Success(
+                                userName = name,
+                                userRole = role,
+                                metrics = metrics ?: DashboardMetricsDto(),
+                                reportSummary = summaryResult.getOrNull() ?: ReportSummaryResponseDto(),
+                                categories = categories
+                            )
+                        }
+                    }
+                    else -> { // CLIENT
+                        val dashboardResult = repository.getClientDashboard(userId)
+                        if (dashboardResult.exceptionOrNull() is ApiException && (dashboardResult.exceptionOrNull() as ApiException).code in listOf(401, 403)) return@launch
+                        
+                        val dashboard = dashboardResult.getOrNull()
+                        _state.value = DashboardUiState.Success(
+                            userName = name,
+                            userRole = role,
+                            clientDashboard = dashboard,
+                            categories = categories
+                        )
+                        dashboard?.nextAppointment?.city?.let { loadWeather(it) }
+                    }
                 }
             } catch (e: Exception) {
-                // Si la excepción es por cancelación de corrutina, no la mostramos como error
                 if (e is kotlinx.coroutines.CancellationException) throw e
-
-                Log.e("DashboardVM", "Excepción fatal en loadDashboard: ${e.message}", e)
-                _state.update { it.copy(isLoading = false, error = "Error inesperado: ${e.message}") }
+                _state.value = DashboardUiState.Error(e.localizedMessage ?: "Error desconocido")
             }
         }
     }
 
-    /**
-     * Carga datos extendidos para usuarios con rol de Administrador.
-     */
-    fun loadAdminData() {
-        viewModelScope.launch {
-            _state.update { it.copy(error = null) } // Limpiamos errores previos al reintentar
-            // Cargar usuarios para auditoría
-            repository.getAllUsers()
-                .onSuccess { users ->
-                    _state.update { it.copy(adminUsers = users) }
+    private fun loadWeather(city: String) {
+        val currentState = _state.value
+        if (currentState is DashboardUiState.Success) {
+            viewModelScope.launch {
+                repository.getWeather(city).onSuccess { w ->
+                    _state.value = currentState.copy(weather = w)
                 }
-            
-            // Cargar configuraciones
-            repository.getSettings()
-                .onSuccess { settings ->
-                    val finalSettings = if (settings.isEmpty()) {
-                        listOf(
-                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "IVA", value = "19", description = "Porcentaje de IVA"),
-                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "COMMISSION_PERCENTAGE", value = "10", description = "Comisión de la plataforma"),
-                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "TOLERANCE_MINUTES", value = "15", description = "Tiempo de tolerancia para citas"),
-                            com.pointcheck.features.dashboard.data.dto.GlobalSettingDto(key = "PLATFORM_ENABLED", value = "true", description = "Habilitar acceso global")
-                        )
-                    } else settings
-                    _state.update { it.copy(adminSettings = finalSettings) }
-                }
-            
-            // Cargar reporte financiero global
-            repository.getFinancialReport()
-                .onSuccess { report ->
-                    _state.update { it.copy(financialReport = report) }
-                }
-
-            // Cargar Logs de Auditoría
-            repository.getAuditLogs()
-                .onSuccess { logs ->
-                    _state.update { it.copy(auditLogs = logs, isLoading = false) }
-                }
-                .onFailure { e ->
-                    Log.e("DashboardVM", "Error cargando logs: ${e.message}")
-                    _state.update { it.copy(error = "Error Admin: ${e.message}", isLoading = false) }
-                }
+            }
         }
     }
 
-    /**
-     * Actualiza una configuración global del sistema (Solo Admin).
-     *
-     * @param key Clave de la configuración.
-     * @param value Nuevo valor.
-     */
-    fun updateSetting(key: String, value: String) {
-        viewModelScope.launch {
-            repository.updateSetting(key, value)
-                .onSuccess { loadAdminData() }
+    fun markAsRead(notificationId: String) {
+        val currentState = _state.value
+        if (currentState is DashboardUiState.Success && currentState.clientDashboard != null) {
+            viewModelScope.launch {
+                repository.markNotificationAsRead(notificationId).onSuccess {
+                    val updatedNotifications = currentState.clientDashboard.recentNotifications?.map {
+                        if (it.id == notificationId) it.copy(isRead = true) else it
+                    } ?: emptyList()
+                    _state.value = currentState.copy(
+                        clientDashboard = currentState.clientDashboard.copy(recentNotifications = updatedNotifications)
+                    )
+                }.onFailure { e ->
+                    if (e is ApiException && (e.code == 401 || e.code == 403)) return@onFailure
+                }
+            }
         }
     }
 
-    /**
-     * Cambia el estado de activación de un usuario (Solo Admin).
-     *
-     * @param userId ID del usuario.
-     */
+    // --- Admin Actions ---
+
     fun toggleUserStatus(userId: String) {
         viewModelScope.launch {
-            repository.toggleUserStatus(userId)
-                .onSuccess { loadAdminData() } // Recargar lista
-        }
-    }
-
-    /**
-     * Obtiene el catálogo de categorías para visualización en el Dashboard.
-     */
-    private fun loadCategories() {
-        viewModelScope.launch {
-            try {
-                val cats = categoryApi.getCategories()
-                _state.update { it.copy(categories = cats) }
-            } catch (e: Exception) {
-                // Silently fail or log, categories are secondary to core dashboard
+            repository.toggleUserStatus(userId).onSuccess {
+                loadDashboard(silent = true)
+            }.onFailure { e ->
+                if (e is ApiException && (e.code == 401 || e.code == 403)) return@onFailure
+                // No cambiamos el estado global a Error para no bloquear la UI
             }
         }
     }
 
-    /**
-     * Consulta el clima actual para una ciudad.
-     *
-     * @param city Nombre de la ciudad.
-     */
-    private fun loadWeather(city: String) {
+    fun updateSetting(key: String, value: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoadingWeather = true) }
-            repository.getWeather(city)
-                .onSuccess { w ->
-                    _state.update { it.copy(weather = w, isLoadingWeather = false) }
-                }
-                .onFailure {
-                    _state.update { it.copy(isLoadingWeather = false) }
-                }
+            repository.updateSetting(key, value).onSuccess {
+                loadDashboard(silent = true)
+            }.onFailure { e ->
+                if (e is ApiException && (e.code == 401 || e.code == 403)) return@onFailure
+                // Manejo silencioso de error
+            }
         }
     }
 
-    /**
-     * Marca una notificación como leída tanto en el servidor como en el estado local.
-     *
-     * @param notificationId ID de la notificación.
-     */
-    fun markAsRead(notificationId: String) {
-        viewModelScope.launch {
-            repository.markNotificationAsRead(notificationId)
-                .onSuccess {
-                    // Actualizar estado local
-                    _state.update { s ->
-                        val updatedList = s.clientDashboard?.recentNotifications?.map {
-                            if (it.id == notificationId) it.copy(isRead = true) else it
-                        } ?: emptyList()
-                        
-                        s.copy(
-                            clientDashboard = s.clientDashboard?.copy(recentNotifications = updatedList)
-                        )
-                    }
-                }
-        }
+    fun loadAdminData() {
+        loadDashboard()
     }
 
-    /** Limpia el mensaje de error del estado. */
-    fun clearError() = _state.update { it.copy(error = null) }
+    fun toggleAdminChartType(type: AdminChartType) {
+        val currentState = _state.value
+        if (currentState is DashboardUiState.Success) {
+            _state.value = currentState.copy(adminChartType = type)
+        }
+    }
 }

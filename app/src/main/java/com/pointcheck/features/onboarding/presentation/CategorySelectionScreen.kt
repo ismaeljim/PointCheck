@@ -16,10 +16,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckTopBar
 import com.pointcheck.features.auth.presentation.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,11 +30,11 @@ fun CategorySelectionScreen(
     authVm: UserViewModel,
     vm: CategoryViewModel = viewModel()
 ) {
-    val state by vm.state.collectAsState()
+    val state by vm.state.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = { 
-            AppTopBar(
+            PointCheckTopBar(
                 title = "¿Cuál es tu especialidad?",
                 onBack = { nav.popBackStack() }
             ) 
@@ -51,21 +52,46 @@ fun CategorySelectionScreen(
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(state.categories) { category ->
-                        CategoryCard(
-                            name = category.name,
-                            iconName = category.icon,
-                            colorHex = category.color,
-                            onClick = {
-                                authVm.onValueChange("categoryId", category.id.toString())
-                                nav.navigate("service_configuration/${category.id}")
+                if (state.categories.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.SearchOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "No se encontraron categorías disponibles",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { vm.loadCategories() }) {
+                                Text("Reintentar")
                             }
-                        )
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.categories, key = { it.id ?: it.name }) { category ->
+                            CategoryCard(
+                                name = category.name,
+                                iconName = category.icon,
+                                colorHex = category.color,
+                                onClick = {
+                                    if (!category.id.isNullOrBlank()) {
+                                        authVm.onValueChange("categoryId", category.id)
+                                        nav.navigate("service_configuration/${category.id}")
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

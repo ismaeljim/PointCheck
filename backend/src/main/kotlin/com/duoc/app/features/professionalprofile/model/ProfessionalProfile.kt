@@ -25,7 +25,7 @@ import java.util.Objects
 class ProfessionalProfile(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, length = 36)
     val id: String? = null,
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -93,4 +93,13 @@ class ProfessionalProfile(
     override fun hashCode(): Int = Objects.hash(id)
 
     override fun toString(): String = "ProfessionalProfile(id=$id, displayName=$displayName)"
+
+    fun toSummaryDto() = com.duoc.app.features.user.dto.UserSummaryDto(
+        id = this.user.id!!,
+        name = this.displayName,
+        rut = this.user.rut,
+        role = this.user.role,
+        email = this.user.email,
+        phone = this.user.phone
+    )
 }

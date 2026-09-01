@@ -7,8 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Home
 import com.pointcheck.features.admin.data.dto.AdminUserUpdateRequestDto
 import com.pointcheck.features.auth.data.dto.UserResponseDto
 import com.pointcheck.features.onboarding.presentation.dto.CategoryDto
@@ -43,24 +47,30 @@ fun EditUserDialog(
                     .padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AppTextField(
+                PointCheckTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = "Nombre Completo",
+                    placeholder = "Ingrese nombre completo",
+                    leadingIcon = Icons.Default.Person,
                     enabled = !isSaving
                 )
 
-                AppTextField(
+                PointCheckTextField(
                     value = phone,
                     onValueChange = { phone = it },
                     label = "Teléfono",
+                    placeholder = "+569...",
+                    leadingIcon = Icons.Default.Phone,
                     enabled = !isSaving
                 )
 
-                AppTextField(
+                PointCheckTextField(
                     value = address,
                     onValueChange = { address = it },
                     label = "Dirección",
+                    placeholder = "Ej: Av. Providencia 123",
+                    leadingIcon = Icons.Default.Home,
                     enabled = !isSaving
                 )
 
@@ -127,7 +137,7 @@ fun EditUserDialog(
             }
         },
         confirmButton = {
-            AppButton(
+            PointCheckButton(
                 text = "Guardar",
                 onClick = {
                     onConfirm(

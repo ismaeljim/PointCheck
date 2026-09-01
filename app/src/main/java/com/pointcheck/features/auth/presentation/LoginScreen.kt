@@ -10,18 +10,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.presentation.components.AppTopBar
+import com.pointcheck.core.ui.components.PointCheckButton
+import com.pointcheck.core.ui.components.PointCheckTextField
+import com.pointcheck.core.ui.components.PointCheckTopBar
 
 /**
  * Pantalla de inicio de sesión para la autenticación de usuarios.
@@ -36,29 +41,41 @@ import com.pointcheck.core.presentation.components.AppTopBar
 @Composable
 fun LoginScreen(
     nav: NavController,
-    vm: UserViewModel = viewModel()
+    vm: LoginViewModel = viewModel()
 ) {
-    Log.d("LoginScreen", "Renderizando LoginScreen - Punto de control de acceso")
-    
-    // Observamos el estado del ViewModel (isLoading, error, etc.)
-    val s by vm.state.collectAsState()
+    val state by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Estados locales para el formulario
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Efecto para reaccionar a errores provenientes del backend (ej: 401 Unauthorized)
-    LaunchedEffect(s.error) {
-        s.error?.let {
-            snackbarHostState.showSnackbar(it)
-            vm.clearError() // Limpiamos para evitar que el mensaje se repita en recomposiciones
+    // Forzar el foco inicial y levantar teclado (Fix para Xiaomi)
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    // Reaccionar al éxito del login
+    LaunchedEffect(state) {
+        if (state is LoginUiState.Success) {
+            nav.navigate(Screen.Dashboard.route) {
+                popUpTo(Screen.Login.route) { inclusive = true }
+            }
+        }
+    }
+
+    // Manejo de errores mediante Snackbar
+    if (state is LoginUiState.Input) {
+        val inputState = state as LoginUiState.Input
+        LaunchedEffect(inputState.error) {
+            inputState.error?.let {
+                snackbarHostState.showSnackbar(it)
+                vm.clearError()
+            }
         }
     }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Iniciar sesión") },
+        topBar = { PointCheckTopBar(title = "Iniciar sesión") },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { pad ->
         Column(
@@ -69,7 +86,6 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Branding de la aplicación
             Text(
                 "PointCheck",
                 style = MaterialTheme.typography.displayLarge,
@@ -84,12 +100,14 @@ fun LoginScreen(
             
             Spacer(Modifier.height(40.dp))
 
-            // Tarjeta contenedora del formulario de login
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 shape = RoundedCornerShape(24.dp)
             ) {
+                val input = (state as? LoginUiState.Input) ?: LoginUiState.Input()
+                val isLoading = state is LoginUiState.Loading
+
                 Column(Modifier.padding(20.dp)) {
                     Text(
                         "Bienvenido",
@@ -98,62 +116,58 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     
-                    // Input de Correo con validación de tipo teclado
-                    AppTextField(
-                        value = email,
-                        onValueChange = { email = it },
+                    PointCheckTextField(
+                        value = input.email,
+                        onValueChange = { vm.onValueChange("email", it) },
                         label = "Correo electrónico",
+                        placeholder = "ejemplo@correo.com",
                         leadingIcon = Icons.Default.Email,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        enabled = !s.isLoading
+                        modifier = Modifier.focusRequester(focusRequester),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        enabled = !isLoading
                     )
                     Spacer(Modifier.height(12.dp))
                     
-                    // Input de Contraseña con toggle de visibilidad
-                    AppTextField(
-                        value = password,
-                        onValueChange = { password = it },
+                    var passwordVisible by remember { mutableStateOf(false) }
+                    PointCheckTextField(
+                        value = input.password,
+                        onValueChange = { vm.onValueChange("password", it) },
                         label = "Contraseña",
+                        placeholder = "••••••••",
                         leadingIcon = Icons.Default.Lock,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        enabled = !s.isLoading,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        ),
+                        enabled = !isLoading,
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = "Cambiar visibilidad de contraseña"
+                                    contentDescription = null
                                 )
                             }
                         }
                     )
                     Spacer(Modifier.height(24.dp))
                     
-                    // Botón de acción principal
-                    AppButton(
+                    PointCheckButton(
                         text = "Iniciar Sesión",
-                        onClick = {
-                            // Trim en email para evitar errores de espacios accidentales
-                            vm.login(email.trim(), password) { ok ->
-                                if (ok) {
-                                    // Navegación al Dashboard limpiando el stack de login
-                                    nav.navigate(Screen.Dashboard.route) {
-                                        popUpTo(Screen.Login.route) { inclusive = true }
-                                    }
-                                }
-                            }
-                        },
-                        isLoading = s.isLoading,
-                        enabled = email.isNotBlank() && password.isNotBlank()
+                        onClick = { vm.login() },
+                        isLoading = isLoading,
+                        enabled = input.isValid && !isLoading
                     )
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Link para recuperación de contraseña
                     TextButton(
                         onClick = { nav.navigate(Screen.ForgotPassword.route) },
                         modifier = Modifier.align(Alignment.End),
-                        enabled = !s.isLoading
+                        enabled = !isLoading
                     ) {
                         Text(
                             "¿Olvidaste tu contraseña?",
@@ -166,8 +180,7 @@ fun LoginScreen(
             
             Spacer(Modifier.height(16.dp))
             
-            // Link para registro de nuevos usuarios
-            TextButton(onClick = { nav.navigate(Screen.Register.route) }, enabled = !s.isLoading) {
+            TextButton(onClick = { nav.navigate(Screen.Register.route) }, enabled = !(state is LoginUiState.Loading)) {
                 Text("¿No tienes cuenta? Regístrate aquí")
             }
         }

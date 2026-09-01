@@ -4,5 +4,5 @@ data class FavoriteSpecialistDto(
     val specialistProfileId: String,
     val name: String,
     val specialty: String = "",
-    val visitCount: Long
+    val visitCount: Long = 0
 )

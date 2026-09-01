@@ -1,55 +1,52 @@
 package com.pointcheck.features.dashboard.presentation
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
-import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.entryModelOf
-import com.pointcheck.core.navigation.Screen
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
-import com.pointcheck.core.ui.components.PCCard
-import com.pointcheck.core.ui.components.PCOutlinedButton
+import com.pointcheck.core.ui.components.*
 import com.pointcheck.features.dashboard.data.dto.DashboardMetricsDto
+import java.util.Locale
 
 @Composable
 fun AdminDashboard(
     m: DashboardMetricsDto,
-    nav: NavController,
+    chartType: AdminChartType = AdminChartType.LINE,
+    onChartTypeChange: (AdminChartType) -> Unit = {},
     onShowUsers: () -> Unit,
     onShowAudit: () -> Unit,
     onShowFinance: () -> Unit,
     onShowSettings: () -> Unit
 ) {
-    var showAppointmentsInfo by remember { mutableStateOf(false) }
+    var showInDevAlert by remember { mutableStateOf(false) }
 
-    if (showAppointmentsInfo) {
+    if (showInDevAlert) {
         AlertDialog(
-            onDismissRequest = { showAppointmentsInfo = false },
+            onDismissRequest = { showInDevAlert = false },
             confirmButton = {
-                TextButton(onClick = { showAppointmentsInfo = false }) {
+                TextButton(onClick = { showInDevAlert = false }) {
                     Text("Entendido")
                 }
             },
@@ -58,8 +55,13 @@ fun AdminDashboard(
             icon = { Icon(Icons.Default.Info, null) }
         )
     }
-
-    Column(Modifier.fillMaxWidth()) {
+                                                                                                                                                                                                                                                            
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(vertical = 8.dp)
+    ) {
         Text(
             text = "Panel de Control Maestro",
             style = MaterialTheme.typography.headlineSmall,
@@ -71,10 +73,13 @@ fun AdminDashboard(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
         
         // Fila 1: Usuarios e Ingresos
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             MetricCard(
                 label = "Usuarios Totales",
                 value = (m.totalUsers ?: 0).toString(),
@@ -84,23 +89,26 @@ fun AdminDashboard(
             )
             MetricCard(
                 label = "Ingresos Netos",
-                value = "$${String.format("%,.0f", m.totalRevenue ?: 0.0)}",
+                value = "$${String.format(Locale.getDefault(), "%,.0f", m.totalRevenue ?: 0.0)}",
                 icon = Icons.Default.MonetizationOn,
                 modifier = Modifier.weight(1f),
                 onClick = onShowFinance
             )
         }
         
-        Spacer(Modifier.height(12.dp))
-        
+        Spacer(Modifier.height(16.dp))
+
         // Fila 2: Operaciones y Seguridad
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             MetricCard(
                 label = "Citas Hoy",
                 value = (m.appointmentsToday ?: 0).toString(),
                 icon = Icons.AutoMirrored.Filled.EventNote,
                 modifier = Modifier.weight(1f),
-                onClick = { nav.navigate(Screen.Scheduled.createRoute("today")) }
+                onClick = { showInDevAlert = true }
             )
             MetricCard(
                 label = "Alertas Sist.",
@@ -111,71 +119,118 @@ fun AdminDashboard(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
-            shape = MaterialTheme.shapes.medium
+        Spacer(Modifier.height(16.dp))
+
+        PointCheckCard(
+            title = "Balances Financieros",
+            subtitle = "Resumen de recaudación y estado de cobros",
+            icon = Icons.Default.Assessment
         ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Balances Financieros", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
-                FinancialRow("Recaudación Real", "$${String.format("%,.0f", m.totalRevenue ?: 0.0)}", Color(0xFF4CAF50))
-                FinancialRow("Pendiente de Cobro", "$${String.format("%,.0f", m.pendingRevenue ?: 0.0)}", MaterialTheme.colorScheme.error)
+            Column(Modifier.fillMaxWidth()) {
+                FinancialRow("Recaudación Real", "$${String.format(Locale.getDefault(), "%,.0f", m.totalRevenue ?: 0.0)}", Color(0xFF4CAF50))
+                FinancialRow("Pendiente de Cobro", "$${String.format(Locale.getDefault(), "%,.0f", m.pendingRevenue ?: 0.0)}", MaterialTheme.colorScheme.error)
                 FinancialRow("Especialistas Activos", (m.activeSpecialists ?: 0).toString())
                 
-                // Gráfico de Ingresos (Admin)
+                // Gráfico de Ingresos (Admin) con Selector Dual
                 val series = m.revenueSeries ?: emptyList()
                 if (series.isNotEmpty()) {
+                    Spacer(Modifier.height(24.dp))
+                    
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = chartType == AdminChartType.LINE,
+                            onClick = { onChartTypeChange(AdminChartType.LINE) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            icon = { SegmentedButtonDefaults.Icon(active = chartType == AdminChartType.LINE) { Icon(Icons.AutoMirrored.Filled.ShowChart, null) } }
+                        ) {
+                            Text("Tendencia", style = MaterialTheme.typography.labelSmall)
+                        }
+                        SegmentedButton(
+                            selected = chartType == AdminChartType.BAR,
+                            onClick = { onChartTypeChange(AdminChartType.BAR) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            icon = { SegmentedButtonDefaults.Icon(active = chartType == AdminChartType.BAR) { Icon(Icons.Default.BarChart, null) } }
+                        ) {
+                            Text("Comparativa", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+
                     Spacer(Modifier.height(16.dp))
-                    Text("Ingresos Últimos 7 Días", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(8.dp))
-                    val model = entryModelOf(*series.map { (it.value ?: 0.0).toFloat() }.toTypedArray())
-                    Chart(
-                        chart = lineChart(),
-                        model = model,
-                        startAxis = rememberStartAxis(),
-                        bottomAxis = rememberBottomAxis(),
-                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    Text(
+                        text = if (chartType == AdminChartType.LINE) "Ingresos Últimos 7 Días (Tendencia)" else "Ingresos Diarios (Acumulado)",
+                        style = MaterialTheme.typography.labelMedium, 
+                        color = MaterialTheme.colorScheme.primary
                     )
+                    Spacer(Modifier.height(8.dp))
+                    
+                    val model = entryModelOf(*series.map { (it.value ?: 0.0).toFloat() }.toTypedArray())
+                    
+                    // Renderizado dinámico según ChartType
+                    if (chartType == AdminChartType.LINE) {
+                        Chart(
+                            chart = com.patrykandpatrick.vico.compose.chart.line.lineChart(),
+                            model = model,
+                            startAxis = rememberStartAxis(),
+                            bottomAxis = rememberBottomAxis(),
+                            modifier = Modifier.fillMaxWidth().height(140.dp)
+                        )
+                    } else {
+                        Chart(
+                            chart = com.patrykandpatrick.vico.compose.chart.column.columnChart(),
+                            model = model,
+                            startAxis = rememberStartAxis(),
+                            bottomAxis = rememberBottomAxis(),
+                            modifier = Modifier.fillMaxWidth().height(140.dp)
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(16.dp))
-                PCOutlinedButton(
+                PointCheckButton(
                     text = "Gestionar Parámetros", 
                     icon = Icons.Default.Settings, 
                     onClick = onShowSettings,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                 )
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
         Text("Accesos Directos Administrativos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         
-        AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles", onShowUsers)
-        AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas", onShowAudit)
-        AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AdminActionButton("Auditoría de Usuarios", Icons.Default.SupervisorAccount, "Ver estados y roles", onShowUsers)
+            AdminActionButton("Historial de Cambios", Icons.Default.HistoryEdu, "Log de acciones administrativas", onShowAudit)
+            AdminActionButton("Configuración de Red", Icons.Default.Settings, "Parámetros del sistema", onShowSettings)
+        }
+        
+        Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
 fun AdminActionButton(title: String, icon: ImageVector, subtitle: String, onClick: () -> Unit) {
-    PCCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+    PointCheckCard(
+        title = title,
+        subtitle = subtitle,
+        icon = icon,
+        onClick = onClick
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Gestionar",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -184,35 +239,67 @@ fun AdminActionButton(title: String, icon: ImageVector, subtitle: String, onClic
 @Composable
 fun AuditLogsBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .padding(bottom = 32.dp)
         ) {
-            Text(
-                "Historial de Auditoría",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp),
-                fontWeight = FontWeight.Bold
-            )
-
-            if (s.auditLogs.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("No hay registros de auditoría", color = MaterialTheme.colorScheme.secondary)
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "PointCheck | Auditoría",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = { vm.loadDashboard(silent = true) }) {
+                    Icon(Icons.Default.Refresh, "Refrescar")
                 }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    s.auditLogs.forEach { log ->
-                        AuditLogItem(log)
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+
+            if (s is DashboardUiState.Loading) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (s is DashboardUiState.Success) {
+                val successState = s as DashboardUiState.Success
+                if (successState.auditLogs.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                        Text("No hay registros de auditoría", color = MaterialTheme.colorScheme.secondary)
                     }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        successState.auditLogs.take(15).forEach { log ->
+                            AuditLogItem(log)
+                        }
+                        
+                        TextButton(
+                            onClick = { 
+                                onDismiss()
+                            },
+                            modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp)
+                        ) {
+                            Text("Ver historial completo")
+                        }
+                    }
+                }
+            } else if (s is DashboardUiState.Error) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text("Error al cargar auditoría", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -222,8 +309,6 @@ fun AuditLogsBottomSheet(onDismiss: () -> Unit) {
 @Composable
 fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
     var expanded by remember { mutableStateOf(false) }
-    
-    // Blindaje de acción
     val actionText = (log.action ?: "LOG").replace("_", " ")
     
     val icon = when (log.action) {
@@ -231,106 +316,80 @@ fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
         "DESACTIVAR" -> Icons.Default.PersonRemove
         "EDITAR" -> Icons.Default.SettingsSuggest
         "CREAR" -> Icons.Default.AddCircle
+        "ACCESO" -> Icons.AutoMirrored.Filled.Login
+        "ELIMINAR" -> Icons.Default.DeleteForever
         else -> Icons.Default.History
     }
 
-    Surface(
-        onClick = { expanded = !expanded },
-        color = Color.Transparent
+    val actionColor = when (log.action) {
+        "DESACTIVAR", "ELIMINAR" -> MaterialTheme.colorScheme.error
+        "CREAR", "ACTIVAR" -> Color(0xFF4CAF50)
+        "EDITAR" -> Color(0xFFFF9800)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    PointCheckCard(
+        title = actionText,
+        subtitle = log.timestamp ?: "Reciente",
+        icon = icon,
+        iconColor = actionColor,
+        badgeText = log.targetType,
+        onClick = { expanded = !expanded }
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                icon, 
-                null, 
-                tint = if (log.action == "DESACTIVAR") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, 
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = actionText, 
-                        fontWeight = FontWeight.ExtraBold, 
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    if (expanded) {
-                        Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-                            Text(log.targetType ?: "General", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-                
+        Column(Modifier.fillMaxWidth()) {
+            val displayName = if (!log.targetName.isNullOrBlank()) {
+                log.targetName
+            } else if (!log.targetId.isNullOrBlank()) {
+                "ID: ${log.targetId.take(8)}..."
+            } else null
+
+            if (displayName != null) {
                 Text(
-                    text = log.details ?: "Sin detalles adicionales", 
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Objetivo: $displayName",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+
+            log.details?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = if (expanded) Int.MAX_VALUE else 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                
+            }
+            
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Spacer(Modifier.height(8.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.AdminPanelSettings, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.width(4.dp))
                     
-                    // SEGURIDAD ABSOLUTA: Evitar isBlank() y llamadas directas sobre nulos de Gson
-                    val emailSeguro = log.performedByEmail ?: ""
-                    val adminAlias = if (emailSeguro.contains("@")) {
-                        emailSeguro.substringBefore("@")
-                    } else if (emailSeguro.isNotEmpty()) {
-                        emailSeguro
-                    } else {
-                        val name = log.performedByName ?: ""
-                        if (name.isNotEmpty()) name else "Sistema"
-                    }
+                    val adminAlias = log.performedByName ?: log.performedByEmail?.substringBefore("@") ?: "Sistema"
 
                     Text(
-                        "Admin: $adminAlias",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Icon(Icons.Default.AccessTime, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
-                    Spacer(Modifier.width(4.dp))
-                    
-                    val formattedTime = try {
-                        val ts = log.timestamp ?: ""
-                        if (ts.contains("T")) {
-                            val parts = ts.split("T")
-                            val date = parts[0]
-                            val time = parts[1].substringBefore(".")
-                            "$date $time"
-                        } else if (ts.isNotEmpty()) {
-                            ts.substringBefore(".")
-                        } else {
-                            "Reciente"
-                        }
-                    } catch (e: Exception) {
-                        "Reciente"
-                    }
-
-                    Text(
-                        formattedTime,
+                        "Ejecutado por: $adminAlias",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.secondary
                     )
                 }
                 
-                if (expanded) {
-                    Spacer(Modifier.height(8.dp))
+                if (!log.targetId.isNullOrBlank()) {
                     Text(
-                        "ID Objetivo: ${log.targetId ?: "N/A"}",
+                        "ID Objetivo: ${log.targetId}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
@@ -342,32 +401,72 @@ fun AuditLogItem(log: com.pointcheck.features.admin.data.dto.AuditLogDto) {
 @Composable
 fun AdminUsersBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
     
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-            Text("Gestión de Usuarios", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
+            Text(
+                "PointCheck | Gestión de Usuarios", 
+                style = MaterialTheme.typography.titleLarge, 
+                modifier = Modifier.padding(16.dp), 
+                fontWeight = FontWeight.Bold
+            )
             
-            if (s.adminUsers.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("No se encontraron usuarios", color = MaterialTheme.colorScheme.secondary)
-                }
-            } else {
-                s.adminUsers.forEach { user ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(user.name ?: "Usuario sin nombre", fontWeight = FontWeight.Bold)
-                            Text("${user.role ?: "SIN_ROL"} • ${user.email ?: "Sin email"}", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(
-                            checked = user.active ?: false,
-                            onCheckedChange = { vm.toggleUserStatus(user.id ?: "") }
-                        )
+            if (s is DashboardUiState.Success) {
+                val successState = s as DashboardUiState.Success
+                if (successState.adminUsers.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                        Text("No se encontraron usuarios", color = MaterialTheme.colorScheme.secondary)
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
+                        items(successState.adminUsers) { user ->
+                            PointCheckCard(
+                                title = user.name ?: "Usuario sin nombre",
+                                subtitle = "${user.role ?: "SIN_ROL"} • ${user.email ?: "Sin email"}",
+                                icon = if (user.role == "ADMIN") Icons.Default.AdminPanelSettings else Icons.Default.Person
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        if (user.active == true) "Cuenta Activa" else "Cuenta Inactiva",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (user.active == true) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                                    )
+                                    
+                                    val isActive = user.active ?: false
+                                    var isUpdating by remember(user.id, isActive) { mutableStateOf(false) }
+
+                                    if (isUpdating) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    } else {
+                                        Switch(
+                                            checked = isActive,
+                                            onCheckedChange = { 
+                                                isUpdating = true
+                                                vm.toggleUserStatus(user.id ?: "")
+                                            },
+                                            modifier = Modifier.scale(0.8f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -378,44 +477,70 @@ fun AdminUsersBottomSheet(onDismiss: () -> Unit) {
 @Composable
 fun AdminFinanceBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
-    val s by vm.state.collectAsState()
-    val report = s.financialReport
+    val s by vm.state.collectAsStateWithLifecycle()
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 20.dp)) {
-            Text("Balance Global", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("PointCheck | Finanzas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                IconButton(onClick = { vm.loadDashboard(silent = true) }) {
+                    Icon(Icons.Default.Refresh, "Refrescar")
+                }
+            }
             Spacer(Modifier.height(24.dp))
             
-            if (report == null) {
-                Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+            if (s is DashboardUiState.Loading) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (s is DashboardUiState.Success) {
+                val report = (s as DashboardUiState.Success).financialReport
+                if (report == null) {
+                    Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        Text("No hay datos financieros disponibles", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else {
+                    val totalRevenue = report["totalRevenue"]?.toString() ?: "0"
+                    val pendingRevenue = report["pendingRevenue"]?.toString() ?: "0"
+                    val totalTransactions = report["totalTransactions"]?.toString() ?: "0"
+                    val paidTransactions = report["paidTransactions"]?.toString() ?: "0"
+
+                    MetricCard(
+                        label = "Ingresos Totales", 
+                        value = "$${String.format(Locale.getDefault(), "%,.0f", totalRevenue.toDoubleOrNull() ?: 0.0)}", 
+                        icon = Icons.Default.MonetizationOn, 
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(Modifier.height(24.dp))
+                    Text("Resumen de Operaciones", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
+                    
+                    FinancialRow("Total Transacciones", totalTransactions)
+                    FinancialRow("Cobros Pendientes", "$${String.format(Locale.getDefault(), "%,.0f", pendingRevenue.toDoubleOrNull() ?: 0.0)}", MaterialTheme.colorScheme.error)
+                    FinancialRow("Pagos Realizados", paidTransactions, Color(0xFF4CAF50))
+                    
+                    Spacer(Modifier.height(32.dp))
+                    PointCheckButton("Descargar Reporte PDF", onClick = { /* Simular descarga */ }, modifier = Modifier.fillMaxWidth())
+                }
+            } else if (s is DashboardUiState.Error) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (s.error != null) {
-                            Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
-                            Text("Error al cargar datos", color = MaterialTheme.colorScheme.error)
-                            Button(onClick = { vm.loadAdminData() }, modifier = Modifier.padding(top = 8.dp)) {
-                                Text("Reintentar")
-                            }
-                        } else {
-                            CircularProgressIndicator()
-                            Spacer(Modifier.height(8.dp))
-                            Text("Cargando reporte financiero...", style = MaterialTheme.typography.bodySmall)
+                        Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("Error al cargar finanzas", color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { vm.loadDashboard() }) {
+                            Text("Reintentar")
                         }
                     }
                 }
-            } else {
-                val totalRevenue = report["totalRevenue"]?.toString() ?: "0"
-                val pendingRevenue = report["pendingRevenue"]?.toString() ?: "0"
-                val totalTransactions = report["totalTransactions"]?.toString() ?: "0"
-                val paidTransactions = report["paidTransactions"]?.toString() ?: "0"
-
-                MetricCard("Ingresos Totales", "$${String.format("%,.0f", totalRevenue.toDoubleOrNull() ?: 0.0)}", Icons.Default.MonetizationOn, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(16.dp))
-                FinancialRow("Transacciones", totalTransactions)
-                FinancialRow("Cobros Pendientes", "$${String.format("%,.0f", pendingRevenue.toDoubleOrNull() ?: 0.0)}", MaterialTheme.colorScheme.error)
-                FinancialRow("Pagos Realizados", paidTransactions, Color(0xFF4CAF50))
-                
-                Spacer(Modifier.height(32.dp))
-                AppButton("Descargar Reporte PDF", onClick = { /* Simular descarga */ })
             }
         }
     }
@@ -425,38 +550,69 @@ fun AdminFinanceBottomSheet(onDismiss: () -> Unit) {
 @Composable
 fun AdminSettingsBottomSheet(onDismiss: () -> Unit) {
     val vm: DashboardViewModel = viewModel()
-    val s by vm.state.collectAsState()
+    val s by vm.state.collectAsStateWithLifecycle()
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(bottom = 40.dp)
-                .padding(horizontal = 20.dp)
-                .verticalScroll(rememberScrollState())
+            Modifier.fillMaxWidth().padding(bottom = 40.dp).padding(horizontal = 20.dp).verticalScroll(rememberScrollState())
         ) {
-            Text(
-                "Configuración Global",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("PointCheck | Configuración", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                IconButton(onClick = { vm.loadDashboard(silent = true) }) {
+                    Icon(Icons.Default.Refresh, "Refrescar")
+                }
+            }
             Spacer(Modifier.height(16.dp))
 
-            if (s.adminSettings.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                s.adminSettings.forEach { setting ->
-                    SettingItem(setting) { newValue ->
-                        vm.updateSetting(setting.key ?: "", newValue)
+            when (val currentState = s) {
+                is DashboardUiState.Loading -> {
+                    Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 }
+                is DashboardUiState.Success -> {
+                    val settings = currentState.adminSettings
+                    if (settings.isEmpty()) {
+                        Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                            Text("No hay configuraciones disponibles", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        settings.forEach { setting ->
+                            SettingItem(setting) { newValue ->
+                                vm.updateSetting(setting.key ?: "", newValue)
+                            }
+                            HorizontalDivider(Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+                        }
+                    }
+                }
+                is DashboardUiState.Error -> {
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error)
+                        Text(
+                            text = "Error al cargar configuraciones",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextButton(onClick = { vm.loadDashboard() }) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
+                else -> {}
             }
 
             Spacer(Modifier.height(24.dp))
-            AppButton("Cerrar", onClick = onDismiss)
+            PointCheckButton("Cerrar", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -468,34 +624,46 @@ fun SettingItem(
 ) {
     val keySegura = setting.key ?: return
     val valueSeguro = setting.value ?: ""
+    var isSaving by remember { mutableStateOf(false) }
+    
+    // Sincronización de estado para evitar bloqueos si el backend no responde a tiempo
+    LaunchedEffect(valueSeguro) { isSaving = false }
 
     Column(Modifier.fillMaxWidth()) {
         Text(
-            keySegura.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
+            text = try {
+                keySegura.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
+            } catch (e: Exception) {
+                keySegura
+            },
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary
         )
-        val desc = setting.description ?: ""
-        if (desc.isNotEmpty()) {
-            Text(desc, style = MaterialTheme.typography.bodySmall)
-        }
-        
+        Text(setting.description ?: "Sin descripción", style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
-        
-        var isSaving by remember { mutableStateOf(false) }
 
-        if (valueSeguro == "true" || valueSeguro == "false") {
+        // Manejo Seguro de Tipos: Fallback a TextField si el parseo falla o es ambiguo
+        val isBoolean = try {
+            valueSeguro.trim().lowercase().let { it == "true" || it == "false" }
+        } catch (_: Exception) {
+            false
+        }
+
+        if (isBoolean) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (valueSeguro == "true") "Activado" else "Desactivado")
+                Text(
+                    text = if (valueSeguro.trim().lowercase() == "true") "Activado" else "Desactivado",
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 } else {
                     Switch(
-                        checked = valueSeguro == "true",
+                        checked = valueSeguro.trim().lowercase() == "true",
                         onCheckedChange = { 
                             isSaving = true
                             onUpdate(it.toString()) 
@@ -504,23 +672,32 @@ fun SettingItem(
                 }
             }
         } else {
-            var textValue by remember { mutableStateOf(valueSeguro) }
+            var textValue by remember(valueSeguro) { mutableStateOf(valueSeguro) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AppTextField(
+                PointCheckTextField(
                     value = textValue,
                     onValueChange = { textValue = it },
-                    label = "",
+                    label = "Valor del parámetro",
+                    placeholder = "Ingrese el nuevo valor",
+                    leadingIcon = Icons.Default.Edit,
                     modifier = Modifier.weight(1f),
                     enabled = !isSaving
                 )
                 if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(8.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(8.dp), strokeWidth = 2.dp)
                 } else {
-                    IconButton(onClick = { 
-                        isSaving = true
-                        onUpdate(textValue) 
-                    }) {
-                        Icon(Icons.Default.Save, "Guardar", tint = MaterialTheme.colorScheme.primary)
+                    IconButton(
+                        onClick = { 
+                            isSaving = true
+                            onUpdate(textValue) 
+                        },
+                        enabled = textValue != valueSeguro // Solo permitir guardar si hubo cambios
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Save, 
+                            contentDescription = "Guardar", 
+                            tint = if (textValue != valueSeguro) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        )
                     }
                 }
             }

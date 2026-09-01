@@ -90,6 +90,18 @@ class AttentionService(
             return attention.toResponse()
         }
 
+        val reservation = attention.reservation
+
+        // REGLA DE NEGOCIO: Restricción de Cobro Anticipado (CASH) con ventana de 60 min.
+        val now = LocalDateTime.now()
+        val limitForEarlyPayment = reservation.reservationStart.minusMinutes(60)
+        
+        if (reservation.paymentMethod == com.duoc.app.features.billing.model.PaymentMethod.CASH &&
+            now.isBefore(limitForEarlyPayment)) {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+            throw IllegalStateException("Aún es temprano para cerrar esta atención. Por seguridad en cobros en efectivo, el sistema habilitará el cierre y cobro a partir de las ${limitForEarlyPayment.format(formatter)} hrs (60 minutos antes de la cita).")
+        }
+
         val finishedAt = LocalDateTime.now()
         val duration = request.durationMinutes ?: Duration.between(attention.startedAt, finishedAt).toMinutes().toInt()
 
@@ -99,10 +111,6 @@ class AttentionService(
         attention.observations = request.observations ?: attention.observations
         attention.updatedAt = LocalDateTime.now()
 
-        val reservation = reservationRepository.findById(attention.reservation.id!!).orElseThrow {
-            IllegalStateException("Reserva no encontrada para la atención: ${attention.id}")
-        }
-        
         reservation.status = ReservationStatus.COMPLETED
         reservation.updatedAt = LocalDateTime.now()
         reservationRepository.save(reservation)
@@ -127,35 +135,20 @@ class AttentionService(
         return savedAttention.toResponse()
     }
 
-    /**
-     * Obtiene las atenciones realizadas o en curso por un especialista para el día de hoy.
-     *
-     * @param specialistId ID del especialista.
-     * @return Lista de atenciones del día actual.
-     */
-    fun getTodayBySpecialist(specialistId: String): List<AttentionResponse> {
+    @Transactional(readOnly = true)
+    fun getTodayBySpecialist(specialistProfileId: String): List<AttentionResponse> {
         val startOfDay = LocalDate.now().atStartOfDay()
         val endOfDay = startOfDay.plusDays(1)
-        return attentionRepository.findBySpecialist_IdAndStartedAtBetween(specialistId, startOfDay, endOfDay)
+        return attentionRepository.findBySpecialist_IdAndStartedAtBetween(specialistProfileId, startOfDay, endOfDay)
             .map { it.toResponse() }
     }
 
-    /**
-     * Recupera el historial de todas las atenciones recibidas por un cliente.
-     *
-     * @param clientId ID del cliente.
-     * @return Lista histórica de atenciones.
-     */
+    @Transactional(readOnly = true)
     fun getHistoryByClient(clientId: String): List<AttentionResponse> {
         return attentionRepository.findByClient_Id(clientId).map { it.toResponse() }
     }
 
-    /**
-     * Obtiene una atención por su ID de reserva.
-     *
-     * @param reservationId ID de la reserva.
-     * @return [AttentionResponse] si se encuentra, null de lo contrario.
-     */
+    @Transactional(readOnly = true)
     fun getByReservationId(reservationId: String): AttentionResponse? {
         return attentionRepository.findByReservation_Id(reservationId)?.toResponse()
     }
@@ -165,6 +158,7 @@ class AttentionService(
         reservationId = this.reservation.id!!,
         client = this.client.toSummaryDto(),
         specialist = this.specialist.toSummaryDto(),
+        specialistProfileId = this.specialist.id ?: "",
         startedAt = this.startedAt,
         finishedAt = this.finishedAt,
         durationMinutes = this.durationMinutes,

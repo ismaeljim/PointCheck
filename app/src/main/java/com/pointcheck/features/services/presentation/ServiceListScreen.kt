@@ -1,16 +1,13 @@
 package com.pointcheck.features.services.presentation
 
-import com.pointcheck.core.presentation.components.AppTopBar
-import com.pointcheck.core.presentation.components.AppButton
-import com.pointcheck.core.presentation.components.AppTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material3.*
@@ -20,24 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.pointcheck.core.ui.components.*
+import com.pointcheck.core.utils.FormatUtils
+import com.pointcheck.features.services.data.dto.ServiceResponseDto
 
 /**
- * Screen for managing the catalog of services offered by a professional.
- *
- * This screen provides a list of all services registered by the current user. It allows
- * adding new services through a dialog and deleting existing ones. It observes the
- * state from [ServiceViewModel].
- *
- * Features:
- * - Lazy list of services with name, description, price, and duration.
- * - Floating action button to trigger the "Add Service" dialog.
- * - Integrated error and success message handling via Snackbar.
- * - Empty state illustration when no services are configured.
- *
- * @param nav [NavController] used for navigating back.
- * @param vm [ServiceViewModel] that manages the service data and operations.
+ * Pantalla para gestionar el catálogo de servicios ofrecidos por un profesional.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,126 +33,114 @@ fun ServiceListScreen(
     nav: NavController,
     vm: ServiceViewModel = viewModel()
 ) {
-    val s by vm.state.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    val state by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showAddDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(s.error) {
-        s.error?.let {
-            snackbarHostState.showSnackbar(it)
-            vm.clearError()
-        }
-    }
-
-    LaunchedEffect(s.successMessage) {
-        s.successMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            vm.clearSuccess()
-        }
-    }
+    // Obtenemos la lista de servicios directamente del estado si es Success
+    val services = (state as? ServiceUiState.Success)?.services ?: emptyList()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            AppTopBar(
-                title = "Catálogo de Servicios",
+            PointCheckTopBar(
+                title = "Mis Servicios",
                 onBack = { nav.popBackStack() }
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                icon = { Icon(Icons.Default.Add, null) },
                 text = { Text("Nuevo Servicio") },
-                expanded = !s.isLoading
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         }
     ) { pad ->
-        Column(
-            modifier = Modifier
-                .padding(pad)
-                .fillMaxSize()
-        ) {
-            if (s.isLoading && s.services.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+        Box(modifier = Modifier.padding(pad).fillMaxSize()) {
+            when (val s = state) {
+                is ServiceUiState.Loading -> {
+                    if (services.isEmpty()) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
                 }
-            } else if (s.services.isEmpty()) {
-                EmptyServicesState(onAdd = { showAddDialog = true })
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(s.services) { service ->
-                        ServiceCard(
-                            name = service.name,
-                            description = service.description ?: "Sin descripción",
-                            price = service.price,
-                            duration = service.durationMinutes,
-                            onDelete = { vm.deleteService(service.id) },
-                            enabled = !s.isLoading
-                        )
+                is ServiceUiState.Error -> {
+                    LaunchedEffect(s.message) {
+                        snackbarHostState.showSnackbar(s.message)
+                    }
+                }
+                is ServiceUiState.Success -> {
+                    s.successMessage?.let {
+                        LaunchedEffect(it) {
+                            snackbarHostState.showSnackbar(it)
+                        }
                     }
                 }
             }
 
-            if (showAddDialog) {
-                AddServiceDialog(
-                    onDismiss = { showAddDialog = false },
-                    onConfirm = { name, desc, price, dur ->
-                        vm.addService(name, desc, price, dur)
-                        showAddDialog = false
-                    },
-                    isLoading = s.isLoading
-                )
+            if (services.isEmpty() && state !is ServiceUiState.Loading) {
+                EmptyServicesState()
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(services) { service ->
+                        ServiceItem(
+                            service = service,
+                            enabled = state !is ServiceUiState.Loading,
+                            onDelete = { vm.deleteService(service.id) }
+                        )
+                    }
+                    item { Spacer(Modifier.height(80.dp)) }
+                }
             }
+        }
+
+        if (showAddDialog) {
+            ServiceDialog(
+                onDismiss = { showAddDialog = false },
+                isLoading = state is ServiceUiState.Loading,
+                onConfirm = { name, desc, price, dur ->
+                    vm.addService(name, desc, price, dur)
+                    showAddDialog = false
+                }
+            )
         }
     }
 }
 
 @Composable
-fun ServiceCard(
-    name: String,
-    description: String,
-    price: Double?,
-    duration: Int?,
-    onDelete: () -> Unit,
-    enabled: Boolean = true
+fun ServiceItem(
+    service: ServiceResponseDto,
+    enabled: Boolean,
+    onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    PointCheckCard(
+        title = service.name,
+        subtitle = service.description ?: "Sin descripción",
+        icon = Icons.Default.MedicalServices,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = onDelete, enabled = enabled) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar", tint = if (enabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline)
+                Row(Modifier.weight(1f)) {
+                    ServiceInfoChip(Icons.Default.AttachMoney, FormatUtils.formatCurrency(service.price))
+                    Spacer(Modifier.width(12.dp))
+                    ServiceInfoChip(Icons.Default.AccessTime, "${service.durationMinutes} min")
                 }
-            }
-            
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(Modifier.height(16.dp))
-            
-            Row(Modifier.fillMaxWidth()) {
-                ServiceInfoChip(Icons.Default.AttachMoney, "$${price ?: 0.0}")
-                Spacer(Modifier.width(12.dp))
-                ServiceInfoChip(Icons.Default.AccessTime, "${duration ?: 0} min")
+                IconButton(onClick = onDelete, enabled = enabled) {
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = "Eliminar",
+                        tint = if (enabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
     }
@@ -172,20 +148,33 @@ fun ServiceCard(
 
 @Composable
 fun ServiceInfoChip(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
 @Composable
-fun EmptyServicesState(onAdd: () -> Unit) {
+fun EmptyServicesState() {
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -193,88 +182,88 @@ fun EmptyServicesState(onAdd: () -> Unit) {
     ) {
         Icon(
             Icons.Default.MedicalServices,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
+            null,
+            Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.outlineVariant
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            "Tu catálogo está vacío",
+            "No tienes servicios",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         Text(
-            "Registra los servicios que ofreces para que tus clientes puedan agendar citas.",
+            "Crea tu primer servicio para empezar a recibir reservas.",
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(24.dp))
-        AppButton(text = "Añadir primer servicio", onClick = onAdd)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddServiceDialog(
+fun ServiceDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Double, Int) -> Unit,
-    isLoading: Boolean = false
+    isLoading: Boolean,
+    onConfirm: (String, String, Double, Int) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
-    var duration by remember { mutableStateOf("30") }
+    var duration by remember { mutableStateOf("60") }
 
     AlertDialog(
-        onDismissRequest = { if (!isLoading) onDismiss() },
+        onDismissRequest = onDismiss,
         title = { Text("Nuevo Servicio") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AppTextField(
-                    value = name, 
-                    onValueChange = { name = it }, 
+                PointCheckTextField(
+                    value = name,
+                    onValueChange = { name = it },
                     label = "Nombre del servicio",
-                    enabled = !isLoading
+                    placeholder = "Ej: Corte de Cabello",
+                    leadingIcon = Icons.Default.MedicalServices
                 )
-                AppTextField(
-                    value = desc, 
-                    onValueChange = { desc = it }, 
+                PointCheckTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
                     label = "Descripción",
-                    enabled = !isLoading
+                    placeholder = "Breve descripción del servicio",
+                    leadingIcon = Icons.Default.Description
                 )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AppTextField(
-                        value = price, 
-                        onValueChange = { price = it }, 
-                        label = "Precio",
-                        modifier = Modifier.weight(1f),
-                        enabled = !isLoading,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PointCheckTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = "Precio (CLP)",
+                        placeholder = "0",
+                        leadingIcon = Icons.Default.AttachMoney,
+                        modifier = Modifier.weight(1f)
                     )
-                    AppTextField(
-                        value = duration, 
-                        onValueChange = { duration = it }, 
+                    PointCheckTextField(
+                        value = duration,
+                        onValueChange = { duration = it },
                         label = "Minutos",
-                        modifier = Modifier.weight(1f),
-                        enabled = !isLoading,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                        placeholder = "60",
+                        leadingIcon = Icons.Default.AccessTime,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
         },
         confirmButton = {
-            AppButton(
-                text = "Crear",
+            TextButton(
                 onClick = { 
                     onConfirm(name, desc, price.toDoubleOrNull() ?: 0.0, duration.toIntOrNull() ?: 30) 
                 },
-                modifier = Modifier.width(100.dp),
-                enabled = name.isNotBlank() && price.isNotBlank() && !isLoading,
-                isLoading = isLoading
-            )
+                enabled = name.isNotBlank() && price.isNotBlank() && !isLoading
+            ) {
+                if (isLoading) CircularProgressIndicator(Modifier.size(24.dp))
+                else Text("Confirmar")
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     )
 }
